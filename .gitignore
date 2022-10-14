@@ -1,0 +1,11 @@
+/venv/
+/sagemaker_ssh_helper.egg-info/
+/sagemaker_ssh_helper/.ipynb_checkpoints/
+/dist
+/tests/opt_ml/model/
+/tests/opt_ml/code/
+/tests/opt_ml/output/
+/.venv/
+/build/
+.DS_Store
+*/**/.DS_Store
