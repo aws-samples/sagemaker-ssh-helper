@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# When a user logs in with SSH or remote interpreter, we want env vars to be the same as set by SageMaker
+
+set -e
+set -v
+
+export START_SSH=false
+env | grep -E -v "^(HOME=|USER=|MAIL=|LC_ALL=|LS_COLORS=|LANG=|HOSTNAME=|PWD=|TERM=|SHLVL=|LANGUAGE=|_=)" \
+  > /etc/environment
+cat /etc/environment

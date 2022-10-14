@@ -1,0 +1,144 @@
+#!/bin/bash -l
+# Very important to start with 'bash -l' - to escape SageMaker Studio notebook environment
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
+_install_helper_scripts
+
+SM_STUDIO_PYTHON=$(/opt/.sagemakerinternal/conda/bin/python -c \
+    "from jupyter_client.kernelspec import KernelSpecManager; \
+    print(KernelSpecManager().get_all_specs()['python3']['spec']['argv'][0])")
+
+
+if [[ "$1" == "configure" ]]; then
+
+    set -e
+    cat /etc/issue
+    grep 'Debian GNU/Linux\|Ubuntu' /etc/issue >/dev/null \
+      || (echo "ERROR: OS type / version mismatch." && exit 1)
+
+    echo "sm-ssh-ide: Saving env variables for remote SSH interpreter"
+    sm-save-env
+
+    # TODO: `sm-ssh-ide --reconfigure` for explicit side effect
+
+    which xfce4-session && (echo "sm-ssh-ide: Packages already configured? Press Ctrl-C to stop. Sleeping 5 sec." && sleep 5)
+
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update
+    [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1
+    apt-mark hold light-locker
+
+    apt-get install -y xfce4 xfce4-goodies epiphany-browser
+    
+    grep -q 'Ubuntu 16' /etc/issue \
+        && apt-get install -y tightvncserver
+    grep -q 'Ubuntu 16' /etc/issue \
+        || apt-get install -y tigervnc-standalone-server
+
+    apt-get install -y ssh curl net-tools
+    apt-get install -y python3-pip jq
+    pip3 install awscli
+
+    apt-get install -y curl
+    _install_ssm_agent_ubuntu
+
+    if [ -f ~/.hosts ]; then
+        cat ~/.hosts >> /etc/hosts
+    fi
+
+    echo "startxfce4" > ~/.xsession
+    chmod +x ~/.xsession
+
+    sed -i~~ -e 's/^\#ClientAliveInterval 0$/ClientAliveInterval 15/' /etc/ssh/sshd_config
+
+elif [[ "$1" == "init-ssm" ]]; then
+
+    SSH_SSM_ROLE=$($SM_STUDIO_PYTHON <<EOF
+import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper;
+print(SSHEnvironmentWrapper.ssm_role_from_iam_arn(sagemaker.get_execution_role()))
+EOF
+    )
+
+    export SSH_SSM_ROLE
+    export SSH_SSM_TAGS="Key=SSHOwner, Value=$2"
+
+    echo "sm-ssh-ide: Will add the following tags to the managed instance: $SSH_SSM_TAGS"
+
+    # Init SSM and pipe the output to CloudWatch (stdout of the pid 1).
+    sm-init-ssm | tee /proc/1/fd/1
+
+elif [[ "$1" == "start" ]]; then
+
+    if [[ -f /tmp/.ssh-ide-local-lock ]]; then
+        echo "sm-ssh-ide: Already running on this instance? Call stop first." && exit 1
+    fi
+
+    if [[ -f ~/.ssh-ide-global-lock ]]; then
+        echo "sm-ssh-ide: Already running on another instance? Call stop on that instance first. " \
+          "If another instance is already shut down, call stop on this instance." && exit 1
+    fi
+
+    touch /tmp/.ssh-ide-local-lock
+    touch ~/.ssh-ide-global-lock
+
+    export USER=root
+    vncserver :1
+
+    service ssh start
+
+    SM_PYTHON_PREFIX=$($SM_STUDIO_PYTHON -c "from __future__ import print_function;import sys; print(sys.prefix)")
+
+    "$SM_PYTHON_PREFIX"/bin/pip -q install notebook
+
+    $SM_STUDIO_PYTHON -m jupyter notebook --no-browser --port=8889 --ip=127.0.0.1 --allow-root \
+      >~/jupyter-notebook.log 2>&1 &
+
+    sleep 2
+
+    tail ~/jupyter-notebook.log
+
+elif [[ "$1" == "ssm-agent" ]]; then
+
+    /usr/bin/amazon-ssm-agent
+
+elif [[ "$1" == "status" ]]; then
+
+  netstat -nptl | grep '5901\|8889'
+
+elif [[ "$1" == "stop" ]]; then
+
+    pkill -ef amazon-ssm-agent || echo "sm-ssh-ide: SSM agent already stopped?"
+
+    pkill -e Xtigervnc
+    pkill -e Xtightvnc
+
+    pkill -e ssh-agent
+    pkill -e gpg-agent
+
+    pkill -fe jupyter-notebook
+
+    service ssh stop
+
+    # Wait dbus to shop
+    sleep 5
+
+    if [[ -f ~/.ssh-ide-global-lock ]]; then
+        rm ~/.ssh-ide-global-lock
+    else
+        echo "sm-ssh-ide: Global lock is missing, already stopped on all instances?"
+    fi
+
+    if [[ -f /tmp/.ssh-ide-local-lock ]]; then
+        rm /tmp/.ssh-ide-local-lock
+    else
+        echo "sm-ssh-ide: Local lock is missing, was not not running on this instance?"
+    fi
+
+else
+
+    echo "Unknown command: $1"
+
+fi

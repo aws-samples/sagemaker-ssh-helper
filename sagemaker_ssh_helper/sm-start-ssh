@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# The script will install SSH and run SSM agent forever without exiting.
+# Started in background as a daemon by sm-setup-ssh.
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
+_install_helper_scripts
+
+set -v
+
+# Log IP addresses of the container (useful only in training in combination with VPC + VPN)
+echo "SSH Helper Log IP: $(hostname -I)"
+
+chmod 1777 /tmp
+mkdir -p ~/.ssh
+
+# Install SSH (if using MPI, already installed)
+if _is_centos; then
+  yum install -y openssh-server
+else
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y openssh-server
+fi
+
+# Save and dump SageMaker environment for SSH sessions
+sm-save-env
+
+sed -i -e 's~^PermitRootLogin~#PermitRootLogin~' /etc/ssh/sshd_config
+echo PermitRootLogin yes >> /etc/ssh/sshd_config
+
+# Start SSH server
+if _is_centos; then
+  # NOTE: systemctl will not work in CentOS SageMaker container (e.g. Spark processing) because lack of
+  # privileges to access DBUS, so we run sshd manually. This command doesn't work:
+  # # service sshd start || (echo "ERROR: Failed to start sshd service" && exit 255)
+  [[ -f /etc/ssh/ssh_host_rsa_key ]] || (echo "Generating new SSH keys" && ssh-keygen -A)
+  /usr/sbin/sshd
+else
+  service ssh start || (echo "ERROR: Failed to start ssh service" && exit 255)
+fi
+
+sm-init-ssm
+
+# Running forever as daemon
+amazon-ssm-agent

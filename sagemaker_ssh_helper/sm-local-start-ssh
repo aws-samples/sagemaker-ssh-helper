@@ -1,0 +1,26 @@
+#!/bin/bash
+
+INSTANCE_ID=$1
+shift
+
+if [ -z "${INSTANCE_ID}" ] ;
+then
+  echo "INSTANCE_ID not provided"
+  exit 1
+else
+  echo "INSTANCE_ID -> ${INSTANCE_ID}"
+fi
+
+# Useful for port forwarding and debugging, eg. passing -vvv option
+EXTRA_SSH_ARGS=$*
+
+python -c 'import sagemaker'
+
+bucket=$(python -c 'import sagemaker; print(sagemaker.Session().default_bucket())')
+
+echo "SSH authorized keys bucket (SageMaker default) -> ${bucket}"
+
+# shellcheck disable=SC2086
+sm-connect-ssh-proxy "${INSTANCE_ID}" \
+    "s3://$bucket/ssh-authorized-keys/" \
+    $EXTRA_SSH_ARGS

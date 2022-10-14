@@ -1,0 +1,31 @@
+#!/bin/bash
+
+SLEEP=$1
+
+if [[ "$SLEEP" == "" ]]; then
+    echo "sm-wait: ERROR: missing argument"
+    exit
+fi
+
+if [[ "$SLEEP" == 0 ]]; then
+    exit
+fi
+
+terminate() {
+    echo "sm-wait: Gracefully terminated." 
+    exit
+}
+
+trap terminate SIGTERM
+trap terminate SIGINT
+
+echo "sm-wait: Waiting for $SLEEP seconds to let you prepare you connection. "\
+  "Once you're ready, run 'pkill sm-wait'."
+
+for loop in $(seq 1 1 "$SLEEP") 
+do
+    sleep 1
+    echo "sm-wait: Still waiting ($loop)..."
+done
+
+echo "sm-wait: Waiting complete. No 'pkill' command received. Do you need to increase timeout?"

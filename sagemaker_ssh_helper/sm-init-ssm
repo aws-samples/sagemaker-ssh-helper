@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Creates a new hybrid activation in SSM and reports back the managed instance ID
+# If successful, the log line with the instance ID will look like this:
+#   Successfully registered the instance with AWS SSM using Managed instance-id: mi-01234567890abcdef
+
+# Requires environment variable SSH_SSM_ROLE to be passed as an argument
+# The role for SSM is not a full IAM ARN, but only the last part of it such as 'service-role/SageMakerRole'
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
+_install_helper_scripts
+
+set -e
+set -v
+
+if _is_centos; then
+  yum install -y unzip
+else
+  apt-get install -y unzip
+fi
+
+_install_aws_cli
+
+if _is_centos; then
+  _install_ssm_agent_centos
+else
+  _install_ssm_agent_ubuntu
+fi
+
+cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
+{
+    "Profile":{
+        "ShareCreds" : true,
+        "ShareProfile" : "ssm",
+        "ForceUpdateCreds" : false,
+        "KeyAutoRotateDays": 0
+    }
+}
+EOF
+
+response=$(aws ssm create-activation \
+  --description "Activation for Amazon SageMaker integration with SSH and IDEs" \
+  --iam-role "$SSH_SSM_ROLE" \
+  --registration-limit 1 \
+  --region "$CURRENT_REGION" \
+  --tags "$SSH_SSM_TAGS")
+
+if _is_centos; then
+  yum install -y jq
+fi
+
+acode=$(echo $response | jq --raw-output '.ActivationCode')
+aid=$(echo $response | jq --raw-output '.ActivationId')
+
+echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+
+# See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-ssm-user-permissions.html
+if _is_centos; then
+  yum install -y sudo
+else
+  apt-get install -y sudo
+fi
+echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users

@@ -1,0 +1,40 @@
+#!/bin/bash
+
+function _install_helper_scripts() {
+  dir=$(dirname "$0")
+
+  # Binary packages may not be available in PATH during bootstrap, so we manually copy scripts into /usr/local/bin/.
+  cp "$dir"/sm-helper-functions /usr/local/bin/
+  cp "$dir"/sm-connect-ssh-proxy /usr/local/bin/
+  cp "$dir"/sm-wait /usr/local/bin/
+  cp "$dir"/sm-start-ssh /usr/local/bin/
+  cp "$dir"/sm-save-env /usr/local/bin/
+  cp "$dir"/sm-init-ssm /usr/local/bin/
+  cp "$dir"/sm-ssh-ide /usr/local/bin/
+  chmod +x /usr/local/bin/sm-connect-ssh-proxy
+  chmod +x /usr/local/bin/sm-wait
+  chmod +x /usr/local/bin/sm-start-ssh
+  chmod +x /usr/local/bin/sm-save-env
+  chmod +x /usr/local/bin/sm-init-ssm
+}
+
+function _is_centos() {
+  command -v yum >/dev/null 2>&1
+}
+
+function _install_aws_cli() {
+  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+  unzip -o -q -d /tmp/ /tmp/awscliv2.zip
+  /tmp/aws/install --update
+}
+
+function _install_ssm_agent_ubuntu() {
+  CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
+  curl -o /tmp/amazon-ssm-agent.deb "https://s3.$CURRENT_REGION.amazonaws.com/amazon-ssm-$CURRENT_REGION/latest/debian_amd64/amazon-ssm-agent.deb"
+  dpkg -i /tmp/amazon-ssm-agent.deb
+}
+
+function _install_ssm_agent_centos() {
+  CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
+  yum install -y "https://s3.$CURRENT_REGION.amazonaws.com/amazon-ssm-$CURRENT_REGION/latest/linux_amd64/amazon-ssm-agent.rpm"
+}

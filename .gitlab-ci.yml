@@ -1,0 +1,50 @@
+# Official language image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3.8
+
+stages:
+  - scan_source_code
+  - test
+
+scan_source_code:
+  stage: scan_source_code
+  script:
+    - pip install bandit
+    - bandit -r ./ --skip B603,B404,B101,B607 2>&1 | tee bandit.txt
+  artifacts:
+    paths:
+      - bandit.txt
+
+run_tests:
+  stage: test
+  resource_group: ssh-helper-tests
+  script:
+    # Smoke test - Python version
+    - python --version
+    # Check all running processes on the agent
+    - hostname
+    - ps xfa
+    # Install AWS CLI
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+    - unzip -o -q -d /tmp/ /tmp/awscliv2.zip
+    - /tmp/aws/install
+    - aws --version
+    - aws sts get-caller-identity
+    - echo "AWS default region - $AWS_DEFAULT_REGION"
+    - echo "AWS region - $AWS_REGION"
+    - aws configure list
+    # Install SSM plugin
+    - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+    - dpkg -i session-manager-plugin.deb
+    - session-manager-plugin --version
+    # Install the package
+    - pip install '.[test]'
+    # Run tests
+    - echo "SageMaker role - $SAGEMAKER_ROLE"
+    - echo "Kernel Gateway name - $KERNEL_GATEWAY_NAME"
+    - echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
+    - cd tests; pytest --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
+  artifacts:
+    when: always
+    reports:
+      junit: tests/pytest_report.xml

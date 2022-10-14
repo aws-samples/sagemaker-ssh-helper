@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# SageMaker Studio Kernel Gateway name is usually the same as the hostname,
+# e. g. datascience-1-0-ml-g4dn-xlarge-afdb4b3051726e2ee18a399903
+
+SM_STUDIO_KGW_NAME="$1"
+
+echo "Querying SSM instance ID for kernel gateway $SM_STUDIO_KGW_NAME"
+
+INSTANCE_ID=$(python <<EOF
+import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
+print(SSHLog().get_studio_kgw_ssm_instance_ids("$SM_STUDIO_KGW_NAME", retry=30)[0])
+EOF
+)
+
+sm-local-start-ssh "$INSTANCE_ID" \
+    -L localhost:10022:localhost:22 \
+    -L localhost:5901:localhost:5901 \
+    -L localhost:8889:localhost:8889 \
+    -R 127.0.0.2:443:jetbrains-license-server.example.com:443
