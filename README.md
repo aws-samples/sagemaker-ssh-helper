@@ -10,8 +10,8 @@ like nvidia-smi, or iteratively fix and re-execute your training script within s
 2. Remote debug a code running in SageMaker from your local favorite IDE like 
 PyCharm Professional Edition or Visual Studio Code.
 
-Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE 
-or start a VNC session to SageMaker Studio to run GUI apps.
+Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, connect with your browser to a TensorBoard process running in the cloud, or start a VNC session to SageMaker Studio to run GUI apps.  
+Also see our [Frequently Asked Questions](FAQ.md).
 
 ## How it works
 SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed 
@@ -430,7 +430,7 @@ But there's a useful trick: submit a dummy script with the infinite loop, and wh
 run your real training script again and again with the remote interpreter.
 Setting `max_run` parameter of the estimator is highly recommended in this case.
 
-A dummy script `train_paceholder.py` may look like this:
+A dummy script `train_placeholder.py` may look like this:
 
 ```python
 import time
