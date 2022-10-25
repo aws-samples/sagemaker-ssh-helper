@@ -1,3 +1,4 @@
+* Support for batch transform jobs
 
 * Generate ssh keys per each user, to avoid race conditions with multiple users starting jobs at the same time
 
@@ -14,4 +15,8 @@
 
 * Make switching instances in SageMaker Studio and PyCharm more smooth
 
+* Re-upload code to the remote instance with API for submitting training jobs from SageMaker Studio
+
 * New scenario - run Jupyter inside training job for debugging (similar to SageMaker Studio container).
+
+* New scenario - integrate local Jupyter with remote kernel gateway in SageMaker Studio

@@ -242,7 +242,7 @@ into the `code/lib` directory, while SageMaker training put libs directly to `co
 For multi-model endpoints, the setup procedure is slightly different from regular endpoints:
 
 ```python
-from sagemaker_ssh_helper.wrapper import SSHModelWrapper  # <--NEW--
+from sagemaker_ssh_helper.wrapper import SSHModelWrapper, SSHMultiModelWrapper  # <--NEW--
 
 model = estimator.create_model(entry_point='inference.py',
                                source_dir='source_dir/',
@@ -272,7 +272,7 @@ not the `estimator.model_data`.
 Also note that SageMaker SSH Helper will be lazy loaded together with your model upon the first prediction request.
 So you should try to connect only after calling `predict()`.
 
-The `inference.py` script is the same as for SageMaker SSH Helper with regular endpoints.
+The `inference.py` script is the same as for regular endpoints.
 
 If you are using PyTorch containers, make sure you select the latest versions, 
 e.g. 1.12, 1.11, 1.10 (1.10.2), 1.9 (1.9.1).
@@ -304,7 +304,7 @@ ssh_wrapper = SSHProcessorWrapper.create(torch_processor, connection_wait_time_s
 torch_processor.run(
     source_dir="source_dir/",
     dependencies=[SSHProcessorWrapper.dependency_dir()],  # <--NEW--
-    code="process_framework.py"
+    code="process.py"
 )
 ```
 
@@ -490,7 +490,8 @@ Moreover, in PyCharm you may now configure a remote Jupyter Server as
 http://127.0.0.1:8889/?token=<<your_token>>. You will find the remote token as the output 
 of the [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) notebook. 
 
-You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. with Screen Sharing app).
+You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
+and run IDE or any other GUI app on the remote desktop instead of your local machine.
 
 ### Troubleshooting
 
