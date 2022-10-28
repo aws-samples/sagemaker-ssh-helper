@@ -12,6 +12,7 @@ function _install_helper_scripts() {
   dir=$(dirname "$0")
 
   # Scripts may not be available in PATH during bootstrap, so we manually copy scripts into /usr/local/bin/.
+  _silent_install sm-helper-functions
   _silent_install sm-connect-ssh-proxy
   _silent_install sm-wait
   _silent_install sm-start-ssh
