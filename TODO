@@ -6,14 +6,15 @@
 
 * Replace asserts to exceptions in wrapper (asserts will be removed when compiling to optimised byte code)
 
-* Release the package to PyPI
-
 * Make it possible to override local credentials from env variables
 
 * Move SageMaker Studio environment configuration to lifecycle config
   (save config on EFS or Secrets Manager)
 
-* Make switching instances in SageMaker Studio and PyCharm more smooth
+* Turn off verbose logging to stderr not to confuse with errors (mainly for IDE notebook).
+
+* Make switching instances in SageMaker Studio and PyCharm more smooth (list all available instances,
+  put/get configuration with SSM instead of manual copy).
 
 * Re-upload code to the remote instance with API for submitting training jobs from SageMaker Studio
 
