@@ -149,8 +149,9 @@ With the instance id at hand, you will be able to connect to the training contai
 
 A. Connecting using command line:  
 
-1. Make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -353,8 +354,9 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 This procedure uses PyCharm's Professional feature: [Remote debugging with the Python remote debug server configuration](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-debug-config)
 
-1. On the local machine, make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -398,6 +400,9 @@ ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost
 *Tip:* If you log in to the node with SSH and don't see a `sm-sleep` process, the training script has already started 
 and failed to connect to the PyCharm Debug Server, so you need to increase the `connection_wait_time_seconds`, 
 otherwise the debugger will miss your breakpoints.
+
+*Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
+consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
 10. Stop the waiting loop – connect to the instance and terminate the loop.
 
@@ -450,8 +455,9 @@ feature, which is also helpful in such a scenario.
 
 1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb)
 
-2. On the local machine, make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 3. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -489,6 +495,9 @@ ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost
 ```
 
 Now with PyCharm or VSCode you can run and debug the code remotely inside the kernel gateway app.
+
+*Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
+consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
 Moreover, you may now configure a remote Jupyter Server as 
 http://127.0.0.1:8889/?token=<<your_token>>. You will find the full URL with remote token in 
