@@ -7,8 +7,10 @@ SageMaker SSH Helper relies on the AWS Systems Manager service to create SSH tun
 SageMaker component. To allow that the following setup is required:  
 
 **1. Update your SageMaker IAM role (used with the `role` Estimator parameter)**
-    
-a. Add trust relationship with SSM, so it will look like this:
+
+a. Go to AWS Console -> IAM -> Roles -> your sagemaker execution role.
+
+b. On the tab "Trust relationships", add trust relationship with SSM, so it will look like this:
 
 ```json
 {
@@ -32,9 +34,10 @@ a. Add trust relationship with SSM, so it will look like this:
 }
 ```
 
-b. Add `AmazonSSMManagedInstanceCore` and `CloudWatchLogsFullAccess` managed policies to the role.
+c. On the tab "Trust permissions", add `AmazonSSMManagedInstanceCore` and `CloudWatchLogsFullAccess` 
+managed policies to the role.
  
-c. Add to the role a new inline policy named `SageMakerSSMPolicy` as follows, replacing `<<SAGEMAKER_ROLE_ARN>>` 
+d. Add to the role a new inline policy named `SageMakerSSMPolicy` as follows, replacing `<<SAGEMAKER_ROLE_ARN>>` 
      with the arn of the role you're editing:
 
 ```json
@@ -59,6 +62,9 @@ c. Add to the role a new inline policy named `SageMakerSSMPolicy` as follows, re
    ]
 }
 ```
+
+> *Note:* you can find your full SageMaker Role ARN at the "Summary" section of IAM console, when you look at your role.
+> It may look like this: `arn:aws:iam::<<account_id>>:role/service-role/AmazonSageMaker-ExecutionRole-<<timestamp>>`.
 
 ---
 

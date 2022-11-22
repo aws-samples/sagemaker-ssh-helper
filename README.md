@@ -11,7 +11,8 @@ like nvidia-smi, or iteratively fix and re-execute your training script within s
 PyCharm Professional Edition or Visual Studio Code.
 
 Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, connect with your browser to a TensorBoard process running in the cloud, or start a VNC session to SageMaker Studio to run GUI apps.  
-Also see our [Frequently Asked Questions](FAQ.md).
+
+Also see our [Frequently Asked Questions](FAQ.md), especially if you're using Windows on your local machine.
 
 ## How it works
 SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed 
@@ -148,8 +149,9 @@ With the instance id at hand, you will be able to connect to the training contai
 
 A. Connecting using command line:  
 
-1. Make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -175,12 +177,12 @@ Once connected to the container, you would want to switch to the root user with 
 In case your training job is stuck, it can be useful to observe what where its threads are waiting/busy.
 This can be done without connecting to a python debugger beforehand.
 
-1. Having connected to the container as root, find the process id (pid) of the training job:  
+1. Having connected to the container as root, find the process id (pid) of the training process (assuming it's named `train.py`):
 `pgrep --newest -f train.py`  
 2. Install GNU debugger:  
 `apt-get -y install gdb python3.9-dbg`  
 3. Start the GNU debugger with python support:  
-`gdb python`
+`gdb python`  
 `source /usr/share/gdb/auto-load/usr/bin/python3.9-dbg-gdb.py`  
 4. Connect to the process (replace 361 with your pid):  
 `attach 361`  
@@ -242,7 +244,7 @@ into the `code/lib` directory, while SageMaker training put libs directly to `co
 For multi-model endpoints, the setup procedure is slightly different from regular endpoints:
 
 ```python
-from sagemaker_ssh_helper.wrapper import SSHModelWrapper  # <--NEW--
+from sagemaker_ssh_helper.wrapper import SSHModelWrapper, SSHMultiModelWrapper  # <--NEW--
 
 model = estimator.create_model(entry_point='inference.py',
                                source_dir='source_dir/',
@@ -272,7 +274,7 @@ not the `estimator.model_data`.
 Also note that SageMaker SSH Helper will be lazy loaded together with your model upon the first prediction request.
 So you should try to connect only after calling `predict()`.
 
-The `inference.py` script is the same as for SageMaker SSH Helper with regular endpoints.
+The `inference.py` script is the same as for regular endpoints.
 
 If you are using PyTorch containers, make sure you select the latest versions, 
 e.g. 1.12, 1.11, 1.10 (1.10.2), 1.9 (1.9.1).
@@ -304,7 +306,7 @@ ssh_wrapper = SSHProcessorWrapper.create(torch_processor, connection_wait_time_s
 torch_processor.run(
     source_dir="source_dir/",
     dependencies=[SSHProcessorWrapper.dependency_dir()],  # <--NEW--
-    code="process_framework.py"
+    code="process.py"
 )
 ```
 
@@ -352,8 +354,9 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 This procedure uses PyCharm's Professional feature: [Remote debugging with the Python remote debug server configuration](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-debug-config)
 
-1. On the local machine, make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -397,6 +400,9 @@ ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost
 *Tip:* If you log in to the node with SSH and don't see a `sm-sleep` process, the training script has already started 
 and failed to connect to the PyCharm Debug Server, so you need to increase the `connection_wait_time_seconds`, 
 otherwise the debugger will miss your breakpoints.
+
+*Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
+consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
 10. Stop the waiting loop – connect to the instance and terminate the loop.
 
@@ -449,15 +455,16 @@ feature, which is also helpful in such a scenario.
 
 1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb)
 
-2. On the local machine, make sure that the latest AWS CLI **v2** is installed, as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
+Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 3. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
 4. Follow the steps 1 and 2 of the section [SSH to SageMaker training jobs](#training)
 to install the library on your local machine.
 
-5. Start SSH tunnel and port forwarding from a terminal session as follows:
+5. On the local machine, start SSH tunnel and port forwarding from a terminal session as follows:
 
 ```shell
 sm-local-ssh-ide <<kernel_gateway_app_name>>
@@ -472,11 +479,14 @@ In addition, the local port `8889` will be connected to remote Jupyter notebook 
 and optionally the remote port `443` will be connected to your local PyCharm license server address
 (check the source of the script `sm-local-ssh-ide` and modify it with your server address).
 
-5. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
+6. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
 Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
 
- * [Instructions for PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
- * [Instructions for VSCode](https://code.visualstudio.com/docs/remote/ssh)
+> *Note:* The SSH key is automatically generated on your local machine every time 
+> when you run `sm-local-ssh-ide` command from step 5.
+
+ * [Instructions for SSH in PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
+ * [Instructions for SSH in VSCode](https://code.visualstudio.com/docs/remote/ssh)
 
 You can check that connection is working by running the SSH command in command line:
 
@@ -486,11 +496,19 @@ ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost
 
 Now with PyCharm or VSCode you can run and debug the code remotely inside the kernel gateway app.
 
-Moreover, in PyCharm you may now configure a remote Jupyter Server as 
-http://127.0.0.1:8889/?token=<<your_token>>. You will find the remote token as the output 
-of the [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) notebook. 
+*Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
+consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
-You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. with Screen Sharing app).
+Moreover, you may now configure a remote Jupyter Server as 
+http://127.0.0.1:8889/?token=<<your_token>>. You will find the full URL with remote token in 
+the [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) notebook in the output after running the cell
+with `sm-ssh-ide start` command. 
+
+ * [Instructions for remote notebooks in PyCharm](https://www.jetbrains.com/help/pycharm/configuring-jupyter-notebook.html#configure-server)
+ * [Instructions for remote notebooks in VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_connect-to-a-remote-jupyter-server) (don't forget to switch kernel to remote after configuring the remote server).
+
+You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
+and run IDE or any other GUI app on the remote desktop instead of your local machine.
 
 ### Troubleshooting
 

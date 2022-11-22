@@ -1,0 +1,8 @@
+#!/bin/bash
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
+mkdir -p /usr/local/bin 2>/dev/null
+
+_install_helper_scripts

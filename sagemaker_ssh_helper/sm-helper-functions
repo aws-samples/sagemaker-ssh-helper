@@ -1,21 +1,27 @@
 #!/bin/bash
 
+function _silent_install() {
+  dir=$(dirname "$0")
+  script=$1
+
+  cp "$dir"/"$script" /usr/local/bin/
+  chmod +x /usr/local/bin/"$script"
+}
+
 function _install_helper_scripts() {
   dir=$(dirname "$0")
 
-  # Binary packages may not be available in PATH during bootstrap, so we manually copy scripts into /usr/local/bin/.
-  cp "$dir"/sm-helper-functions /usr/local/bin/
-  cp "$dir"/sm-connect-ssh-proxy /usr/local/bin/
-  cp "$dir"/sm-wait /usr/local/bin/
-  cp "$dir"/sm-start-ssh /usr/local/bin/
-  cp "$dir"/sm-save-env /usr/local/bin/
-  cp "$dir"/sm-init-ssm /usr/local/bin/
-  cp "$dir"/sm-ssh-ide /usr/local/bin/
-  chmod +x /usr/local/bin/sm-connect-ssh-proxy
-  chmod +x /usr/local/bin/sm-wait
-  chmod +x /usr/local/bin/sm-start-ssh
-  chmod +x /usr/local/bin/sm-save-env
-  chmod +x /usr/local/bin/sm-init-ssm
+  # Scripts may not be available in PATH during bootstrap, so we manually copy scripts into /usr/local/bin/.
+  _silent_install sm-helper-functions
+  _silent_install sm-connect-ssh-proxy
+  _silent_install sm-wait
+  _silent_install sm-start-ssh
+  _silent_install sm-save-env
+  _silent_install sm-init-ssm
+  _silent_install sm-ssh-ide
+  _silent_install sm-local-start-ssh
+  _silent_install sm-local-ssh-ide
+  _silent_install sm-local-ssh-training
 }
 
 function _is_centos() {

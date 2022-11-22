@@ -4,6 +4,39 @@ We often see a lot of questions that surface repeatedly. This repository is an a
 
 ## General Questions
 
+### Is it working on Windows?
+
+The solution was primarily designed for developers who are using Linux and macOS.
+However, it's possible also to make it working on Windows.
+
+Basic scenarios, which require only SSM without SSH, work on Windows without 
+any additional configuration.
+
+To be able to connect from your local machine with SSH and start port forwarding with 
+the scripts like `sm-local-ssh-ide` and `sm-local-ssh-training`, please consider that 
+you need Bash interpreter to execute them. They don't work in PowerShell.
+
+We recommend obtaining Bash by installing [Git for Windows](https://gitforwindows.org/) distribution.
+The next steps are:
+
+1. Run "Git Bash" application as Administrator.
+
+2. Find the path where pip has installed your library and 
+execute `sm-local-install-force` once:
+
+```shell
+$ cd ~/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0/LocalCache/local-packages/Python310/site-packages/sagemaker_ssh_helper
+$ ./sm-local-install-force
+```
+
+4. Now you may close Git Bash and start again as a normal user.
+5. Don't forget to repeat steps 1-4 after you install a new version of SageMaker SSH Helper.
+
+The scripts like `sm-local-ssh-ide` and `sm-local-ssh-training` will now work from the 
+Git Bash session under a regular user, and you may continue to work in your local IDE 
+on Windows as usual.
+
+
 ### For Training, should I use Warm Pools or SageMaker SSH Helper?
 
 SageMaker [Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) is a built-in SageMaker Training feature which is great when you want to use the SageMaker API to:
@@ -22,10 +55,38 @@ SSH Helper's interactive nature allows you to iterate in seconds, by running mul
 
 ### Can I also use this solution to connect into my jobs from SageMaker Studio?
 
-Yes, requires to add same IAM permissions to SageMaker role as described in the [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) for your local role (section 3).
+Yes, requires adding same IAM permissions to SageMaker role as described in the [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) for your local role (section 3).
 
+### How SageMaker SSH Helper protects users from impersonating each other?
+
+This logic is enforced by IAM policy. See the step 3b in [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) 
+for a policy example.
+
+It works as follows: the SageMaker SSH Helper assigns on behalf of the user the tag `SSHOwner`
+with the value that equals a local user ID (see [the source code for SSH wrappers](https://github.com/aws-samples/sagemaker-ssh-helper/blob/57b1f6369ce9e523a7951d23753a9f7f5a6a2022/sagemaker_ssh_helper/wrapper.py#L62)).
+For integration with SageMaker Studio the user ID is passed in [the notebook](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/SageMaker_SSH_IDE.ipynb) as the argument to 
+`sm-ssh-ide init-ssm` command. 
+
+When a user attempts to connect to an instance, IAM will authorize the user based 
+on their ID and the value of the `SSHOwner` tag. The user will be denied to access the instance 
+if the instance doesn't belong to them.
+
+Another important part of it is the IAM policy with `ssm:AddTagsToResource` action, described in the step 1d.
+Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
+the newly created activations (instances) and not for existing ones that may already belong to other users.
+
+## Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
 
 This error happens when too many instances are trying to register to SSM at the same time - This will likely happen when you run a SageMaker training job with multiple instances.  
 As a workaround, for SageMaker training job, you should connect to any of the nodes that successfully registered in SSM (say “algo-1”), then from there you could hope over to other nodes with the existing passwordless SSH.  
 You could also submit an AWS Support ticket to increase the API rate limit, but for the reason stated above, we don’t think that’s needed.
+
+### How can I see which SSM commands are running in the container?
+Login into the container and run:
+`tail -f  /var/log/amazon/ssm/amazon-ssm-agent.log`
+
+### How can I clean up System Manager after receiving `ERROR Registration failed due to error registering the instance with AWS SSM. RegistrationLimitExceeded: Registration limit of 20000 reached for SSM On-prem managed instances.`
+SageMaker containers are transient in nature. SM SSH Helper registers this container to SSM as a "managed instances". Currently, there's no built-in machinsm to deregister them when a job is completed. This accumulation of registrations might cause you to arrive at an SSM registration limit. To resolve this consider cleaning up stale, SM SSH Helper related registrations, manually via the UI, or using [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py).  
+WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper. [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the curernt registered manage instances in the AWS Console Fleet manager, before actually removing them.  
+Deregistering requires an administrator/poweruser IAM previligies. 

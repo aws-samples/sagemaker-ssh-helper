@@ -115,7 +115,7 @@ def test_train_placeholder_manual(request):
     estimator = PyTorch(entry_point='train_placeholder.py',
                         source_dir='source_dir/training_placeholder/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                        base_job_name='ssh-training',
+                        base_job_name='ssh-training-manual',
                         role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
@@ -131,6 +131,8 @@ def test_train_placeholder_manual(request):
 
     instance_ids = ssh_wrapper.get_instance_ids(60)
     logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+
+    ssh_wrapper.wait_training_job()
 
 
 def test_inference_e2e(request):
