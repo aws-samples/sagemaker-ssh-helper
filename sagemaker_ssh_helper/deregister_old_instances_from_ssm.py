@@ -3,6 +3,7 @@ from __future__ import annotations
 import boto3
 ssm = boto3.client('ssm')
 
+
 def get_ssm_managed_instances():
     print('Getting SSM managed instances using pagination')
     instances = []
@@ -36,6 +37,7 @@ def filter_instances_regex(instances: list[dict], key, value):
     print(f'Filtered out {len_before-len(filtered)} instances missing a regex match for re.match("{value}","{key}")')
     return filtered
 
+
 def filter_by_tag(instances: list[dict]):
     tagname = 'SSHOwner'
     len_before = len(instances)
@@ -54,6 +56,7 @@ def filter_by_tag(instances: list[dict]):
             print(f'In progress... Filtered {i} instances for tag name "{tagname}"')
     print(f'Filtered out {len_before-len(filtered)} instances missing the tag "{tagname}"')
     return filtered
+
 
 def filter_to_ssh_helper_instances(prefilter_instances):
     print('Filtering to SageMaker SSH Helper related instances only')
