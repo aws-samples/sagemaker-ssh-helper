@@ -38,6 +38,12 @@ required for training / processing and inference:
 
 Then write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
 
+### Code formatting
+
+The project uses [PEP 8 Style Guide for Python Code](https://peps.python.org/pep-0008/).
+Please, make sure your IDE is configured to give you hints when your code doesn't follow the guideline.
+In PyCharm it's supported through [Code Inspections](https://www.jetbrains.com/help/pycharm/code-inspection.html) 
+that are turned on by default. Your pull request may be rejected, if it doesn't follow the project's formatting style.
 
 ## Reporting Bugs/Feature Requests
 
