@@ -99,11 +99,20 @@ class SSHEnvironmentWrapper(ABC):
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
-    def __init__(self, estimator: sagemaker.estimator.Framework,
-                 ssm_iam_role: str = '',
-                 bootstrap_on_start: bool = True,
-                 connection_wait_time_seconds: int = 600):
+    def __init__(self, estimator: sagemaker.estimator.Framework, ssm_iam_role: str = '',
+                 bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600,
+                 ssh_instance_count: int = 2):
         super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds)
+
+        if estimator.instance_groups is not None:
+            # TODO: add support for heterogeneous clusters
+            self.logger.warning("Heterogeneous clusters are not yet supported, SSH Helper will start only on one node")
+            self.ssh_instance_count = 1
+        elif ssh_instance_count <= estimator.instance_count:
+            self.ssh_instance_count = ssh_instance_count
+        else:
+            self.ssh_instance_count = estimator.instance_count
+
         if self.ssm_iam_role == '':
             self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(estimator.role)
         self.estimator = estimator
@@ -114,11 +123,13 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         if env is None:
             env = {}
         self._augment_env(env)
+        # TODO: promote ssh_instance_count to processing/inference wrappers
+        env.update({'SSH_INSTANCE_COUNT': str(self.ssh_instance_count)})
         self.estimator.environment = env
 
     def get_instance_ids(self, retry=360):
         training_job: _TrainingJob = self.estimator.latest_training_job
-        return self.ssh_log.get_training_ssm_instance_ids(training_job.name, retry)
+        return self.ssh_log.get_training_ssm_instance_ids(training_job.name, retry, self.ssh_instance_count)
 
     def wait_training_job(self):
         training_job: _TrainingJob = self.estimator.latest_training_job
@@ -130,8 +141,10 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         training_job.wait()
 
     @classmethod
-    def create(cls, estimator: sagemaker.estimator.Framework, connection_wait_time_seconds: int = 600):
-        result = SSHEstimatorWrapper(estimator, connection_wait_time_seconds=connection_wait_time_seconds)
+    def create(cls, estimator: sagemaker.estimator.Framework, connection_wait_time_seconds: int = 600,
+               ssh_instance_count: int = 2):
+        result = SSHEstimatorWrapper(estimator, connection_wait_time_seconds=connection_wait_time_seconds,
+                                     ssh_instance_count=ssh_instance_count)
         result._augment()
         return result
 

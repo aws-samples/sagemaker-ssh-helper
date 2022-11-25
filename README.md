@@ -115,12 +115,21 @@ ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds
 
 estimator.fit(wait=False)
 
-instance_ids = ssh_wrapper.get_instance_ids() # <--NEW--
+instance_ids = ssh_wrapper.get_instance_ids()  # <--NEW--
 print(f'To connect over SSM run: aws ssm start-session --target {instance_ids[0]}')  # <--NEW--
 ```
 
 *Note:* `connection_wait_time_seconds` is the amount of time the SSH helper will wait inside SageMaker before it continues normal execution. It's useful for training jobs, when you want to connect before training starts.
 If you don't want to wait, set it to 0.
+
+*Note:* If you use distributed training (i.e., `instance_count > 1`), SSH Helper
+will start by default only on the first 2 nodes (e.g., on `algo-1` and `algo-2`).
+If you want to connect to SSH to other nodes, you can log in to either of these nodes, e.g., `algo-1`,
+and then SSH from this node to any other node of the training cluster, e.g., `algo-4`, without running SSH Helper 
+on these nodes.
+
+Alternatively, pass the additional parameter `ssh_instance_count` with the desired instance count 
+to `SSHEstimatorWrapper.create()`.
 
 ### Step 4 - Modify your training script
 Add into your `train.py` the following lines at the top:

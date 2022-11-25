@@ -9,9 +9,6 @@ import boto3
 class SSHLog:
     logger = logging.getLogger('sagemaker-ssh-helper')
 
-    def __init__(self):
-        self.boto_client = boto3.client('logs')
-
     def get_ip_addresses(self, training_job_name, retry=0):
         SSHLog.logger.info(f"Querying SSH IP addresses for job {training_job_name}")
         query = "fields @timestamp, @logStream, @message" \
@@ -37,9 +34,11 @@ class SSHLog:
 
         return ip_addresses
 
-    def get_training_ssm_instance_ids(self, training_job_name, retry=0):
-        SSHLog.logger.info(f"Querying SSM instance IDs for training job {training_job_name}")
-        return self.get_ssm_instance_ids('/aws/sagemaker/TrainingJobs', training_job_name, retry)
+    def get_training_ssm_instance_ids(self, training_job_name, retry=0, expected_count=1):
+        SSHLog.logger.info(f"Querying SSM instance IDs for training job {training_job_name}, "
+                           f"expected instance count = {expected_count}")
+        return self.get_ssm_instance_ids('/aws/sagemaker/TrainingJobs', training_job_name, retry,
+                                         expected_count=expected_count)
 
     def get_processing_ssm_instance_ids(self, processing_job_name, retry=0):
         SSHLog.logger.info(f"Querying SSM instance IDs for processing job {processing_job_name}")
@@ -53,7 +52,7 @@ class SSHLog:
         SSHLog.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}", retry)
 
-    def get_ssm_instance_ids(self, log_group, stream_name, retry=0):
+    def get_ssm_instance_ids_once(self, log_group, stream_name):
         query = "fields @timestamp, @logStream, @message" \
                 f"| filter @logStream like '{stream_name}'" \
                 "| filter @message like /Successfully registered the instance with AWS SSM using Managed instance-id/" \
@@ -67,19 +66,33 @@ class SSHLog:
             assert search is not None
             mid = search.group(1)
             mi_ids.append(mid)
+        return mi_ids
+
+    def get_ssm_instance_ids(self, log_group, stream_name, retry=0, sleep_between_retries_seconds=10,
+                             expected_count=1):
+        mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
 
         while not mi_ids and retry > 0:
             SSHLog.logger.info(f"SSH Helper not yet started? Retrying. Attempts left: {retry}")
-            mi_ids = self.get_ssm_instance_ids(log_group, stream_name, 0)
-            time.sleep(10)
+            time.sleep(sleep_between_retries_seconds)
+            mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
             retry -= 1
 
-        SSHLog.logger.info(f"Got SSM instance IDs: {mi_ids}")
+        SSHLog.logger.info(f"Got preliminary SSM instance IDs: {mi_ids}")
 
+        redo_attempts = 5
+        while len(mi_ids) < expected_count and redo_attempts > 0:
+            SSHLog.logger.info(f"Re-fetch results for other instances to catchup. Attempts left: {redo_attempts}")
+            time.sleep(30)
+            mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
+            redo_attempts -= 1
+
+        SSHLog.logger.info(f"Got final SSM instance IDs: {mi_ids}")
         return mi_ids
 
     def _query_log_group(self, log_group, query):
-        start_query_response = self.boto_client.start_query(
+        boto_client = boto3.client('logs')
+        start_query_response = boto_client.start_query(
             logGroupName=log_group,
             startTime=int((datetime.now() - timedelta(weeks=2)).timestamp()),
             endTime=int(datetime.now().timestamp()),
@@ -89,7 +102,7 @@ class SSHLog:
         response = None
         while response is None or response['status'] == 'Running':
             time.sleep(1)
-            response = self.boto_client.get_query_results(
+            response = boto_client.get_query_results(
                 queryId=query_id
             )
         lines = response['results']
