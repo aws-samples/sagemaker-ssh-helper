@@ -61,7 +61,6 @@ def filter_by_tag(instances: list[dict]):
 def filter_to_ssh_helper_instances(prefilter_instances):
     print('Filtering to SageMaker SSH Helper related instances only')
     filters_def = [
-        {'key': 'ComputerName', 'value': 'algo-[0-9]+'},
         {'key': 'IamRole', 'value': '.*sagemaker.*'},
         {'key': 'PingStatus', 'value': 'ConnectionLost'},
     ]
@@ -69,7 +68,8 @@ def filter_to_ssh_helper_instances(prefilter_instances):
     instances = prefilter_instances
     for filter_def in filters_def:
         instances = filter_instances_regex(instances, filter_def['key'], filter_def['value'])
-    
+
+    # TODO: clean up SageMaker Studio instances (can stay down for a while when user switches instances)
     instances = filter_by_tag(instances)
 
     return instances
