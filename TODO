@@ -6,8 +6,6 @@
 
 * Replace asserts to exceptions in wrapper (asserts will be removed when compiling to optimised byte code)
 
-* Make it possible to override local credentials from env variables
-
 * Move SageMaker Studio environment configuration to lifecycle config
   (save config on EFS or Secrets Manager)
 
