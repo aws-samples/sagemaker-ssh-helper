@@ -51,45 +51,14 @@ If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.
 
 ## <a name="training"></a>Connecting to SageMaker training jobs with SSM
 
-The initial thing you need to do is to add SageMaker SSH Helper library to your project (steps 1 and 2).
-
-### Step 1 - Unpacking into your project folder
-As an ML developer, download the repo as an archive and unpack it to the root of your project (outside your source directory).
-Let say you have a PyTorch estimator defined as below:
-
-```python
-estimator = PyTorch(entry_point='train.py',
-                    source_dir='code',
-                    role=role,
-                    framework_version='1.9.1',
-                    py_version='py38',
-                    instance_count=1,
-                    instance_type='ml.m5.xlarge')
-```
-
-After unpacking `sagemaker-ssh-helper-VERSION.zip` next to the `code/` directory, your project structure should look like this:
-```shell
-./code/
-    train.py
-./sagemaker-ssh-helper-VERSION/
-    sagemaker_ssh_helper/
-        __init.py__
-        log.py
-        ...
-    setup.py
-    ...
-./sagemaker-ssh-helper-VERSION.zip
-./start_job.py
-```
-
-### Step 2 - pip install the library
-Install the library from the unpacked directory:
+### Step 1: Install the library
+Install the latest stable version of library from the [PyPI repository](https://pypi.org/project/sagemaker-ssh-helper/):
 
 ```shell
-pip install ./sagemaker-ssh-helper-VERSION/
+pip install sagemaker-ssh-helper
 ```
 
-### Step 3 - Modify the start training job code
+### Step 2: Modify your start training job code
 1. Add import for SSHEstimatorWrapper
 2. Add a `dependencies` parameter to the Estimator object.
 3. Add an `SSHEstimatorWrapper.create(estimator,...)` call before calling `fit()` and add SageMaker SSH Helper 
@@ -131,7 +100,7 @@ on these nodes.
 Alternatively, pass the additional parameter `ssh_instance_count` with the desired instance count 
 to `SSHEstimatorWrapper.create()`.
 
-### Step 4 - Modify your training script
+### Step 3: Modify your training script
 Add into your `train.py` the following lines at the top:
 
 ```python
@@ -141,18 +110,23 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 The `setup_and_start_ssh()` will start an SSM agent that will connect the training instance to AWS Systems Manager.
 
-### Step 5 - Connecting over SSM
+### Step 4: Connect over SSM
 Once you launched the job, you'll need to wait, a few minutes, for the SageMaker container to start and the SSM agent to start successfully. Then you'll need to have the ID of the managed instance. The instance id is prefixed by `mi-` and will appear in the job's CloudWatch log like this:
 
 ```
 Successfully registered the instance with AWS SSM using Managed instance-id: mi-01234567890abcdef
 ``` 
 
-*Tip:* To fetch the instance IDs from the logs in an automated way, call the Python method of `ssh_wrapper`:
+To fetch the instance IDs from the logs in an automated way, call the Python method of `ssh_wrapper`, 
+as mentioned in the previous step:
 
 ```python
 instance_ids = ssh_wrapper.get_instance_ids()
 ```
+
+This method accepts the optional parameter `retry` with the number of retry attempts (default is 60). 
+It will retry to get instance IDs until they appear in the CloudWatch logs or number of attempts reached.
+The pause between attempts is fixed to 10 seconds, hence by default it will wait not more than 10 minutes.
 
 With the instance id at hand, you will be able to connect to the training container using the command line or the AWS web console:  
 
@@ -174,15 +148,19 @@ B. Connecting using the AWS Web Console:
   1. In AWS Web Console, navigate to Systems Manager > Fleet Manager.     
   2. Select the node, then Node actions > Start terminal session.
 
-Once connected to the container, you would want to switch to the root user with `sudo su - -c bash`  
+Once connected to the container, you would want to switch to the root user with `sudo su -` command.
 
-*Tip:* Here are some useful commands:  
-- `ps afx` - Show running list of processes.
-- `ls -l /opt/ml/input/data` - Show input channels.
-- `ls -l /opt/ml/code` - Show your training code  
-- Also see the below section [Generating a thread dump for stuck training jobs](#gdb).
+#### <a name="cli-commands"></a>Tip: Useful CLI commands
 
-### <a name="gdb"></a>Generating a thread dump for stuck training jobs
+Here are some useful commands to run in a terminal session:  
+- `ps xfaww` - Show running tree of processes
+- `ps xfawwe` - Show running tree of processes with environment variables 
+- `ls -l /opt/ml/input/data` - Show input channels
+- `ls -l /opt/ml/code` - Show your training code
+- `pip freeze | less` - Show all Python packages installed
+- `dpkg -l | less` - Show all system packages installed
+
+#### <a name="gdb"></a>Tip: Generating a thread dump for stuck training jobs
 In case your training job is stuck, it can be useful to observe what where its threads are waiting/busy.
 This can be done without connecting to a python debugger beforehand.
 
@@ -462,18 +440,17 @@ feature, which is also helpful in such a scenario.
 
 ## <a name="studio"></a>Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode
 
-1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb)
+1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
 
-1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
+2. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
 [the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
 Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
    
 3. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
-4. Follow the steps 1 and 2 of the section [SSH to SageMaker training jobs](#training)
-to install the library on your local machine.
+4. Install the library: `pip install sagemaker-ssh-helper` .
 
-5. On the local machine, start SSH tunnel and port forwarding from a terminal session as follows:
+5. Start SSH tunnel and port forwarding from a terminal session as follows:
 
 ```shell
 sm-local-ssh-ide <<kernel_gateway_app_name>>
@@ -519,7 +496,7 @@ with `sm-ssh-ide start` command.
 You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
 and run IDE or any other GUI app on the remote desktop instead of your local machine.
 
-### Troubleshooting
+#### Troubleshooting IDE integration
 
 * Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
 ```bash
