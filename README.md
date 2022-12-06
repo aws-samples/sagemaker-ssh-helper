@@ -55,6 +55,9 @@ If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.
 
 ## <a name="training"></a>Connecting to SageMaker training jobs with SSM
 
+[![Download Demo (.mov)](https://user-images.githubusercontent.com/87804596/205893540-d7a08259-94b3-48f2-b96e-93798b98a06c.png)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Shell-To-Training-Jobs.mov)
+[Download Demo (.mov)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Shell-To-Training-Jobs.mov)
+
 ### Step 1: Install the library
 Install the latest stable version of library from the [PyPI repository](https://pypi.org/project/sagemaker-ssh-helper/):
 
@@ -443,6 +446,11 @@ Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.
 feature, which is also helpful in such a scenario.
 
 ## <a name="studio"></a>Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode
+
+[![Download Demo (.mov)](https://user-images.githubusercontent.com/87804596/205895890-e5e87f8b-1ca6-4ce6-bac1-5cb6e6f61dde.png)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
+[Download Demo (.mov)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
+
+Follow the next steps for your local IDE integration with SageMaker Studio:
 
 1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
 
