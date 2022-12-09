@@ -118,10 +118,12 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 The `setup_and_start_ssh()` will start an SSM agent that will connect the training instance to AWS Systems Manager.
 
 ### Step 4: Connect over SSM
-Once you launched the job, you'll need to wait, a few minutes, for the SageMaker container to start and the SSM agent to start successfully. Then you'll need to have the ID of the managed instance. The instance id is prefixed by `mi-` and will appear in the job's CloudWatch log like this:
+Once you launched the job, you'll need to wait, a few minutes, for the SageMaker container to start and the SSM agent
+to start successfully. Then you'll need to have the ID of the managed instance. The instance id is prefixed by `mi-` 
+and will appear in the job's CloudWatch log like this:
 
 ```
-Successfully registered the instance with AWS SSM using Managed instance-id: mi-01234567890abcdef
+Successfully registered the instance with AWS SSM using Managed instance-id: mi-1234567890abcdef0
 ``` 
 
 To fetch the instance IDs from the logs in an automated way, call the Python method of `ssh_wrapper`, 
@@ -147,7 +149,7 @@ Verify that running `aws --version` prints `aws-cli/2.x.x ...`
 
 3. Run this command (replace the target value with the instance id for your SageMaker job). Example:
   ```
-  aws ssm start-session --target mi-0d8404fdeef955ca3
+  aws ssm start-session --target mi-1234567890abcdef0
   ```
 
 B. Connecting using the AWS Web Console:  
@@ -454,6 +456,11 @@ Follow the next steps for your local IDE integration with SageMaker Studio:
 
 1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
 
+*Tip:* Alternatively, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
+(you may need to ask your administrator to do this).
+Once configured, from the Launcher choose the environment, puck up the lifecycle script and choose 
+'Open image terminal' (so, you don't even need to create a notebook).
+
 2. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
 [the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
 Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
@@ -469,8 +476,8 @@ sm-local-ssh-ide <<kernel_gateway_app_name>>
 ```
 
 The parameter <<kernel_gateway_app_name>> is either taken from SageMaker Studio when you run notebook [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb), 
-or you can find it in the list of running apps in AWS Console under Amazon SageMaker -> Control Panel -> User Details.
-It looks like this: `datascience-1-0-ml-g4dn-xlarge-afdb4b3051726e2ee18a399903fb`.
+or from the image terminal as a `hostname` output, or you can find it in the list of running apps in AWS Console under Amazon SageMaker -> Control Panel -> User Details.
+It looks like this: `datascience-1-0-ml-g4dn-xlarge-1234567890abcdef0`.
 
 The local port `10022` will be connected to the remote SSH server port, to let you connect with SSH from IDE.  
 In addition, the local port `8889` will be connected to remote Jupyter notebook port, the port `5901` to the remote VNC server 
@@ -508,15 +515,80 @@ with `sm-ssh-ide start` command.
 You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
 and run IDE or any other GUI app on the remote desktop instead of your local machine.
 
+7. If you want to switch to another [kernel](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-change-image.html) 
+or [instance](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-switch-instance-type.html), feel free to do so from SageMaker Studio UI and re-run
+[SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
+
+Keep in mind that in this case the previous kernel will stop and SSM agent will stop, too.
+To allow multiple kernel and instances to be up and running with SageMaker SSH Helper and SSM agent,
+duplicate the notebook and give it a different name, e.g. `SageMaker_SSH_IDE-PyTorch.ipynb`.
+In this case you'll be able to keep two environments in parallel. To switch between them,
+you will only need to re-run `sm-local-ssh-ide` command on your local machine.
+
+If you're using lifecycle configuration script, just start another image terminal with different environment settings 
+from Launcher.
+
+8. Don't forget to [shut down](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-shut-down.html)
+SageMaker Studio resources, if you don't need them anymore, e.g., launched notebooks, terminals, apps and instances.
+
 #### Troubleshooting IDE integration
 
+* Check that the instance ID your local machine tries to connect to and instance ID 
+that `init-ssm` command produced in the notebook are the same.
+
+If you initialized SSM multiple times in your kernel app, you can see this error message 
+shortly after the re-initialization:
+
+```text
+An error occurred (TargetNotConnected) when calling the StartSession operation: mi-1234567890abcdef0 is not connected.
+```
+
+or this one:
+
+```text
+An error occurred (InvalidInstanceId) when calling the SendCommand operation: Instances [[mi-1234567890abcdef0]] not in a valid state for account 555555555555
+```
+
+The reason for this error is that CloudWatch logs arrive with some delay, and previous instance ID is fetched 
+instead of a new one. Wait for 30-60 seconds to allow logs to come through and try again.
+
 * Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
+
 ```bash
 ps xfa | grep sshd
 ```
+
 If it's not started, there might be some errors in the output of the notebook, and you might get this error on 
 the local machine:
-```
+
+```text
 Connection closed by UNKNOWN port 65535
 ```
-Check carefully the notebook output in SageMaker Studio or try to stop and start SSM & services again.
+
+Check carefully the notebook output in SageMaker Studio and try to stop and start SSM & services again.
+
+* Also check SSM agent logs inside SageMaker Studio. From the image terminal run:
+```text
+tail /var/log/amazon/ssm/*.log && date
+```
+
+* Sometimes you can see this error message on your local machine when trying to connect with SSM, even 
+if you correctly completed all configuration steps, including the step to enable advanced tier:
+
+```text
+An error occurred (BadRequest) when calling the StartSession operation: Enable advanced-instances tier to use Session Manager with your on-premises instances
+```
+
+In this case check that AWS Region in your AWS console is the same as on your local machine.
+To do this, run the following command locally:
+
+```text
+aws configure list | grep region
+```
+
+It will provide you the locally configured region and will show where this setting is coming from, e.g., env variables 
+or AWS config file:
+
+```text
+    region                eu-west-1      config-file    ~/.aws/config
+```

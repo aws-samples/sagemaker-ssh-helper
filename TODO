@@ -6,11 +6,6 @@
 
 * Replace asserts to exceptions in wrapper (asserts will be removed when compiling to optimised byte code)
 
-* Move SageMaker Studio environment configuration to lifecycle config
-  (save config on EFS or Secrets Manager)
-
-* Turn off verbose logging to stderr not to confuse with errors (mainly for IDE notebook).
-
 * Make switching instances in SageMaker Studio and PyCharm more smooth (list all available instances,
   put/get configuration with SSM instead of manual copy).
 

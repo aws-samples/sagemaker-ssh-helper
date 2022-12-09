@@ -8,3 +8,5 @@ print(f"Training the model {model_path}...")
 
 with open(model_path, 'wb') as f:
     f.write(b"42")  # save your model here
+
+print("Training complete.")

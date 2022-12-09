@@ -13,7 +13,6 @@ source "$dir"/sm-helper-functions
 _install_helper_scripts
 
 set -e
-set -v
 
 if _is_centos; then
   yum install -y unzip
@@ -49,6 +48,8 @@ response=$(aws ssm create-activation \
 
 if _is_centos; then
   yum install -y jq
+else
+  apt-get install -y jq
 fi
 
 acode=$(echo $response | jq --raw-output '.ActivationCode')
@@ -60,6 +61,6 @@ echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURREN
 if _is_centos; then
   yum install -y sudo
 else
-  apt-get install -y sudo
+  apt-get -qq -y install sudo
 fi
 echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users
