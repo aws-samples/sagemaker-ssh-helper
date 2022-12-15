@@ -4,7 +4,7 @@ We often see a lot of questions that surface repeatedly. This repository is an a
 
 ## General Questions
 
-### Is it working on Windows?
+### Is Windows supported?
 
 The solution was primarily designed for developers who are using Linux and macOS.
 However, it's possible also to make it working on Windows.
@@ -50,8 +50,8 @@ SageMaker [Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-war
 
 SSH Helper's interactive nature allows you to iterate in seconds, by running multiple commands/experiment reusing one running training job. SSH Helper requires [setting up your AWS account with IAM and SSM configuration](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md). You’re billed as long the training job is running. 
 
-*Q: How can I do remote development on a SageMaker training job, using SSH Helper?*
-*A:* Start a SM Training job that will run a dummy training script which sleeps forever, then use remote development to carry out any activities on the training container. (Note, this idea and the script ‘train_placeholder.py’ is also introduced in the documentation in the section “Remote code execution with PyCharm / VSCode over SSH (https://github.com/aws-samples/sagemaker-ssh-helper#remote-code-execution-with-pycharm--vscode-over-ssh)”).
+### How can I do remote development on a SageMaker training job, using SSH Helper?
+Start a SM Training job that will run a dummy training script which sleeps forever, then use remote development to carry out any activities on the training container. (Note, this idea and the script ‘train_placeholder.py’ is also introduced in the documentation in the section “Remote code execution with PyCharm / VSCode over SSH (https://github.com/aws-samples/sagemaker-ssh-helper#remote-code-execution-with-pycharm--vscode-over-ssh)”).
 
 ### Can I also use this solution to connect into my jobs from SageMaker Studio?
 
@@ -75,7 +75,7 @@ Another important part of it is the IAM policy with `ssm:AddTagsToResource` acti
 Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
 the newly created activations (instances) and not for existing ones that may already belong to other users.
 
-## Troubleshooting
+## AWS SSM Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
 
 This error happens when too many instances are trying to register to SSM at the same time - This will likely happen when you run a SageMaker training job with multiple instances.  
@@ -83,10 +83,19 @@ As a workaround, for SageMaker training job, you should connect to any of the no
 You could also submit an AWS Support ticket to increase the API rate limit, but for the reason stated above, we don’t think that’s needed.
 
 ### How can I see which SSM commands are running in the container?
-Login into the container and run:
+Login into the container and run:  
 `tail -f  /var/log/amazon/ssm/amazon-ssm-agent.log`
 
 ### How can I clean up System Manager after receiving `ERROR Registration failed due to error registering the instance with AWS SSM. RegistrationLimitExceeded: Registration limit of 20000 reached for SSM On-prem managed instances.`
 SageMaker containers are transient in nature. SM SSH Helper registers this container to SSM as a "managed instances". Currently, there's no built-in machinsm to deregister them when a job is completed. This accumulation of registrations might cause you to arrive at an SSM registration limit. To resolve this consider cleaning up stale, SM SSH Helper related registrations, manually via the UI, or using [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py).  
-WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper. [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the curernt registered manage instances in the AWS Console Fleet manager, before actually removing them.  
-Deregistering requires an administrator/poweruser IAM previligies. 
+WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper. [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the current registered manage instances in the AWS Console Fleet manager, before actually removing them.  
+Deregistering requires an administrator/poweruser IAM privileges. 
+
+### There's a big delay between getting the mi-* instance ID and until I can successfully start a session to the container. 
+This can happen if there's SSM API throttling taking place during instance initialization. In such a case, after you are able to shell into the container you'll be able to identify this by grepping for this printout during SSM agent initialization:  
+
+`grep Throttling /var/log/amazon/ssm/amazon-ssm-agent.log`  
+```
+2022-12-15 12:37:17 INFO [ssm-agent-worker] Entering SSM Agent hibernate - ThrottlingException: Rate exceeded status code: 400, request id: 56ae2c79-bb35-4903-ab49-59cf9e131aca
+```
+You should submit an AWS Support ticket to identify the relevant API limit and increase it.
