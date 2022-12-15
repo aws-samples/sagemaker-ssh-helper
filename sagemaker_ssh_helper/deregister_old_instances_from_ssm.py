@@ -61,7 +61,6 @@ def filter_by_tag(instances: list[dict]):
 def filter_to_ssh_helper_instances(prefilter_instances):
     print('Filtering to SageMaker SSH Helper related instances only')
     filters_def = [
-        {'key': 'IamRole', 'value': '.*sagemaker.*'},
         {'key': 'PingStatus', 'value': 'ConnectionLost'},
     ]
     
@@ -102,7 +101,10 @@ def deregister(ssh_helper_instances):
 
 def main():
     print('This utility will deregister from SSM all SageMaker SSH Helper related managed instances.')
-    print('WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper.')
+    print('WARNING: you should be careful NOT deregister managed instances that are not related to SageMaker SSH Helper.')
+    print('Usage: python deregister_old_instances_from_ssm.py [--preapproving-deregistration]')
+    print('--preapproving-deregistration: will automatically approve the deregistration of all instances found, without prompting.')
+    print('')
     
     all_managed_instances = get_ssm_managed_instances()
     
