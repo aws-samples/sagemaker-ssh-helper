@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 
 
+# noinspection DuplicatedCode
 class MyModel:
     number_t: Tensor = torch.tensor(0)
 

@@ -1,7 +1,7 @@
 import setuptools
 
 required_packages = [
-    "sagemaker>=2.110.0"
+    "sagemaker>=2.125.0"
 ]
 
 extras = {
@@ -20,12 +20,13 @@ extras = {
         "wheel",
         "build",
         "twine",
-        "pydevd-pycharm~=213.6777.50"
+        "pydevd-pycharm~=213.6777.50",
+        "scikit-learn"
     ]
 }
 setuptools.setup(
     name='sagemaker-ssh-helper',
-    version='1.8.2.dev0',
+    version='1.8.2.dev2',
     author="Amazon Web Services",
     description="A helper library to connect into Amazon SageMaker with AWS Systems Manager and SSH",
     long_description="SageMaker SSH Helper is a library that helps you to securely connect to Amazon SageMaker's "

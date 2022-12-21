@@ -5,13 +5,20 @@
 # from 'requirements.txt' and 'bootstrap_on_start' parameter was passed to the wrapper, or manually
 # from training / processing / inference script, e. g. with subprocess.check_call()
 
-dir=$(dirname "$0")
-source "$dir"/sm-helper-functions
+# This script can be called simultaneously multiple times in a distributed training job
+# To avoid race conditions, we install helper scripts under an exclusive lock
+if [[ "$1" == "install-helper-scripts" ]]; then
+  dir=$(dirname "$0")
+  source "$dir"/sm-helper-functions
 
-_install_helper_scripts
+  _install_helper_scripts
+  exit 0
+fi
 
 set -e
 set -v
+
+flock /tmp/sm-install-lock bash "$0" install-helper-scripts
 
 # nohup will detach the child process from parent and run it in background
 # flock prevents from starting more than 1 process

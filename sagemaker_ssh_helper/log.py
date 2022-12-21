@@ -22,7 +22,8 @@ class SSHLog:
         for line in lines:
             message = line[2]['value']
             search = re.search('(\\d+\\.\\d+\\.\\d+\\.\\d+.*)', message)
-            assert search is not None
+            if search is None:
+                raise AssertionError(f"Cannot find ip address in log message: {message}")
             ip = search.group(1)
             ip_addresses.append(ip)
 
@@ -63,7 +64,8 @@ class SSHLog:
         for line in lines:
             message = line[2]['value']
             search = re.search('instance-id: (mi-.+)', message)
-            assert search is not None
+            if search is None:
+                raise AssertionError(f"Cannot find instance id in message: {message}")
             mid = search.group(1)
             mi_ids.append(mid)
         return mi_ids

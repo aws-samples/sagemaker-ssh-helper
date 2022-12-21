@@ -39,7 +39,7 @@ def test_distributed_training_with_default_instance_count(request):
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
 
     estimator.fit(wait=False)
-    mi_ids = ssh_wrapper.get_instance_ids()
+    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
     ssh_wrapper.stop_training_job()
     assert len(mi_ids) == default_ssh_instance_count
 
@@ -64,6 +64,35 @@ def test_distributed_training_with_changed_instance_count(request, ssh_instance_
                                              ssh_instance_count=ssh_instance_count)
 
     estimator.fit(wait=False)
-    mi_ids = ssh_wrapper.get_instance_ids()
+    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
     ssh_wrapper.stop_training_job()
     assert len(mi_ids) == ssh_instance_count
+
+
+def test_distributed_training_mpi_single_node(request):
+    instance_count = 1
+    estimator = PyTorch(entry_point='train.py',
+                        source_dir='source_dir/training/',
+                        dependencies=[SSHEstimatorWrapper.dependency_dir()],
+                        base_job_name='ssh-training',
+                        role=request.config.getini('sagemaker_role'),
+                        framework_version='1.9.1',
+                        py_version='py38',
+                        instance_count=instance_count,
+                        instance_type='ml.g4dn.xlarge',
+                        max_run=60 * 60 * 3,
+                        keep_alive_period_in_seconds=1800,
+                        container_log_level=logging.INFO,
+                        distribution={
+                            'mpi': {
+                                'enabled': True,
+                                'processes_per_host': 4,
+                            }
+                        })
+
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+
+    estimator.fit(wait=False)
+    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
+    ssh_wrapper.stop_training_job()
+    assert len(mi_ids) == 1

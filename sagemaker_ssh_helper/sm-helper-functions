@@ -7,7 +7,7 @@ function _silent_install() {
   script=$1
   mod=$2
 
-  install -v "$dir"/"$script" "$install_path"/ >/dev/null 2>&1
+  install -C -v "$dir"/"$script" "$install_path"/
   if [ -n "$mod" ]; then
     chmod "$mod" "$install_path"/"$script"
   fi
@@ -33,6 +33,14 @@ function _is_centos() {
   command -v yum >/dev/null 2>&1
 }
 
+function _install_unzip() {
+  if _is_centos; then
+    yum install -y unzip
+  else
+    apt-get install -y --no-install-recommends unzip
+  fi
+}
+
 function _install_aws_cli() {
   curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
   unzip -o -q -d /tmp/ /tmp/awscliv2.zip
@@ -48,4 +56,44 @@ function _install_ssm_agent_ubuntu() {
 function _install_ssm_agent_centos() {
   CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
   yum install -y "https://s3.$CURRENT_REGION.amazonaws.com/amazon-ssm-$CURRENT_REGION/latest/linux_amd64/amazon-ssm-agent.rpm"
+}
+
+function _install_ssm_agent() {
+  if _is_centos; then
+    _install_ssm_agent_centos
+  else
+    _install_ssm_agent_ubuntu
+  fi
+}
+
+function _install_curl_ubuntu() {
+  apt-get install -y --no-install-recommends curl
+}
+
+function _install_curl_centos() {
+  yum install -y curl
+}
+
+function _install_curl() {
+  if _is_centos; then
+    _install_curl_centos
+  else
+    _install_curl_ubuntu
+  fi
+}
+
+function _install_jq() {
+  if _is_centos; then
+    yum install -y jq
+  else
+    apt-get install -y --no-install-recommends jq
+  fi
+}
+
+function _install_sudo() {
+  if _is_centos; then
+    yum install -y sudo
+  else
+    apt-get install -y --no-install-recommends sudo
+  fi
 }

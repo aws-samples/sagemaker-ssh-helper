@@ -1,11 +1,5 @@
 * Support for batch transform jobs
 
-* Generate ssh keys per each user, to avoid race conditions with multiple users starting jobs at the same time
-
-* Add tests for basic estimators (now only framework estimators are supported)
-
-* Replace asserts to exceptions in wrapper (asserts will be removed when compiling to optimised byte code)
-
 * Make switching instances in SageMaker Studio and PyCharm more smooth (list all available instances,
   put/get configuration with SSM instead of manual copy).
 

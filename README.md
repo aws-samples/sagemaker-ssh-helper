@@ -393,7 +393,7 @@ While this script is running, you may connect with SSH to the specified local po
 ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost
 ```
 
-*Tip:* If you log in to the node with SSH and don't see a `sm-sleep` process, the training script has already started 
+*Tip:* If you log in to the node with SSH and don't see a `sm-wait` process, the training script has already started 
 and failed to connect to the PyCharm Debug Server, so you need to increase the `connection_wait_time_seconds`, 
 otherwise the debugger will miss your breakpoints.
 
@@ -405,9 +405,14 @@ consider adding this two options to the command: `-o StrictHostKeyChecking=no -o
 As already mentioned in the step 8, make sure you've put enough timeout to allow the port forwarding script set up a tunnel 
 before execution of your script continues.
 
-You can use the following CLI command from your local machine to stop the waiting loop (the `sm-sleep` remote process):
+You can use the following CLI command from your local machine to stop the waiting loop (the `sm-wait` remote process):
 ```shell
 sm-local-ssh-training stop-waiting
+```
+
+Alternatively, if logged to the remote container already, run the `pkill` command from its shell (under `root`):
+```text
+pkill sm-wait
 ```
 
 11. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug server.

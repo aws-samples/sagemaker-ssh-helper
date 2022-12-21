@@ -3,8 +3,28 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+      <excludeFolder url="file://$MODULE_DIR$/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/source_dir/processing/sagemaker_ssh_helper" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/source_dir/training/sagemaker_ssh_helper" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/source_dir/inference/sagemaker_ssh_helper" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/source_dir/training_mms/sagemaker_ssh_helper" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/source_dir/inference_mms/sagemaker_ssh_helper" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/opt_ml/code" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/opt_ml/model" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/opt_ml/output" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/.pytest_cache" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/.pytest_cache/v" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/output" />
+      <excludeFolder url="file://$MODULE_DIR$/sagemaker_ssh_helper.egg-info" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.8 (sagemaker-ssh-helper)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.8 (pytorch-lightning-experiments) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+  <component name="PackageRequirementsSettings">
+    <option name="requirementsPath" value="" />
+  </component>
+  <component name="TestRunnerService">
+    <option name="PROJECT_TEST_RUNNER" value="py.test" />
   </component>
 </module>

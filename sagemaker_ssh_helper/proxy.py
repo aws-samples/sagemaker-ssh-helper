@@ -3,8 +3,6 @@ import subprocess
 import time
 from abc import ABC
 
-import sagemaker
-
 
 class SSMProxy(ABC):
     logger = logging.getLogger('sagemaker-ssh-helper')
@@ -17,12 +15,9 @@ class SSMProxy(ABC):
     def connect_to_ssm_instance(self, instance_id):
         self.logger.info(f"Connecting to {instance_id} with SSM and start SSH port forwarding")
 
-        bucket = sagemaker.Session().default_bucket()
-
         # The script will create a new SSH key in ~/.ssh/sagemaker-ssh-gw
         #   and transfer the public key ~/.ssh/sagemaker-ssh-gw.pub to the instance via S3
-        p = subprocess.Popen(f"sm-connect-ssh-proxy {instance_id}"
-                             f" s3://{bucket}/ssh-authorized-keys/"
+        p = subprocess.Popen(f"sm-local-start-ssh {instance_id}"
                              f" -L localhost:{self.ssh_listen_port}:localhost:22"
                              f" {self.extra_args}"
                              " -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

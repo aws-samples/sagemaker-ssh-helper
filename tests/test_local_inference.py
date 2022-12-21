@@ -8,6 +8,9 @@ from sagemaker_training.cli.train import main as train_main
 
 
 def test_local_training():
+    f"""
+    Compare with https://github.com/aws/amazon-sagemaker-examples/tree/main/advanced_functionality/scikit_bring_your_own/container/local_test .
+    """
     assert training_environment.SAGEMAKER_BASE_PATH == "/opt/ml"
 
     _clean_training_opt_ml_dir()

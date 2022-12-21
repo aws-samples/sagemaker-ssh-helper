@@ -30,6 +30,7 @@ def test_clean_train_warm_pool(request):
 
 
 def test_clean_inference(request):
+    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
@@ -62,6 +63,7 @@ def test_clean_inference(request):
 
 
 def test_clean_inference_mms(request):
+    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
@@ -105,6 +107,7 @@ def test_clean_inference_mms(request):
                      f"(trained model source: {model.model_data})")
         mdm.add_model(model_data_source=model.repacked_model_data, model_data_path=model_name)
 
+    # noinspection DuplicatedCode
     predictor.serializer = JSONSerializer()
     predictor.deserializer = JSONDeserializer()
 

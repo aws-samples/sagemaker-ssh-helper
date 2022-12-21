@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="root@localhost:10022 key">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/root/sagemaker-ssh-helper" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@localhost:11022">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_clean" web="" />
+            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_debug" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

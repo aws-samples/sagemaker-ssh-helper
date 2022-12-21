@@ -7,7 +7,7 @@ import sagemaker
 # noinspection PyProtectedMember
 from sagemaker.estimator import _TrainingJob  # need access to sagemaker internals to get last training job name
 from sagemaker.multidatamodel import MultiDataModel
-from sagemaker.processing import ProcessingJob, ProcessingInput, ScriptProcessor
+from sagemaker.processing import ProcessingJob, ProcessingInput, ScriptProcessor, FrameworkProcessor
 
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
@@ -24,8 +24,7 @@ class SSHEnvironmentWrapper(ABC):
                  ssm_iam_role: str,
                  bootstrap_on_start: bool = True,
                  connection_wait_time_seconds: int = 600):
-        """
-
+        f"""
         :param ssm_iam_role: the SSM role without prefix, e.g. 'service-role/SageMakerRole'
             See https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-managed-instance-activation.html .
 
@@ -37,7 +36,8 @@ class SSHEnvironmentWrapper(ABC):
         self.ssh_log = SSHLog()
 
         if ssm_iam_role != '':
-            assert not ssm_iam_role.startswith("arn:aws:iam::"), "should be the part after role/, not ARN"
+            if ssm_iam_role.startswith("arn:aws:iam::"):
+                raise AssertionError("ssm_iam_role should be only the part after role/, not ARN")
 
         self.ssm_iam_role = ssm_iam_role
         self.bootstrap_on_start = bootstrap_on_start
@@ -55,7 +55,12 @@ class SSHEnvironmentWrapper(ABC):
         caller_id = boto3.client('sts').get_caller_identity()
         user_id = caller_id.get('UserId')
 
-        self.logger.info(f"Passing {user_id} as a value of the SSHOwner tag of an SSM managed instance")
+        user_id_masked = list(user_id)
+        for i in range(3, len(user_id_masked) - 4):
+            user_id_masked[i] = '*'
+        user_id_masked = ''.join(user_id_masked)
+
+        self.logger.info(f"Passing '{user_id_masked}' as a value of the SSHOwner tag of an SSM managed instance")
 
         env.update({'START_SSH': str(self.bootstrap_on_start).lower(),
                     'SSH_SSM_ROLE': self.ssm_iam_role,
@@ -64,14 +69,16 @@ class SSHEnvironmentWrapper(ABC):
 
     @classmethod
     def ssm_role_from_iam_arn(cls, iam_arn: str):
-        assert iam_arn.startswith('arn:aws:iam::')
+        if not iam_arn.startswith('arn:aws:iam::'):
+            raise AssertionError("iam_arn should start with 'arn:aws:iam::'")
         role_position = iam_arn.find(":role/")
-        assert role_position != -1
+        if role_position == -1:
+            raise AssertionError("':role/' not found in the iam_arn")
         return iam_arn[role_position + 6:]
 
     @abstractmethod
     def get_instance_ids(self, retry=360):
-        """
+        f"""
         :param retry: how many retries (each retry is 10 seconds), 360 is for 1 hour
         """
         pass
@@ -84,10 +91,12 @@ class SSHEnvironmentWrapper(ABC):
     def start_ssm_connection(self, ssh_listen_port: int, retry: int = 360,
                              extra_args: str = ""):
         instance_ids = self.get_instance_ids(retry)
-        assert instance_ids
+        if not instance_ids:
+            raise AssertionError("instance_ids cannot be empty")
 
         instance_id = instance_ids[0]
-        assert "mi-" in instance_id
+        if "mi-" not in instance_id:
+            raise AssertionError(f"instance_id doesn't start with 'mi-': {instance_id}")
 
         ssm_proxy = SSMProxy(ssh_listen_port, extra_args)
         p = ssm_proxy.connect_to_ssm_instance(instance_id)
@@ -99,7 +108,7 @@ class SSHEnvironmentWrapper(ABC):
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
-    def __init__(self, estimator: sagemaker.estimator.Framework, ssm_iam_role: str = '',
+    def __init__(self, estimator: sagemaker.estimator.EstimatorBase, ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600,
                  ssh_instance_count: int = 2):
         super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds)
@@ -141,7 +150,7 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         training_job.wait()
 
     @classmethod
-    def create(cls, estimator: sagemaker.estimator.Framework, connection_wait_time_seconds: int = 600,
+    def create(cls, estimator: sagemaker.estimator.EstimatorBase, connection_wait_time_seconds: int = 600,
                ssh_instance_count: int = 2):
         result = SSHEstimatorWrapper(estimator, connection_wait_time_seconds=connection_wait_time_seconds,
                                      ssh_instance_count=ssh_instance_count)
@@ -187,7 +196,8 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
         super().__init__(ssm_iam_role,
                          bootstrap_on_start, connection_wait_time_seconds)
         self.mdm = mdm
-        assert isinstance(mdm.model, sagemaker.model.FrameworkModel)
+        if not isinstance(mdm.model, sagemaker.model.FrameworkModel):
+            raise AssertionError("model should be a subclass of FrameworkModel")
         self.model = mdm.model
         if self.ssm_iam_role == '':
             self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(mdm.model.role)
@@ -247,6 +257,11 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
         :return: a ProcessingInput to pass into processor#run(..., inputs=[...])
         """
+        if isinstance(self.processor, FrameworkProcessor):
+            self.logger.info("The processor {self.processor.__class__} is a subclass of FrameworkProcessor. "
+                             "It's recommended to pass SageMaker SSH Helper as a dependency to the run() method "
+                             "with dependencies=[SSHProcessorWrapper.dependency_dir()].")
+
         return ProcessingInput(source=SSHProcessorWrapper.dependency_dir(),
                                destination='/opt/ml/processing/input/sagemaker_ssh_helper',
                                input_name='sagemaker_ssh_helper')

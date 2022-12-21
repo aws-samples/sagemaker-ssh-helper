@@ -7,7 +7,7 @@ ssm = boto3.client('ssm')
 def get_ssm_managed_instances():
     print('Getting SSM managed instances using pagination')
     instances = []
-    next_token = ""  # nosec hardcoded_password_string
+    next_token = ""  # nosec hardcoded_password_string  # not a password
     while True:
         response = ssm.describe_instance_information(
             Filters=[{'Key': 'ResourceType', 'Values': ['ManagedInstance']}],

@@ -20,7 +20,8 @@ trap terminate SIGTERM
 trap terminate SIGINT
 
 echo "sm-wait: Waiting for $SLEEP seconds to let you prepare you connection. "\
-  "Once you're ready, run 'pkill sm-wait'."
+  "Once you're ready, run 'pkill sm-wait' inside the container or 'sm-local-ssh-training stop-waiting' "\
+  "from your local machine."
 
 for loop in $(seq 1 1 "$SLEEP") 
 do

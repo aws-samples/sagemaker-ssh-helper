@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SageMaker Debug Server" type="PyRemoteDebugConfigurationType" factoryName="Python Remote Debug">
+    <module name="sagemaker-ssh-helper" />
+    <option name="PORT" value="12345" />
+    <option name="HOST" value="localhost" />
+    <PathMappingSettings>
+      <option name="pathMappings">
+        <list />
+      </option>
+    </PathMappingSettings>
+    <option name="REDIRECT_OUTPUT" value="true" />
+    <option name="SUSPEND_AFTER_CONNECT" value="true" />
+    <method v="2" />
+  </configuration>
+</component>

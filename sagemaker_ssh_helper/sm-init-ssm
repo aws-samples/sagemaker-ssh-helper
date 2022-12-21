@@ -14,19 +14,10 @@ _install_helper_scripts
 
 set -e
 
-if _is_centos; then
-  yum install -y unzip
-else
-  apt-get install -y unzip
-fi
-
+_install_unzip
+_install_curl
 _install_aws_cli
-
-if _is_centos; then
-  _install_ssm_agent_centos
-else
-  _install_ssm_agent_ubuntu
-fi
+_install_ssm_agent
 
 cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
 {
@@ -46,11 +37,7 @@ response=$(aws ssm create-activation \
   --region "$CURRENT_REGION" \
   --tags "$SSH_SSM_TAGS")
 
-if _is_centos; then
-  yum install -y jq
-else
-  apt-get install -y jq
-fi
+_install_jq
 
 acode=$(echo $response | jq --raw-output '.ActivationCode')
 aid=$(echo $response | jq --raw-output '.ActivationId')
@@ -58,9 +45,5 @@ aid=$(echo $response | jq --raw-output '.ActivationId')
 echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
 
 # See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-ssm-user-permissions.html
-if _is_centos; then
-  yum install -y sudo
-else
-  apt-get -qq -y install sudo
-fi
+_install_sudo
 echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users

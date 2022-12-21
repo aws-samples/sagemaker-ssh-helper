@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 import time
@@ -136,6 +137,7 @@ def test_train_placeholder_manual(request):
 
 
 def test_inference_e2e(request):
+    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
@@ -178,6 +180,7 @@ def test_inference_e2e(request):
 
 
 def test_inference_e2e_mms(request):
+    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
@@ -225,6 +228,7 @@ def test_inference_e2e_mms(request):
 
         assert mdm.list_models()
 
+        # noinspection DuplicatedCode
         predictor.serializer = JSONSerializer()
         predictor.deserializer = JSONDeserializer()
 
@@ -291,3 +295,39 @@ def test_processing_framework_e2e(request):
     ssh_wrapper.start_ssm_connection_and_continue(15022, 60)
 
     ssh_wrapper.wait_processing_job()
+
+
+def test_train_e2e_with_bucket_override(request):
+    import boto3
+    s3 = boto3.resource('s3')
+    account_id = boto3.client('sts').get_caller_identity().get('Account')
+    custom_bucket_name = f'sagemaker-custom-bucket-{account_id}'
+    bucket = s3.Bucket(custom_bucket_name)
+
+    bucket.objects.all().delete()
+
+    estimator = PyTorch(entry_point='train.py',
+                        source_dir='source_dir/training/',
+                        dependencies=[SSHEstimatorWrapper.dependency_dir()],
+                        base_job_name='ssh-training',
+                        role=request.config.getini('sagemaker_role'),
+                        framework_version='1.9.1',
+                        py_version='py38',
+                        instance_count=1,
+                        instance_type='ml.m5.xlarge',
+                        max_run=60 * 60 * 3,
+                        keep_alive_period_in_seconds=1800,
+                        container_log_level=logging.INFO)
+
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=300)
+
+    estimator.fit(wait=False)
+
+    os.environ["SSH_AUTHORIZED_KEYS_PATH"] = f's3://{custom_bucket_name}/ssh-keys-testing/'
+
+    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+
+    ssh_wrapper.wait_training_job()
+
+    all_objects = bucket.objects.all()
+    assert any([o.key == "ssh-keys-testing/sagemaker-ssh-gw.pub" for o in all_objects])

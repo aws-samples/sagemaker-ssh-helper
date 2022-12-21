@@ -10,6 +10,7 @@ scan_source_code:
   stage: scan_source_code
   script:
     - pip install bandit
+    # TODO: replace with inline # nosec
     - bandit -r ./ --skip B603,B404,B101,B607 2>&1 | tee bandit.txt
   artifacts:
     paths:
@@ -21,15 +22,11 @@ run_tests:
   script:
     # Smoke test - Python version
     - python --version
-    # Check all running processes on the agent
-    - hostname
-    - ps xfa
     # Install AWS CLI
     - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
     - unzip -o -q -d /tmp/ /tmp/awscliv2.zip
     - /tmp/aws/install
     - aws --version
-    - aws sts get-caller-identity
     - echo "AWS default region - $AWS_DEFAULT_REGION"
     - echo "AWS region - $AWS_REGION"
     - aws configure list
@@ -39,12 +36,13 @@ run_tests:
     - session-manager-plugin --version
     # Install the package
     - pip install '.[test]'
+    - pip freeze | tee pip_freeze.txt
     # Run tests
-    - echo "SageMaker role - $SAGEMAKER_ROLE"
-    - echo "Kernel Gateway name - $KERNEL_GATEWAY_NAME"
     - echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
     - cd tests; pytest --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
   artifacts:
     when: always
     reports:
       junit: tests/pytest_report.xml
+    paths:
+      - pip_freeze.txt

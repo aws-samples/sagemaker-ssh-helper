@@ -3,8 +3,7 @@
 INSTANCE_ID=$1
 shift
 
-if [ -z "${INSTANCE_ID}" ] ;
-then
+if [ -z "${INSTANCE_ID}" ]; then
   echo "INSTANCE_ID not provided"
   exit 1
 else
@@ -14,13 +13,14 @@ fi
 # Useful for port forwarding and debugging, eg. passing -vvv option
 EXTRA_SSH_ARGS=$*
 
-python -c 'import sagemaker'
+if [ -z "${SSH_AUTHORIZED_KEYS_PATH}" ]; then
+  bucket=$(python -c 'import sagemaker; print(sagemaker.Session().default_bucket())')
+  SSH_AUTHORIZED_KEYS_PATH="s3://$bucket/ssh-authorized-keys/"
+fi
 
-bucket=$(python -c 'import sagemaker; print(sagemaker.Session().default_bucket())')
+echo "SSH authorized keys path -> ${SSH_AUTHORIZED_KEYS_PATH}"
 
-echo "SSH authorized keys bucket (SageMaker default) -> ${bucket}"
-
-# shellcheck disable=SC2086
+# shellcheck disable=SC2086  # extra args have to be unquoted to be parsed from the inner script
 sm-connect-ssh-proxy "${INSTANCE_ID}" \
-    "s3://$bucket/ssh-authorized-keys/" \
+    "${SSH_AUTHORIZED_KEYS_PATH}" \
     $EXTRA_SSH_ARGS
