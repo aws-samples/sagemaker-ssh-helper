@@ -75,6 +75,17 @@ Another important part of it is the IAM policy with `ssm:AddTagsToResource` acti
 Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
 the newly created activations (instances) and not for existing ones that may already belong to other users.
 
+### How can I change the SSH authorized keys bucket and location when running `sm-local-ssh-*` commands?
+The public key is transferred to the container through the default SageMaker bucket with the S3 URI that looks 
+like `s3://sagemaker-eu-west-1-/ssh-authorized-keys/`.
+If you want to change the location to your own bucket and path, export the variable like this:
+```
+export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-keys-jane-doe/  
+sm-local-ssh-ide <<kernel_gateway_app_name>>
+sm-local-ssh-training connect <<training_job_name>>
+
+```
+
 ## AWS SSM Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
 
