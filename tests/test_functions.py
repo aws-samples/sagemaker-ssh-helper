@@ -88,3 +88,23 @@ def test_wrapper_infers_ssm_role_simple():
         connection_wait_time_seconds=3600
     )
     assert wrapper.ssm_iam_role == 'SageMakerRole'
+
+
+def test_np_comma():
+    import numpy as np
+    from io import StringIO
+
+    from sagemaker_pytorch_serving_container.default_pytorch_inference_handler import DefaultPytorchInferenceHandler
+    import sagemaker_inference.decoder
+    f"""
+    If put "100" here without comma, this test fill fail.
+    That's why it's important to have commas in 'data/batch_transform/input/payloads.csv'.
+    
+    See {DefaultPytorchInferenceHandler.default_input_fn} and {sagemaker_inference.decoder._csv_to_numpy}
+    """
+    v = np.genfromtxt(StringIO("100,"), dtype=None, delimiter=",")
+
+    import torch
+    t = torch.FloatTensor(v)
+
+    assert t[0] == 100

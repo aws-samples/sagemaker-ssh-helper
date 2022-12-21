@@ -1,8 +1,8 @@
 import logging
-
 import sagemaker
 
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
+import test_util
 
 
 def test_clean_train_huggingface(request):
@@ -222,6 +222,8 @@ def test_train_estimator_ssh(request):
     # TODO: test inference with payload.csv
 
     assert estimator.model_data.find("model.tar.gz") != -1
+
+    test_util._cleanup_dir("./output")
 
     sagemaker_session.download_data(path='output', bucket=sagemaker_session.default_bucket(),
                                     key_prefix=estimator.latest_training_job.name + '/output')

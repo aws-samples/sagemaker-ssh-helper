@@ -7,7 +7,11 @@ import sagemaker
 # noinspection PyProtectedMember
 from sagemaker.estimator import _TrainingJob  # need access to sagemaker internals to get last training job name
 from sagemaker.multidatamodel import MultiDataModel
-from sagemaker.processing import ProcessingJob, ProcessingInput, ScriptProcessor, FrameworkProcessor
+from sagemaker.processing import ProcessingInput, ScriptProcessor, FrameworkProcessor
+from sagemaker.processing import ProcessingJob  # Note: processing job is not marked as protected
+from sagemaker.transformer import Transformer
+# noinspection PyProtectedMember
+from sagemaker.transformer import _TransformJob  # need access to sagemaker internals to get last training job name
 
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
@@ -19,6 +23,7 @@ from sagemaker_ssh_helper.proxy import SSMProxy
 class SSHEnvironmentWrapper(ABC):
     logger = logging.getLogger('sagemaker-ssh-helper')
     ssh_log = None
+    augmented = False
 
     def __init__(self,
                  ssm_iam_role: str,
@@ -47,9 +52,8 @@ class SSHEnvironmentWrapper(ABC):
     def dependency_dir(cls):
         return os.path.dirname(__file__)
 
-    @abstractmethod
     def _augment(self):
-        pass
+        self.augmented = True
 
     def _augment_env(self, env):
         caller_id = boto3.client('sts').get_caller_identity()
@@ -127,6 +131,7 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         self.estimator = estimator
 
     def _augment(self):
+        super()._augment()
         self.logger.info(f'Turning on SSH to training job for estimator {self.estimator.__class__}')
         env = self.estimator.environment
         if env is None:
@@ -159,7 +164,7 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
 
 
 class SSHModelWrapper(SSHEnvironmentWrapper):
-    def __init__(self, model: sagemaker.model.FrameworkModel,
+    def __init__(self, model: sagemaker.model.Model,
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600):
         super().__init__(ssm_iam_role,
@@ -169,6 +174,7 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         self.model = model
 
     def _augment(self):
+        super()._augment()
         self.logger.info(f'Turning on SSH to endpoint for model {self.model.__class__}')
         env = self.model.env
         if env is None:
@@ -183,7 +189,7 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         sagemaker.Session().wait_for_endpoint(self.model.endpoint_name)
 
     @classmethod
-    def create(cls, model: sagemaker.model.FrameworkModel, connection_wait_time_seconds: int = 600):
+    def create(cls, model: sagemaker.model.Model, connection_wait_time_seconds: int = 600):
         result = SSHModelWrapper(model, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
@@ -196,8 +202,8 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
         super().__init__(ssm_iam_role,
                          bootstrap_on_start, connection_wait_time_seconds)
         self.mdm = mdm
-        if not isinstance(mdm.model, sagemaker.model.FrameworkModel):
-            raise AssertionError("model should be a subclass of FrameworkModel")
+        if not isinstance(mdm.model, sagemaker.model.Model):
+            raise AssertionError("model should be a subclass of Model")
         self.model = mdm.model
         if self.ssm_iam_role == '':
             self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(mdm.model.role)
@@ -206,6 +212,7 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
                                              connection_wait_time_seconds)
 
     def _augment(self):
+        super()._augment()
         # noinspection PyProtectedMember
         self.model_wrapper._augment()
 
@@ -233,6 +240,7 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
         self.processor = processor
 
     def _augment(self):
+        super()._augment()
         self.logger.info(f'Turning on SSH to processor {self.processor.__class__}')
         env = self.processor.env
         if env is None:
@@ -269,5 +277,34 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
     @classmethod
     def create(cls, processor: sagemaker.processing.Processor, connection_wait_time_seconds: int = 600):
         result = SSHProcessorWrapper(processor, connection_wait_time_seconds=connection_wait_time_seconds)
+        result._augment()
+        return result
+
+
+class SSHTransformerWrapper(SSHEnvironmentWrapper):
+    def __init__(self, transformer: sagemaker.transformer.Transformer, model_wrapper: SSHModelWrapper):
+        super().__init__('', True, model_wrapper.connection_wait_time_seconds)
+        self.transformer = transformer
+        self.model_wrapper = model_wrapper
+
+    def _augment(self):
+        super()._augment()
+
+    def get_instance_ids(self, retry=360):
+        job: _TransformJob = self.transformer.latest_transform_job
+        return SSHLog().get_transformer_ssm_instance_ids(job.job_name, retry)
+
+    def wait_transform_job(self):
+        job: _TransformJob = self.transformer.latest_transform_job
+        job.wait()
+
+    @classmethod
+    def create(cls, transformer: sagemaker.transformer.Transformer, model_wrapper: SSHModelWrapper):
+        if not model_wrapper.augmented:
+            raise AssertionError(f"Model Wrapper is not yet augmented. Consider constructing object with create().")
+        if model_wrapper.model.name != transformer.model_name:
+            raise AssertionError(f"Transformer and model should have the same name, "
+                                 f"got: {transformer.model_name} and {transformer.model_name}")
+        result = SSHTransformerWrapper(transformer, model_wrapper)
         result._augment()
         return result

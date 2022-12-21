@@ -49,6 +49,10 @@ class SSHLog:
         SSHLog.logger.info(f"Querying SSM instance IDs for endpoint {endpoint_name}")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/Endpoints/{endpoint_name}', "AllTraffic/", retry)
 
+    def get_transformer_ssm_instance_ids(self, transform_job_name, retry=0):
+        SSHLog.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
+        return self.get_ssm_instance_ids(f'/aws/sagemaker/TransformJobs', transform_job_name, retry)
+
     def get_studio_kgw_ssm_instance_ids(self, kgw_name, retry=0):
         SSHLog.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}", retry)
