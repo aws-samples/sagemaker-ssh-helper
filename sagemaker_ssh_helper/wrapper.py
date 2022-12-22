@@ -42,7 +42,7 @@ class SSHEnvironmentWrapper(ABC):
 
         if ssm_iam_role != '':
             if ssm_iam_role.startswith("arn:aws:iam::"):
-                raise AssertionError("ssm_iam_role should be only the part after role/, not ARN")
+                raise ValueError("ssm_iam_role should be only the part after role/, not ARN")
 
         self.ssm_iam_role = ssm_iam_role
         self.bootstrap_on_start = bootstrap_on_start
@@ -74,10 +74,10 @@ class SSHEnvironmentWrapper(ABC):
     @classmethod
     def ssm_role_from_iam_arn(cls, iam_arn: str):
         if not iam_arn.startswith('arn:aws:iam::'):
-            raise AssertionError("iam_arn should start with 'arn:aws:iam::'")
+            raise ValueError("iam_arn should start with 'arn:aws:iam::'")
         role_position = iam_arn.find(":role/")
         if role_position == -1:
-            raise AssertionError("':role/' not found in the iam_arn")
+            raise ValueError("':role/' not found in the iam_arn")
         return iam_arn[role_position + 6:]
 
     @abstractmethod
@@ -96,11 +96,11 @@ class SSHEnvironmentWrapper(ABC):
                              extra_args: str = ""):
         instance_ids = self.get_instance_ids(retry)
         if not instance_ids:
-            raise AssertionError("instance_ids cannot be empty")
+            raise ValueError("instance_ids cannot be empty")
 
         instance_id = instance_ids[0]
         if "mi-" not in instance_id:
-            raise AssertionError(f"instance_id doesn't start with 'mi-': {instance_id}")
+            raise ValueError(f"instance_id doesn't start with 'mi-': {instance_id}")
 
         ssm_proxy = SSMProxy(ssh_listen_port, extra_args)
         p = ssm_proxy.connect_to_ssm_instance(instance_id)
@@ -202,19 +202,30 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
         super().__init__(ssm_iam_role,
                          bootstrap_on_start, connection_wait_time_seconds)
         self.mdm = mdm
-        if not isinstance(mdm.model, sagemaker.model.Model):
-            raise AssertionError("model should be a subclass of Model")
-        self.model = mdm.model
-        if self.ssm_iam_role == '':
-            self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(mdm.model.role)
-        self.model_wrapper = SSHModelWrapper(mdm.model, self.ssm_iam_role,
-                                             bootstrap_on_start,
-                                             connection_wait_time_seconds)
+        if mdm.model:
+            self.model = mdm.model
+            if self.ssm_iam_role == '':
+                self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(mdm.model.role)
+            self.model_wrapper = SSHModelWrapper(mdm.model, self.ssm_iam_role,
+                                                 bootstrap_on_start,
+                                                 connection_wait_time_seconds)
+        else:
+            self.model = None
+            if self.ssm_iam_role == '':
+                self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(mdm.role)
 
     def _augment(self):
         super()._augment()
-        # noinspection PyProtectedMember
-        self.model_wrapper._augment()
+        if self.model:
+            # noinspection PyProtectedMember
+            self.model_wrapper._augment()
+        else:
+            self.logger.info(f'Turning on SSH to endpoint for multi data model {self.mdm.__class__}')
+            env = self.mdm.env
+            if env is None:
+                env = {}
+            self._augment_env(env)
+            self.mdm.env = env
 
     def get_instance_ids(self, retry=360):
         return SSHLog().get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry)
@@ -301,10 +312,10 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
     @classmethod
     def create(cls, transformer: sagemaker.transformer.Transformer, model_wrapper: SSHModelWrapper):
         if not model_wrapper.augmented:
-            raise AssertionError(f"Model Wrapper is not yet augmented. Consider constructing object with create().")
+            raise ValueError(f"Model Wrapper is not yet augmented. Consider constructing object with create().")
         if model_wrapper.model.name != transformer.model_name:
-            raise AssertionError(f"Transformer and model should have the same name, "
-                                 f"got: {transformer.model_name} and {transformer.model_name}")
+            raise ValueError(f"Transformer and model should have the same name, "
+                             f"got: {transformer.model_name} and {transformer.model_name}")
         result = SSHTransformerWrapper(transformer, model_wrapper)
         result._augment()
         return result

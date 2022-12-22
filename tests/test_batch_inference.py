@@ -41,10 +41,7 @@ def test_clean_batch_inference(request):
                                     assemble_with='Line',
                                     output_path=transformer_output)
 
-    transform_job_name = name_from_base('ssh-batch-transform')
-
     transformer.transform(data=transformer_input,
-                          job_name=transform_job_name,
                           content_type='text/csv',
                           split_type='Line',
                           join_source="Input")

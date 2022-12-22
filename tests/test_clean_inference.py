@@ -9,6 +9,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import name_from_base
 
 
+# noinspection DuplicatedCode
 def test_clean_train_warm_pool(request):
     logging.info("Starting training")
 
@@ -30,7 +31,6 @@ def test_clean_train_warm_pool(request):
 
 
 def test_clean_inference(request):
-    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
@@ -63,7 +63,6 @@ def test_clean_inference(request):
 
 
 def test_clean_inference_mms(request):
-    # noinspection DuplicatedCode
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),

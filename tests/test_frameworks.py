@@ -1,7 +1,13 @@
 import logging
-import sagemaker
+import time
 
-from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
+import sagemaker
+from sagemaker import Predictor, Model
+from sagemaker.deserializers import CSVDeserializer
+from sagemaker.serializers import CSVSerializer
+from sagemaker.utils import name_from_base
+
+from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHModelWrapper
 import test_util
 
 
@@ -200,8 +206,11 @@ def test_train_estimator_ssh(request):
     account_id = boto3.client('sts').get_caller_identity().get('Account')
 
     from sagemaker.estimator import Estimator
+
+    role = request.config.getini('sagemaker_role')
+
     estimator = Estimator(image_uri=f"{account_id}.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh:latest",
-                          role=request.config.getini('sagemaker_role'),
+                          role=role,
                           instance_count=1,
                           instance_type='ml.m5.xlarge',
                           max_run=60 * 30,
@@ -219,11 +228,39 @@ def test_train_estimator_ssh(request):
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
-    # TODO: test inference with payload.csv
-
     assert estimator.model_data.find("model.tar.gz") != -1
 
     test_util._cleanup_dir("./output")
-
     sagemaker_session.download_data(path='output', bucket=sagemaker_session.default_bucket(),
                                     key_prefix=estimator.latest_training_job.name + '/output')
+
+    model: Model = estimator.create_model()
+
+    ssh_model_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)
+
+    endpoint_name = name_from_base('byoc-ssh-inference')
+
+    predictor: Predictor = model.deploy(initial_instance_count=1,
+                                        instance_type='ml.m5.xlarge',
+                                        endpoint_name=endpoint_name,
+                                        wait=True)
+
+    try:
+        ssh_model_wrapper.start_ssm_connection_and_continue(12022, 60)
+
+        time.sleep(60)  # Cold start latency to prevent prediction time out
+
+        predictor.serializer = CSVSerializer()
+        predictor.deserializer = CSVDeserializer()
+
+        predicted_value = predictor.predict(data=[
+            [5.9, 3, 5.1, 1.8],
+            [5.7, 2.8, 4.1, 1.3]
+        ])
+        assert predicted_value == [['virginica'], ['versicolor']]
+
+    finally:
+        predictor.delete_model()
+        predictor.delete_endpoint()
+
+

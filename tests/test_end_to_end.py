@@ -10,7 +10,7 @@ import sagemaker
 from sagemaker import Predictor
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.multidatamodel import MultiDataModel
-from sagemaker.pytorch import PyTorch, PyTorchProcessor
+from sagemaker.pytorch import PyTorch, PyTorchProcessor, PyTorchPredictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.spark import PySparkProcessor
 from sagemaker.utils import name_from_base
@@ -185,7 +185,7 @@ def test_inference_e2e_mms(request):
                         source_dir='source_dir/training_clean/',
                         role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',  # Works for: 1.12, 1.11, 1.10 (1.10.2), 1.9 (1.9.1) - py38.
-                        py_version='py38',          # Doesn't work for: 1.10.0, 1.9.0 - py38, 1.8, 1.7, 1.6 - py36.
+                        py_version='py38',  # Doesn't work for: 1.10.0, 1.9.0 - py38, 1.8, 1.7, 1.6 - py36.
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
                         max_run=60 * 60 * 3,
@@ -207,6 +207,7 @@ def test_inference_e2e_mms(request):
         model=model
     )
 
+    # noinspection DuplicatedCode
     ssh_wrapper = SSHMultiModelWrapper.create(mdm, connection_wait_time_seconds=0)
 
     endpoint_name = name_from_base('ssh-inference-mms')
@@ -242,6 +243,86 @@ def test_inference_e2e_mms(request):
 
     finally:
         predictor.delete_model()
+        predictor.delete_endpoint()
+
+
+def test_inference_e2e_mms_without_model(request):
+    # noinspection DuplicatedCode
+    estimator = PyTorch(entry_point='train_clean.py',
+                        source_dir='source_dir/training_clean/',
+                        role=request.config.getini('sagemaker_role'),
+                        framework_version='1.9.1',
+                        py_version='py38',
+                        instance_count=1,
+                        instance_type='ml.m5.xlarge',
+                        max_run=60 * 60 * 3,
+                        keep_alive_period_in_seconds=1800,
+                        container_log_level=logging.INFO)
+    estimator.fit()
+
+    model = estimator.create_model(entry_point='inference.py',
+                                   source_dir='source_dir/inference/',
+                                   dependencies=[SSHModelWrapper.dependency_dir()])
+
+    # we need a temp endpoint to produce 'repacked_model_data'
+    temp_endpoint_name = name_from_base('temp-inference-mms')
+    temp_predictor: Predictor = model.deploy(initial_instance_count=1,
+                                             instance_type='ml.m5.xlarge',
+                                             endpoint_name=temp_endpoint_name,
+                                             wait=True)
+    repacked_model_data = model.repacked_model_data
+    temp_predictor.delete_model()
+    temp_predictor.delete_endpoint()
+
+    bucket = sagemaker.Session().default_bucket()
+    job_name = estimator.latest_training_job.name
+    model_data_prefix = f"s3://{bucket}/{job_name}/mms/"
+
+    mdm = MultiDataModel(
+        name=model.name,
+        model_data_prefix=model_data_prefix,
+        image_uri='763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-inference:1.9.1-cpu-py38',
+        role=model.role
+    )
+
+    # noinspection DuplicatedCode
+    ssh_wrapper = SSHMultiModelWrapper.create(mdm, connection_wait_time_seconds=0)
+
+    endpoint_name = name_from_base('ssh-inference-mms')
+
+    mdm.deploy(initial_instance_count=1,
+               instance_type='ml.m5.xlarge',
+               endpoint_name=endpoint_name,
+               wait=True)
+
+    # Note: when using MDM without model, deploy() returns None, need construct the predictor manually
+    predictor: Predictor = PyTorchPredictor(endpoint_name)
+
+    try:
+        for i in range(1, 10):
+            model_name = f"model_{i}.tar.gz"
+            # Note: we need a repacked model data here, not an estimator data
+            # If inference script and training scripts are in the different source dirs,
+            # MMS will fail to find an inference script inside the trained model, so we need a repacked model
+            logger.info(f"Adding model {model_name} from repacked source {model.repacked_model_data} "
+                        f"(trained model source: {model.model_data})")
+            mdm.add_model(model_data_source=repacked_model_data, model_data_path=model_name)
+
+        assert mdm.list_models()
+
+        # noinspection DuplicatedCode
+        predictor.serializer = JSONSerializer()
+        predictor.deserializer = JSONDeserializer()
+
+        predicted_value = predictor.predict(data=[1], target_model="model_1.tar.gz")
+        assert predicted_value == [43]
+        predicted_value = predictor.predict(data=[2], target_model="model_2.tar.gz")
+        assert predicted_value == [44]
+
+        # Note: in MME the models are lazy loaded, so SSH helper will start upon the first prediction request
+        ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
+
+    finally:
         predictor.delete_endpoint()
 
 
