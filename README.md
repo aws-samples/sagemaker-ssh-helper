@@ -8,7 +8,7 @@ SageMaker SSH Helper is a library that helps you to securely connect to Amazon S
 realtime inference endpoints, and SageMaker Studio notebook containers for fast interactive experimentation, 
 remote debugging, and advanced troubleshooting.
 
-The two most common scenarios for the library are:
+The two most common scenarios for the library, also known as "SSH into SageMaker", are:
 1. Open a terminal session into a container running in SageMaker to diagnose a stuck training job, use CLI commands 
 like nvidia-smi, or iteratively fix and re-execute your training script within seconds. 
 2. Remote debug a code running in SageMaker from your local favorite IDE like 
@@ -20,7 +20,7 @@ Also see our [Frequently Asked Questions](FAQ.md), especially if you're using Wi
 
 ## How it works
 SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed 
-by creating an SSM session between your client machine and the SageMaker container. You can then create an SSH connection 
+by creating an SSM session between your client machine and the SageMaker container. Then you can SSH into SageMaker by creating an SSH connection 
 on top of the SSM session, that allows opening a Linux shell, and/or configuring bidirectional SSH port forwarding to 
 enable applications like remote development/debugging/desktop, and others.
 
@@ -505,11 +505,11 @@ Note, that after you finished the waiting loop, your training script will run on
 to execute additional code only while your script is running.
 Once the script finishes, you will need to submit another training job and repeat the procedure again.
 
-But there's a useful trick: submit a dummy script with the infinite loop, and while this loop will be running, you can 
+But there's a useful trick: submit a dummy script `train_placeholder.py` with the infinite loop, and while this loop will be running, you can 
 run your real training script again and again with the remote interpreter.
 Setting `max_run` parameter of the estimator is highly recommended in this case.
 
-A dummy script `train_placeholder.py` may look like this:
+The dummy script may look like this:
 
 ```python
 import time
