@@ -26,7 +26,7 @@ extras = {
 }
 setuptools.setup(
     name='sagemaker-ssh-helper',
-    version='1.9.0.dev0',
+    version='1.9.0',
     author="Amazon Web Services",
     description="A helper library to connect into Amazon SageMaker with AWS Systems Manager and SSH",
     long_description="SageMaker SSH Helper is a library that helps you to securely connect to Amazon SageMaker's "
