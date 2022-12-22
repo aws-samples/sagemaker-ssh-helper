@@ -46,7 +46,8 @@ SageMaker SSH Helper supports a variety of use cases:
 - [Connecting to SageMaker training jobs with SSM](#training) - open a shell to the training job to examine its file systems,
 monitor resources, produce thread-dumps for stuck jobs, and interactively run your train script.
 - [Connecting to SageMaker inference endpoints with SSM](#inference)
-- [Connecting to SageMaker processing jobs with SSM](#processing)  
+- [Connecting to SageMaker batch transform jobs](#batch-transform)
+- [Connecting to SageMaker processing jobs](#processing)  
 - [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server)  
 - [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter)
 - [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio)  
@@ -76,10 +77,13 @@ to connect to later on.
 For example:
 
 ```python
+from sagemaker.pytorch import PyTorch
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper  # <--NEW--
 
+role = ...
+
 estimator = PyTorch(entry_point='train.py',
-                    source_dir='code',
+                    source_dir='source_dir/training/',
                     dependencies=[SSHEstimatorWrapper.dependency_dir()],  # <--NEW--
                     role=role,
                     framework_version='1.9.1',
@@ -107,6 +111,8 @@ on these nodes.
 Alternatively, pass the additional parameter `ssh_instance_count` with the desired instance count 
 to `SSHEstimatorWrapper.create()`.
 
+*Note:* if you a/ don't use script mode, b/ use basic `Estimator` class and c/ all code is already stored in your Docker container, check the code sample in the corresponding section of the [FAQ.md](FAQ.md#what-if-i-want-to-train-and-deploy-a-model-as-a-simple-estimator-in-my-own-container-without-passing-entry_point-and-source_dir).
+
 ### Step 3: Modify your training script
 Add into your `train.py` the following lines at the top:
 
@@ -122,7 +128,7 @@ Once you launched the job, you'll need to wait, a few minutes, for the SageMaker
 to start successfully. Then you'll need to have the ID of the managed instance. The instance id is prefixed by `mi-` 
 and will appear in the job's CloudWatch log like this:
 
-```
+```text
 Successfully registered the instance with AWS SSM using Managed instance-id: mi-1234567890abcdef0
 ``` 
 
@@ -130,6 +136,9 @@ To fetch the instance IDs from the logs in an automated way, call the Python met
 as mentioned in the previous step:
 
 ```python
+estimator = ...
+ssh_wrapper = ...
+estimator.fit(wait=False)
 instance_ids = ssh_wrapper.get_instance_ids()
 ```
 
@@ -148,9 +157,9 @@ Verify that running `aws --version` prints `aws-cli/2.x.x ...`
 2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
 3. Run this command (replace the target value with the instance id for your SageMaker job). Example:
-  ```
-  aws ssm start-session --target mi-1234567890abcdef0
-  ```
+```shell
+aws ssm start-session --target mi-1234567890abcdef0
+```
 
 B. Connecting using the AWS Web Console:  
 
@@ -200,26 +209,29 @@ Adding SageMaker SSH Helper to inference endpoint is similar to training with th
 ```python
 from sagemaker_ssh_helper.wrapper import SSHModelWrapper  # <--NEW--
 
+estimator = ...
+...
+endpoint_name = ... 
+
 model = estimator.create_model(entry_point='inference.py',
-                               source_dir='source_dir/',
+                               source_dir='source_dir/inference/',
                                dependencies=[SSHModelWrapper.dependency_dir()])  # <--NEW--
 
 ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)  # <--NEW--
 
 predictor = model.deploy(initial_instance_count=1,
                          instance_type='ml.m5.xlarge',
-                         endpoint_name=endpoint_name)    
+                         endpoint_name=endpoint_name)
+
+predicted_value = predictor.predict(data=...)
 ```
 
 *Note:* For the inference endpoint, which is always up and running, there's not too much value 
 in setting `connection_wait_time_seconds`, so it's usually set to `0`.
 
 Similar to training jobs, you can fetch the instance ids for connecting to the endpoint with SSM with 
-the following API:
+`ssh_wrapper.get_instance_ids()`.
 
-```python
-instance_ids = ssh_wrapper.get_instance_ids()
-```
 
 2. Add the following lines at the top of your `inference.py` script:
 
@@ -240,10 +252,17 @@ into the `code/lib` directory, while SageMaker training put libs directly to `co
 For multi-model endpoints, the setup procedure is slightly different from regular endpoints:
 
 ```python
+from sagemaker.multidatamodel import MultiDataModel
 from sagemaker_ssh_helper.wrapper import SSHModelWrapper, SSHMultiModelWrapper  # <--NEW--
 
+model_data_prefix = "s3://DOC-EXAMPLE-BUCKET/mms/"
+model_name = ...
+endpoint_name = ...
+estimator = ...
+...
+
 model = estimator.create_model(entry_point='inference.py',
-                               source_dir='source_dir/',
+                               source_dir='source_dir/inference/',
                                dependencies=[SSHModelWrapper.dependency_dir()])  # <--NEW--
 
 mdm = MultiDataModel(
@@ -254,21 +273,21 @@ mdm = MultiDataModel(
 
 ssh_wrapper = SSHMultiModelWrapper.create(mdm, connection_wait_time_seconds=0)  # <--NEW--
 
-predictor: Predictor = mdm.deploy(initial_instance_count=1,
-                                  instance_type='ml.m5.xlarge',
-                                  endpoint_name=endpoint_name)
+predictor = mdm.deploy(initial_instance_count=1,
+                       instance_type='ml.m5.xlarge',
+                       endpoint_name=endpoint_name)
 
 
 mdm.add_model(model_data_source=model.repacked_model_data, model_data_path=model_name)
 
-predictor.predict(data=..., target_model=model_name)
+predicted_value = predictor.predict(data=..., target_model=model_name)
 ```
 
-*Important:* Make sure that you're passing to `add_model()` a model ready for deployment located at `model.repacked_model_data`,
-not the `estimator.model_data`.
+**Important:** Make sure that you're passing to `add_model()` the model ready for deployment with dependencies located at `model.repacked_model_data`,
+not the `estimator.model_data` that points to the trained model artifact.
 
 Also note that SageMaker SSH Helper will be lazy loaded together with your model upon the first prediction request.
-So you should try to connect only after calling `predict()`.
+So you should try to connect to the multi-model endpoint only after calling `predict()`.
 
 The `inference.py` script is the same as for regular endpoints.
 
@@ -276,7 +295,51 @@ If you are using PyTorch containers, make sure you select the latest versions,
 e.g. 1.12, 1.11, 1.10 (1.10.2), 1.9 (1.9.1).
 This code might not work if you use PyTorch 1.8, 1.7 or 1.6.
 
-## <a name="processing"></a>Connecting to SageMaker processing jobs with SSM
+*Note:* if you're packing your models manually and don't pass the `model` object to the `MultiDataModel` constructor, i.e., pass only the `image_uri`, see corresponding sample code in the [FAQ.md](FAQ.md#what-if-i-want-to-deploy-a-multi-data-model-without-passing-a-reference-to-a-model-object-only-with-image_uri).
+
+## <a name="batch-transform"></a>Connecting to SageMaker batch transform jobs
+
+For batch transform jobs, you need to use both `SSHModelWrapper` and `SSHTransformerWrapper`, 
+as in the following example:
+
+```python
+from sagemaker_ssh_helper.wrapper import SSHModelWrapper, SSHTransformerWrapper  # <--NEW--
+
+sagemaker_session = ...
+bucket = ...
+estimator = ...
+...
+
+model = estimator.create_model(entry_point='inference.py',
+                               source_dir='source_dir/inference/',
+                               dependencies=[SSHModelWrapper.dependency_dir()])  # <--NEW--
+
+transformer_input = sagemaker_session.upload_data(path='data/batch_transform/input',
+                                                  bucket=bucket,
+                                                  key_prefix='batch-transform/input')
+
+transformer_output = f"s3://{bucket}/batch-transform/output"
+
+ssh_model_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=600)  # <--NEW--
+
+transformer = model.transformer(instance_count=1,
+                                instance_type="ml.m5.xlarge",
+                                accept='text/csv',
+                                strategy='SingleRecord',
+                                assemble_with='Line',
+                                output_path=transformer_output)
+
+ssh_transformer_wrapper = SSHTransformerWrapper.create(transformer, ssh_model_wrapper)  # <--NEW--
+
+transformer.transform(data=transformer_input,
+                      content_type='text/csv',
+                      split_type='Line',
+                      join_source="Input",
+                      wait=False)
+```
+The `inference.py` script is the same as for regular endpoints.
+
+## <a name="processing"></a>Connecting to SageMaker processing jobs
 
 SageMaker SSH Helper supports both Script Processors and Framework processors and setup procedure is similar 
 to training jobs and inference endpoints.
@@ -286,7 +349,10 @@ to training jobs and inference endpoints.
 The code to set up a framework processor (e.g. PyTorch) is the following:
 
 ```python
+from sagemaker.pytorch import PyTorchProcessor
 from sagemaker_ssh_helper.wrapper import SSHProcessorWrapper  # <--NEW--
+
+role = ...
 
 torch_processor = PyTorchProcessor(
     base_job_name='ssh-pytorch-processing',
@@ -300,13 +366,13 @@ torch_processor = PyTorchProcessor(
 ssh_wrapper = SSHProcessorWrapper.create(torch_processor, connection_wait_time_seconds=600)  # <--NEW--
 
 torch_processor.run(
-    source_dir="source_dir/",
+    source_dir="source_dir/processing/",
     dependencies=[SSHProcessorWrapper.dependency_dir()],  # <--NEW--
-    code="process.py"
+    code="process_framework.py"
 )
 ```
 
-Also add the following lines at the top of `process.py`:
+Also add the following lines at the top of `process_framework.py`:
 
 ```python
 import sagemaker_ssh_helper
@@ -318,7 +384,10 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 The code to set up a script processor (e.g. PySpark) is the following:
 
 ```python
+from sagemaker.spark import PySparkProcessor
 from sagemaker_ssh_helper.wrapper import SSHProcessorWrapper  # <--NEW--
+
+role = ...
 
 spark_processor = PySparkProcessor(
     base_job_name='ssh-spark-processing',
@@ -331,7 +400,7 @@ spark_processor = PySparkProcessor(
 ssh_wrapper = SSHProcessorWrapper.create(spark_processor, connection_wait_time_seconds=600)  # <--NEW--
 
 spark_processor.run(
-    submit_app="source_dir/process.py",
+    submit_app="source_dir/processing/process.py",
     inputs=[ssh_wrapper.augmented_input()]  # <--NEW--
 )
 ```
@@ -385,13 +454,16 @@ It will reverse-forward the remote debugger port `12345` to your local machine's
 The local port `11022` will be connected to the remote SSH server port, 
 to allow you easily connect with SSH from command line.  
 
-Check the source code of the script `sm-local-ssh-training` if you want to change the default ports.
+*Tip:* If you want to connect processing, batch transform jor or to an inference endpoint with SSH, use
+`sm-local-ssh-processing`, `sm-local-ssh-transform` or `sm-local-ssh-inference` scripts respectively.
 
 While this script is running, you may connect with SSH to the specified local port:
 
-```bash
+```shell
 ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost
 ```
+
+Feel free to use the scripts as templates. Clone and customize them, if you want to change the ports.
 
 *Tip:* If you log in to the node with SSH and don't see a `sm-wait` process, the training script has already started 
 and failed to connect to the PyCharm Debug Server, so you need to increase the `connection_wait_time_seconds`, 
@@ -486,8 +558,9 @@ It looks like this: `datascience-1-0-ml-g4dn-xlarge-1234567890abcdef0`.
 
 The local port `10022` will be connected to the remote SSH server port, to let you connect with SSH from IDE.  
 In addition, the local port `8889` will be connected to remote Jupyter notebook port, the port `5901` to the remote VNC server 
-and optionally the remote port `443` will be connected to your local PyCharm license server address
-(check the source of the script `sm-local-ssh-ide` and modify it with your server address).
+and optionally the remote port `443` will be connected to your local PyCharm license server address.
+
+Feel free to use the script as a template. Clone and customize it, if you want to change the ports and hosts.
 
 6. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
 Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
@@ -500,7 +573,7 @@ Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
 
 You can check that connection is working by running the SSH command in command line:
 
-```bash
+```shell
 ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost
 ```
 
@@ -559,7 +632,7 @@ instead of a new one. Wait for 30-60 seconds to allow logs to come through and t
 
 * Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
 
-```bash
+```shell
 ps xfa | grep sshd
 ```
 

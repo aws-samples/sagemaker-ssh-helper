@@ -29,8 +29,8 @@ $ cd ~/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0
 $ ./sm-local-install-force
 ```
 
-4. Now you may close Git Bash and start again as a normal user.
-5. Don't forget to repeat steps 1-4 after you install a new version of SageMaker SSH Helper.
+3. Now you may close Git Bash and start again as a normal user.
+4. Don't forget to repeat steps 1-4 after you install a new version of SageMaker SSH Helper.
 
 The scripts like `sm-local-ssh-ide` and `sm-local-ssh-training` will now work from the 
 Git Bash session under a regular user, and you may continue to work in your local IDE 
@@ -40,18 +40,23 @@ on Windows as usual.
 ### For Training, should I use Warm Pools or SageMaker SSH Helper?
 
 SageMaker [Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) is a built-in SageMaker Training feature which is great when you want to use the SageMaker API to:
-  1. Run a series of relatively short training jobs, each job outputting a different model based on different input data (like a model per customer).
-  2. Interactively iterate over a series of training jobs, changing code and hyperparameters between jobs. Job launch time will be less than 30sec. When using warm pools, all training jobs are audited and logged. Warm Pools is a built-in product feature, which you can use after you [opt-in](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html#train-warm-pools-resource-limits). You’re billed as long as the warm pool didn’t expire.
+
+1. Run a series of relatively short training jobs, each job outputting a different model based on different input data (like a model per customer).
+2. Interactively iterate over a series of training jobs, changing code and hyperparameters between jobs. Job launch time will be less than 30sec. When using warm pools, all training jobs are audited and logged. Warm Pools is a built-in product feature, which you can use after you [opt in](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html#train-warm-pools-resource-limits). 
+
+You’re billed as long as the warm pool didn't expire.
 
 [SageMaker SSH Helper](https://github.com/aws-samples/sagemaker-ssh-helper) is a field solution for SageMaker, focused on interactive work. Enabling use cases like: 
 
- 1. Shell access to the SageMaker training container to monitor and troubleshoot using OS tools. 
- 2. Setup remote development/debugging experience, using your IDE to code, and run processes in the SageMaker container. 
+1. The shell access to the SageMaker training container to monitor and troubleshoot using OS tools. 
+2. Setup remote development/debugging experience, using your IDE to code, and run processes in the SageMaker container. 
 
 SSH Helper's interactive nature allows you to iterate in seconds, by running multiple commands/experiment reusing one running training job. SSH Helper requires [setting up your AWS account with IAM and SSM configuration](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md). You’re billed as long the training job is running. 
 
 ### How can I do remote development on a SageMaker training job, using SSH Helper?
-Start a SM Training job that will run a dummy training script which sleeps forever, then use remote development to carry out any activities on the training container. (Note, this idea and the script ‘train_placeholder.py’ is also introduced in the documentation in the section “Remote code execution with PyCharm / VSCode over SSH (https://github.com/aws-samples/sagemaker-ssh-helper#remote-code-execution-with-pycharm--vscode-over-ssh)”).
+Start a SageMaker Training job that will run a dummy training script which sleeps forever, then use remote development 
+to carry out any activities on the training container. Note, this idea and the script `train_placeholder.py` is also 
+introduced in the documentation in the section [Remote code execution with PyCharm / VSCode over SSH](https://github.com/aws-samples/sagemaker-ssh-helper#remote-code-execution-with-pycharm--vscode-over-ssh).
 
 ### Can I also use this solution to connect into my jobs from SageMaker Studio?
 
@@ -75,16 +80,96 @@ Another important part of it is the IAM policy with `ssm:AddTagsToResource` acti
 Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
 the newly created activations (instances) and not for existing ones that may already belong to other users.
 
+## API Questions
 ### How can I change the SSH authorized keys bucket and location when running `sm-local-ssh-*` commands?
-The public key is transferred to the container through the default SageMaker bucket with the S3 URI that looks 
-like `s3://sagemaker-eu-west-1-/ssh-authorized-keys/`.
+The **public** key is transferred to the container through the default SageMaker bucket with the S3 URI that looks 
+like `s3://sagemaker-eu-west-1-555555555555/ssh-authorized-keys/`.
 If you want to change the location to your own bucket and path, export the variable like this:
 ```
-export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-keys-jane-doe/  
+export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-public-keys-jane-doe/  
 sm-local-ssh-ide <<kernel_gateway_app_name>>
 sm-local-ssh-training connect <<training_job_name>>
-
 ```
+
+### What if I want to train and deploy a model as a simple Estimator in my own container, without passing entry_point and source_dir?
+
+In some cases, you don't want to pass any external scripts or libraries to the training job or the inference endpoint and want to put everything into [your own container](https://sagemaker-examples.readthedocs.io/en/latest/advanced_functionality/scikit_bring_your_own/scikit_bring_your_own.html) during the build time.
+In this case, make sure that SageMaker SSH Helper is installed in your `Dockerfile`:
+```dockerfile
+RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--NEW--
+```
+
+The code for running estimators and inference will look like this:
+```python
+from sagemaker.estimator import Estimator
+from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHModelWrapper  # <--NEW--
+
+role = ...
+estimator = Estimator(image_uri=f"555555555555.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh:latest",
+                      role=role,
+                      instance_count=1,
+                      instance_type='ml.m5.xlarge',
+                      max_run=60 * 30)
+
+training_input = ...
+
+ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)  # <--NEW--
+estimator.fit({'training': training_input}, wait=False)
+
+...
+
+model = estimator.create_model()
+
+ssh_model_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)  # <--NEW--
+
+endpoint_name = ...
+predictor = model.deploy(initial_instance_count=1,
+                         instance_type='ml.m5.xlarge',
+                         endpoint_name=endpoint_name,
+                         wait=True)
+```
+
+### What if I want to deploy a Multi Data Model without passing a reference to a Model object, only with image_uri?
+
+In this case, you either manually pack the inference code to your model artifact during training or provide all the inference code inside the inference image.
+
+Your code then should look like this:
+
+```python
+from sagemaker.multidatamodel import MultiDataModel
+from sagemaker.pytorch import PyTorchPredictor
+from sagemaker_ssh_helper.wrapper import SSHMultiModelWrapper  # <--NEW--
+
+model_data_prefix = "s3://DOC-EXAMPLE-BUCKET/mms/"
+repacked_model_data = ...
+model_name = ...
+model_role = ...
+model_path = ...
+endpoint_name = ...
+
+mdm = MultiDataModel(
+    name=model_name,
+    model_data_prefix=model_data_prefix,
+    image_uri='555555555555.dkr.ecr.eu-west-1.amazonaws.com/byoc:latest',
+    role=model_role
+)
+
+ssh_wrapper = SSHMultiModelWrapper.create(mdm, connection_wait_time_seconds=0)  # <--NEW--
+
+mdm.deploy(initial_instance_count=1,
+           instance_type='ml.m5.xlarge',
+           wait=True)
+
+predictor = PyTorchPredictor(endpoint_name)
+
+mdm.add_model(model_data_source=repacked_model_data, model_data_path=model_path)
+
+predicted_value = predictor.predict(data=..., target_model=model_path)
+```
+
+*Note:* Your repacked model should also contain the SageMaker SSH Helper library files, and you need to import and start it from your inference script just as you do for the normal inference.
+
+See [#7](https://github.com/aws-samples/sagemaker-ssh-helper/issues/7) for this request.
 
 ## AWS SSM Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
@@ -98,9 +183,9 @@ Login into the container and run:
 `tail -f  /var/log/amazon/ssm/amazon-ssm-agent.log`
 
 ### How can I clean up System Manager after receiving `ERROR Registration failed due to error registering the instance with AWS SSM. RegistrationLimitExceeded: Registration limit of 20000 reached for SSM On-prem managed instances.`
-SageMaker containers are transient in nature. SM SSH Helper registers this container to SSM as a "managed instances". Currently, there's no built-in machinsm to deregister them when a job is completed. This accumulation of registrations might cause you to arrive at an SSM registration limit. To resolve this consider cleaning up stale, SM SSH Helper related registrations, manually via the UI, or using [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py).  
+SageMaker containers are transient in nature. SM SSH Helper registers this container to SSM as a "managed instances". Currently, there's no built-in mechanism to deregister them when a job is completed. This accumulation of registrations might cause you to arrive at an SSM registration limit. To resolve this, consider cleaning up stale, SM SSH Helper related registrations, manually via the UI, or using [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py).  
 WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper. [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the current registered manage instances in the AWS Console Fleet manager, before actually removing them.  
-Deregistering requires an administrator/poweruser IAM privileges. 
+Deregistering requires an administrator / power user IAM privileges. 
 
 ### There's a big delay between getting the mi-* instance ID and until I can successfully start a session to the container. 
 This can happen if there's SSM API throttling taking place during instance initialization. In such a case, after you are able to shell into the container you'll be able to identify this by grepping for this printout during SSM agent initialization:  
@@ -110,3 +195,18 @@ This can happen if there's SSM API throttling taking place during instance initi
 2022-12-15 12:37:17 INFO [ssm-agent-worker] Entering SSM Agent hibernate - ThrottlingException: Rate exceeded status code: 400, request id: 56ae2c79-bb35-4903-ab49-59cf9e131aca
 ```
 You should submit an AWS Support ticket to identify the relevant API limit and increase it.
+
+### I get an error about advanced-instances tier configured incorrectly
+
+An error message looks like this:
+```text
+An error occurred (BadRequest) when calling the StartSession operation: Enable advanced-instances tier to use Session Manager with your on-premises instances
+```
+
+First, check that your instance shows as an advanced instance in Fleet Manager.
+If it doesn't show up there, you've probably missed the step "2h" in [IAM_SSM_Setup.md](IAM_SSM_Setup.md).
+
+Also check that you're connecting from the same AWS region. Run the following command on your local machine and check that the region is the same as in your AWS console:
+```shell
+aws configure list | grep region 
+```
