@@ -9,6 +9,10 @@ import boto3
 class SSHLog:
     logger = logging.getLogger('sagemaker-ssh-helper')
 
+    def __init__(self, region_name=None) -> None:
+        super().__init__()
+        self.region_name = region_name
+
     def get_ip_addresses(self, training_job_name, retry=0):
         SSHLog.logger.info(f"Querying SSH IP addresses for job {training_job_name}")
         query = "fields @timestamp, @logStream, @message" \
@@ -97,7 +101,7 @@ class SSHLog:
         return mi_ids
 
     def _query_log_group(self, log_group, query):
-        boto_client = boto3.client('logs')
+        boto_client = boto3.client('logs', region_name=self.region_name)
         start_query_response = boto_client.start_query(
             logGroupName=log_group,
             startTime=int((datetime.now() - timedelta(weeks=2)).timestamp()),

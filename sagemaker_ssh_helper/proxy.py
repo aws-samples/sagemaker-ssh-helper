@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import time
 from abc import ABC
@@ -7,13 +8,18 @@ from abc import ABC
 class SSMProxy(ABC):
     logger = logging.getLogger('sagemaker-ssh-helper')
 
-    def __init__(self, ssh_listen_port: int, extra_args: str = "") -> None:
+    def __init__(self, ssh_listen_port: int, extra_args: str = "", region_name: str = None) -> None:
         super().__init__()
+        self.region_name = region_name
         self.extra_args = extra_args
         self.ssh_listen_port = ssh_listen_port
 
     def connect_to_ssm_instance(self, instance_id):
         self.logger.info(f"Connecting to {instance_id} with SSM and start SSH port forwarding")
+
+        env = os.environ.copy()
+        if self.region_name:
+            env["AWS_DEFAULT_REGION"] = self.region_name
 
         # The script will create a new SSH key in ~/.ssh/sagemaker-ssh-gw
         #   and transfer the public key ~/.ssh/sagemaker-ssh-gw.pub to the instance via S3
@@ -21,7 +27,7 @@ class SSMProxy(ABC):
                              f" -L localhost:{self.ssh_listen_port}:localhost:22"
                              f" {self.extra_args}"
                              " -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-                             .split(' '))
+                             .split(' '), env=env)
 
         time.sleep(30)  # allow 30 sec to initialize
 

@@ -28,7 +28,8 @@ class SSHEnvironmentWrapper(ABC):
     def __init__(self,
                  ssm_iam_role: str,
                  bootstrap_on_start: bool = True,
-                 connection_wait_time_seconds: int = 600):
+                 connection_wait_time_seconds: int = 600,
+                 sagemaker_session: sagemaker.Session = None):
         f"""
         :param ssm_iam_role: the SSM role without prefix, e.g. 'service-role/SageMakerRole'
             See https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-managed-instance-activation.html .
@@ -38,7 +39,8 @@ class SSHEnvironmentWrapper(ABC):
         :param connection_wait_time_seconds: How long to wait before a SageMaker entry point.
             Can be 0 (don't wait).
         """
-        self.ssh_log = SSHLog()
+        self.sagemaker_session = sagemaker_session or sagemaker.Session()
+        self.ssh_log = SSHLog(region_name=self.sagemaker_session.boto_region_name)
 
         if ssm_iam_role != '':
             if ssm_iam_role.startswith("arn:aws:iam::"):
@@ -102,7 +104,7 @@ class SSHEnvironmentWrapper(ABC):
         if "mi-" not in instance_id:
             raise ValueError(f"instance_id doesn't start with 'mi-': {instance_id}")
 
-        ssm_proxy = SSMProxy(ssh_listen_port, extra_args)
+        ssm_proxy = SSMProxy(ssh_listen_port, extra_args, self.sagemaker_session.boto_region_name)
         p = ssm_proxy.connect_to_ssm_instance(instance_id)
 
         if self.connection_wait_time_seconds > 0:
@@ -115,7 +117,8 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
     def __init__(self, estimator: sagemaker.estimator.EstimatorBase, ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600,
                  ssh_instance_count: int = 2):
-        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds)
+        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds,
+                         estimator.sagemaker_session)
 
         if estimator.instance_groups is not None:
             # TODO: add support for heterogeneous clusters
@@ -168,7 +171,7 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600):
         super().__init__(ssm_iam_role,
-                         bootstrap_on_start, connection_wait_time_seconds)
+                         bootstrap_on_start, connection_wait_time_seconds, model.sagemaker_session)
         if self.ssm_iam_role == '':
             self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(model.role)
         self.model = model
@@ -183,10 +186,10 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         self.model.env = env
 
     def get_instance_ids(self, retry=360):
-        return SSHLog().get_endpoint_ssm_instance_ids(self.model.endpoint_name, retry)
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.model.endpoint_name, retry)
 
     def wait_for_endpoint(self):
-        sagemaker.Session().wait_for_endpoint(self.model.endpoint_name)
+        self.sagemaker_session.wait_for_endpoint(self.model.endpoint_name)
 
     @classmethod
     def create(cls, model: sagemaker.model.Model, connection_wait_time_seconds: int = 600):
@@ -200,7 +203,7 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600):
         super().__init__(ssm_iam_role,
-                         bootstrap_on_start, connection_wait_time_seconds)
+                         bootstrap_on_start, connection_wait_time_seconds, mdm.sagemaker_session)
         self.mdm = mdm
         if mdm.model:
             self.model = mdm.model
@@ -228,10 +231,10 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
             self.mdm.env = env
 
     def get_instance_ids(self, retry=360):
-        return SSHLog().get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry)
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry)
 
     def wait_for_endpoint(self):
-        sagemaker.Session().wait_for_endpoint(self.mdm.endpoint_name)
+        self.sagemaker_session.wait_for_endpoint(self.mdm.endpoint_name)
 
     @classmethod
     def create(cls, mdm: sagemaker.multidatamodel.MultiDataModel, connection_wait_time_seconds: int = 600):
@@ -245,7 +248,8 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True,
                  connection_wait_time_seconds: int = 600):
-        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds)
+        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds,
+                         processor.sagemaker_session)
         if self.ssm_iam_role == '':
             self.ssm_iam_role = SSHEnvironmentWrapper.ssm_role_from_iam_arn(processor.role)
         self.processor = processor
@@ -261,7 +265,7 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
     def get_instance_ids(self, retry=360):
         job: ProcessingJob = self.processor.latest_job
-        return SSHLog().get_processing_ssm_instance_ids(job.job_name, retry)
+        return self.ssh_log.get_processing_ssm_instance_ids(job.job_name, retry)
 
     def wait_processing_job(self):
         job: ProcessingJob = self.processor.latest_job
@@ -294,7 +298,7 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
 class SSHTransformerWrapper(SSHEnvironmentWrapper):
     def __init__(self, transformer: sagemaker.transformer.Transformer, model_wrapper: SSHModelWrapper):
-        super().__init__('', True, model_wrapper.connection_wait_time_seconds)
+        super().__init__('', True, model_wrapper.connection_wait_time_seconds, transformer.sagemaker_session)
         self.transformer = transformer
         self.model_wrapper = model_wrapper
 

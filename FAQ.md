@@ -178,6 +178,44 @@ predicted_value = predictor.predict(data=..., target_model=model_path)
 
 See [#7](https://github.com/aws-samples/sagemaker-ssh-helper/issues/7) for this request.
 
+### How to start a job with SageMaker SSH Helper in an AWS Region different from my default one?
+
+Define the SSH wrapper as usual, e.g.:
+
+```python
+import boto3
+import sagemaker
+from sagemaker.pytorch import PyTorchProcessor
+
+from sagemaker_ssh_helper.wrapper import SSHProcessorWrapper
+
+wait_time = ...
+role = ...
+
+boto3_session = boto3.session.Session(region_name='eu-west-2')  # <-- AWS Region override
+sagemaker_session = sagemaker.Session(boto_session=boto3_session)
+
+torch_processor = PyTorchProcessor(
+    sagemaker_session=sagemaker_session,
+    base_job_name='ssh-pytorch-processing',
+    framework_version='1.9.1',
+    py_version='py38',
+    role=role,
+    instance_count=1,
+    instance_type="ml.m5.xlarge",
+    max_runtime_in_seconds=60 * 60 * 3,
+)
+
+ssh_wrapper = SSHProcessorWrapper.create(torch_processor, connection_wait_time_seconds=wait_time)
+```
+
+When calling `ssh_wrapper.get_instance_ids()`, the region will be taken automatically from the wrapper.
+
+However, when you connect to the containers from CLI with `aws ssm start-session` command or with `sm-local-ssh-*` commands, you need to redefine the AWS Region like this:
+```text
+AWS_DEFAULT_REGION=eu-west-2 sm-local-ssh-processing connect <<processing_job_name>>
+```
+
 ## AWS SSM Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
 
