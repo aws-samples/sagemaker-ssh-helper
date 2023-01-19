@@ -80,12 +80,16 @@ Another important part of it is the IAM policy with `ssm:AddTagsToResource` acti
 Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
 the newly created activations (instances) and not for existing ones that may already belong to other users.
 
-# How to troubleshoot jobs that are failing with the exception or error?
+### How to troubleshoot jobs that are failing with the exception or error?
 When the job is failing, the container stops, and you're not able to connect to the container anymore with SSM or SSH.
 
 To troubleshoot this situation, use the trick with `train_placeholder.py` described in the [README.md](README.md), and start your training script from the terminal or with the remote interpreter while the dummy script is running.
 
 A variation of this solution is to create a wrapper script, which executes your training script and sleeps forever after the training script exits. This is how after getting an error in CloudWatch you will be able to connect to the same container with SSM/SSH and troubleshoot its state.
+
+### I see folders like Desktop, Documents, Downloads, Pictures in SageMaker Studio, is it fine?
+
+Yes, it's fine. They don't contain any of your local data. These are the freshly created folders by the VNC server and XFC4 remote desktop environment. You will see them if you connect to SageMaker Studio with VNC client after running `sm-local-ssh-ide` command, as described [in the IDE integration section of the documentation](README.md#a-namestudioalocal-ide-integration-with-sagemaker-studio-over-ssh-for-pycharm--vscode).
 
 ## API Questions
 ### How can I change the SSH authorized keys bucket and location when running `sm-local-ssh-*` commands?
@@ -213,8 +217,19 @@ When calling `ssh_wrapper.get_instance_ids()`, the region will be taken automati
 
 However, when you connect to the containers from CLI with `aws ssm start-session` command or with `sm-local-ssh-*` commands, you need to redefine the AWS Region like this:
 ```text
-AWS_DEFAULT_REGION=eu-west-2 sm-local-ssh-processing connect <<processing_job_name>>
+AWS_REGION=eu-west-2 AWS_DEFAULT_REGION=eu-west-2 \
+  sm-local-ssh-processing connect <<processing_job_name>>
 ```
+We set both `AWS_REGION` and `AWS_DEFAULT_REGION`, because depending on your environment, either of this variable can be already set, and it can override another one.
+
+### How do I automate my pipeline with SageMaker SSH Helper end-to-end?
+There’s plenty of methods already available for you to automate everything.
+Take a loot at the [end-to-end automated tests](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/test_end_to_end.py) as an example.
+
+There's `get_instance_ids()` method already mentioned in the documentation. Underlying automation methods are available in the [SSHLog class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/log.py).
+
+Also check the method `start_ssm_connection_and_continue()` from the [SSHEnvironmentWrapper class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/wrapper.py) - it automates creating the SSH tunnel, running remote commands and stopping the waiting loop as well as graceful disconnect. Underlying implementation is in the [SSMProxy class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/proxy.py).
+
 
 ## AWS SSM Troubleshooting
 ### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`

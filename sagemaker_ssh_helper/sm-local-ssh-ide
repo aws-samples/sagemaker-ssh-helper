@@ -9,6 +9,7 @@ echo "Querying SSM instance ID for kernel gateway $SM_STUDIO_KGW_NAME"
 
 INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
+import logging; logging.basicConfig(level=logging.INFO);
 print(SSHLog().get_studio_kgw_ssm_instance_ids("$SM_STUDIO_KGW_NAME", retry=30)[0])
 EOF
 )
@@ -21,7 +22,7 @@ if [ -f ~/.sm-jb-license-server ]; then
     echo "sm-local-ssh-ide: ~/.sm-jb-license-server file with PyCharm license server host is already configured, skipping override"
     JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
 else
-    echo "sm-local-ssh-ide: Configuring PyCharm License server host"
+    echo "sm-local-ssh-ide: Saving PyCharm License server host into ~/.sm-jb-license-server"
     echo "$JB_LICENSE_SERVER_HOST" > ~/.sm-jb-license-server
 fi
 

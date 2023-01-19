@@ -16,7 +16,7 @@ class MyModel:
     number_t: Tensor = torch.tensor(0)
 
     def __init__(self, number: str):
-        self.number_t = torch.tensor(int(number))
+        self.number_t = torch.tensor(int(number) + 20000)
 
     def predict(self, input_data: Tensor):
         return [self.number_t + input_data[0]]

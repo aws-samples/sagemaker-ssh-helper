@@ -1,4 +1,4 @@
-import math
+import logging
 import os
 
 import sagemaker_ssh_helper
@@ -13,8 +13,10 @@ subprocess.check_call("pip install pydevd-pycharm~=213.6777.50".split())
 subprocess.check_call("sed -i~ -e s~s.replace~str(s).replace~ "
                       "/opt/conda/lib/python3.8/site-packages/_pydevd_bundle/pydevd_xml.py".split())
 
+logging.info("Connecting to remote debug server")
 import pydevd_pycharm
 pydevd_pycharm.settrace('127.0.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+logging.info("Connection complete")
 
 
 model_dir = os.getenv('SM_MODEL_DIR', '/opt/ml/model')

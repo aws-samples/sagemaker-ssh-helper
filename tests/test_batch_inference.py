@@ -46,8 +46,6 @@ def test_clean_batch_inference(request):
                           split_type='Line',
                           join_source="Input")
 
-    model.delete_model()
-
     test_util._cleanup_dir("./output", recreate=True)
     sagemaker_session.download_data(path='output', bucket=bucket,
                                     key_prefix='batch-transform/output')
@@ -100,12 +98,8 @@ def test_batch_ssh(request):
                           join_source="Input",
                           wait=False)
 
-    try:
-        ssh_transformer_wrapper.start_ssm_connection_and_continue(16022, 90)
-        ssh_transformer_wrapper.wait_transform_job()
-
-    finally:
-        model.delete_model()
+    ssh_transformer_wrapper.start_ssm_connection_and_continue(16022, 90)
+    ssh_transformer_wrapper.wait_transform_job()
 
     test_util._cleanup_dir("./output", recreate=True)
     sagemaker_session.download_data(path='output', bucket=bucket,

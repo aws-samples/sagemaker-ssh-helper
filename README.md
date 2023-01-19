@@ -60,6 +60,8 @@ If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.
 [Download Demo (.mov)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Shell-To-Training-Jobs.mov)
 
 ### Step 1: Install the library
+Before starting the whole procedure, check that both `pip` and `python` commands point to Python version 3.7 or higher with `python --version` command. 
+
 Install the latest stable version of library from the [PyPI repository](https://pypi.org/project/sagemaker-ssh-helper/):
 
 ```shell
@@ -111,7 +113,8 @@ on these nodes.
 Alternatively, pass the additional parameter `ssh_instance_count` with the desired instance count 
 to `SSHEstimatorWrapper.create()`.
 
-*Note:* if you a/ don't use script mode, b/ use basic `Estimator` class and c/ all code is already stored in your Docker container, check the code sample in the corresponding section of the [FAQ.md](FAQ.md#what-if-i-want-to-train-and-deploy-a-model-as-a-simple-estimator-in-my-own-container-without-passing-entry_point-and-source_dir).
+*Note:* if you a/ don't use script mode, b/ use basic `Estimator` class and c/ all code is already stored in your Docker container, check the code sample in [the corresponding section of the FAQ](FAQ.md#what-if-i-want-to-train-and-deploy-a-model-as-a-simple-estimator-in-my-own-container-without-passing-entry_point-and-source_dir).
+
 
 ### Step 3: Modify your training script
 Add into your `train.py` the following lines at the top:
@@ -199,6 +202,9 @@ This can be done without connecting to a python debugger beforehand.
 `apt-get install strace`
 8. Trace the process (replace 361 with your pid):  
 `sudo strace -p 361`
+
+#### <a name="cli-commands"></a>Tip: Pipeline automation
+If you're looking for the full automation of the pipeline with SSM and SSH, and not only with `get_instance_ids()` method, take a look at the [automation question in the FAQ](FAQ.md#how-do-i-automate-my-pipeline-with-sagemaker-ssh-helper-end-to-end).
 
 ## <a name="inference"></a>Connecting to SageMaker inference endpoints with SSM
 
@@ -454,6 +460,8 @@ It will reverse-forward the remote debugger port `12345` to your local machine's
 The local port `11022` will be connected to the remote SSH server port, 
 to allow you easily connect with SSH from command line.  
 
+> *Note:* Before running this command make sure that AWS CLI is configured to access the account with `aws s3 ls` and your default region is set with `aws configure` command. Your Python's `<path-to-venv>/bin/` directory should be in the `$PATH`, otherwise you will get a *"command not found"* error.
+
 *Tip:* If you want to connect processing, batch transform jor or to an inference endpoint with SSH, use
 `sm-local-ssh-processing`, `sm-local-ssh-transform` or `sm-local-ssh-inference` scripts respectively.
 
@@ -531,7 +539,7 @@ feature, which is also helpful in such a scenario.
 
 Follow the next steps for your local IDE integration with SageMaker Studio:
 
-1. Inside SageMaker Studio checkout (unpack) this repo and run [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
+1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it.
 
 *Tip:* Alternatively, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
 (you may need to ask your administrator to do this).
@@ -560,6 +568,8 @@ The local port `10022` will be connected to the remote SSH server port, to let y
 In addition, the local port `8889` will be connected to remote Jupyter notebook port, the port `5901` to the remote VNC server 
 and optionally the remote port `443` will be connected to your local PyCharm license server address.
 
+> *Note:* Before running this command make sure that AWS CLI is configured to access the account with `aws s3 ls` and your default region is set with `aws configure` command. Your Python's `<path-to-venv>/bin/` directory should be in the `$PATH`, otherwise you will get a *"command not found"* error.
+
 Feel free to use the script as a template. Clone and customize it, if you want to change the ports and hosts.
 
 6. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
@@ -571,24 +581,29 @@ Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
  * [Instructions for SSH in PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
  * [Instructions for SSH in VSCode](https://code.visualstudio.com/docs/remote/ssh)
 
-You can check that connection is working by running the SSH command in command line:
+*Tip (PyCharm):* When you configure Python interpreter in PyCharm, it's recommended to configure the path mapping (*"Sync folders"* deployment option) for you project to point into `/root/project_name` instead of default `/tmp/pycharm_project_123`. This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir. 
+
+*Tip (PyCharm):* Also instead of creating a new venv, point the Python interpreter to the existing location. 
+You can find this location by running a cell with `import sys; sys.executable` command in a SageMaker Studio notebook. You will get something like `/opt/conda/bin/python`.
+
+Now with PyCharm or VSCode you can run and debug the code remotely inside the kernel gateway app.
+
+You can also check from your local machine that connection is working by running the SSH command in command line:
 
 ```shell
 ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost
 ```
 
-Now with PyCharm or VSCode you can run and debug the code remotely inside the kernel gateway app.
-
-*Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
+If you don't want this `ssh` command to complain about remote host keys, when you switch to a different node,
 consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
-Moreover, you may now configure a remote Jupyter Server as 
+You may now configure a remote Jupyter Server as 
 http://127.0.0.1:8889/?token=<<your_token>>. You will find the full URL with remote token in 
 the [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) notebook in the output after running the cell
 with `sm-ssh-ide start` command. 
 
- * [Instructions for remote notebooks in PyCharm](https://www.jetbrains.com/help/pycharm/configuring-jupyter-notebook.html#configure-server)
- * [Instructions for remote notebooks in VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_connect-to-a-remote-jupyter-server) (don't forget to switch kernel to remote after configuring the remote server).
+ * [Instructions for remote Jupyter notebooks in PyCharm](https://www.jetbrains.com/help/pycharm/configuring-jupyter-notebook.html#configure-server)
+ * [Instructions for remote Jupyter notebooks in VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_connect-to-a-remote-jupyter-server) (don't forget to switch kernel to remote after configuring the remote server).
 
 You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
 and run IDE or any other GUI app on the remote desktop instead of your local machine.

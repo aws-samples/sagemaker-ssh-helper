@@ -22,6 +22,10 @@ extras = {
         "twine",
         "pydevd-pycharm~=213.6777.50",
         "scikit-learn"
+    ],
+    "test-macos": [
+        "tensorflow-macos==2.9.2",
+        "numpy==1.22.4"
     ]
 }
 setuptools.setup(

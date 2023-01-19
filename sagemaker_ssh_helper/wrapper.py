@@ -91,11 +91,11 @@ class SSHEnvironmentWrapper(ABC):
 
     def start_ssm_connection_and_continue(self, ssh_listen_port: int, retry: int = 360,
                                           extra_args: str = ""):
-        p = self.start_ssm_connection(ssh_listen_port, retry, extra_args)
-        p.terminate()
+        proxy = self.start_ssm_connection(ssh_listen_port, retry, extra_args)
+        proxy.disconnect()
 
     def start_ssm_connection(self, ssh_listen_port: int, retry: int = 360,
-                             extra_args: str = ""):
+                             extra_args: str = "") -> SSMProxy:
         instance_ids = self.get_instance_ids(retry)
         if not instance_ids:
             raise ValueError("instance_ids cannot be empty")
@@ -105,12 +105,12 @@ class SSHEnvironmentWrapper(ABC):
             raise ValueError(f"instance_id doesn't start with 'mi-': {instance_id}")
 
         ssm_proxy = SSMProxy(ssh_listen_port, extra_args, self.sagemaker_session.boto_region_name)
-        p = ssm_proxy.connect_to_ssm_instance(instance_id)
+        ssm_proxy.connect_to_ssm_instance(instance_id)
 
         if self.connection_wait_time_seconds > 0:
             ssm_proxy.terminate_waiting_loop()
 
-        return p
+        return ssm_proxy
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):

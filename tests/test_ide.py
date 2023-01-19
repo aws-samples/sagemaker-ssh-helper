@@ -13,12 +13,12 @@ def test_sagemaker_studio(request):
     studio_id = studio_ids[0]
 
     ssm_proxy = SSMProxy(10022)
-    p = ssm_proxy.connect_to_ssm_instance(studio_id)
+    ssm_proxy.connect_to_ssm_instance(studio_id)
 
     services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
     services_running = services_running.decode('latin1')
 
-    p.terminate()
+    ssm_proxy.disconnect()
 
     assert "127.0.0.1:8889" in services_running
     assert "127.0.0.1:5901" in services_running

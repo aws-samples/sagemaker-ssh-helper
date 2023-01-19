@@ -1,3 +1,4 @@
+import logging
 import os
 import distutils.dir_util
 
@@ -10,6 +11,8 @@ from sagemaker_training.cli.train import main as train_main
 
 
 def test_local_training():
+    logging.info("Starting training")
+
     f"""
     Compare with https://github.com/aws/amazon-sagemaker-examples/tree/main/advanced_functionality/scikit_bring_your_own/container/local_test .
     """
@@ -29,3 +32,5 @@ def test_local_training():
 
     assert os.path.exists("./opt_ml/model/model.pth")
     assert os.path.exists("./opt_ml/output/success")
+
+    logging.info("Finished training")

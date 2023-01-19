@@ -54,7 +54,7 @@ EOF
         apt-get -qq -y install tigervnc-standalone-server
     fi
 
-    apt-get -qq -y install ssh curl net-tools jq curl
+    apt-get -qq -y install ssh curl net-tools procps less jq curl vim rsync
     
     _install_aws_cli
     _install_ssm_agent_ubuntu
@@ -71,7 +71,7 @@ elif [[ "$1" == "set-jb-license-server" ]]; then
     if [ -f ~/.sm-jb-license-server ]; then
         echo "sm-ssh-ide: PyCharm license server host is already configured in ~/.sm-jb-license-server, skipping override"
     else
-        echo "sm-ssh-ide: Configuring PyCharm License server host"
+        echo "sm-ssh-ide: Saving PyCharm License server host into ~/.sm-jb-license-server"
         echo "$JB_LICENSE_SERVER_HOST" > ~/.sm-jb-license-server
     fi
 
@@ -80,7 +80,7 @@ elif [[ "$1" == "set-jb-license-server" ]]; then
     if grep -q "$JB_LICENSE_SERVER_HOST" /etc/hosts; then
         echo "sm-ssh-ide: Skipping the update of /etc/hosts with PyCharm license server (already there)"
     else
-        echo "sm-ssh-ide: Updating /etc/hosts with PyCharm license server"
+        echo "sm-ssh-ide: Updating /etc/hosts with PyCharm license server from ~/.sm-jb-license-server"
         echo "127.0.0.1  $JB_LICENSE_SERVER_HOST" >> /etc/hosts
     fi
 
@@ -89,9 +89,9 @@ elif [[ "$1" == "set-vnc-password" ]]; then
     VNC_PASSWORD="$2"
 
     if [ -f ~/.vnc/passwd ]; then
-        echo "sm-ssh-ide: VNC password is already set, skipping override"
+        echo "sm-ssh-ide: VNC password is already set in ~/.vnc/passwd, skipping override"
     else
-        echo "sm-ssh-ide: Configuring VNC password"
+        echo "sm-ssh-ide: Encrypting and saving VNC password to ~/.vnc/passwd"
         mkdir -p ~/.vnc
         echo "$VNC_PASSWORD" | vncpasswd -f > ~/.vnc/passwd
         chmod 600 ~/.vnc/passwd
@@ -103,10 +103,10 @@ elif [[ "$1" == "init-ssm" ]]; then
     LOCAL_USER_ID="$2"
 
     if [ -f ~/.sm-ssh-owner ]; then
-        echo "sm-ssh-ide: SSH owner user ID is already set, skipping override"
+        echo "sm-ssh-ide: SSH owner user ID is already set in ~/.sm-ssh-owner, skipping override"
         LOCAL_USER_ID="$(cat ~/.sm-ssh-owner)"
     else
-        echo "sm-ssh-ide: Configuring SSH owner user ID"
+        echo "sm-ssh-ide: Saving SSH owner user ID into ~/.sm-ssh-owner"
         echo "$LOCAL_USER_ID" > ~/.sm-ssh-owner
     fi
 
