@@ -43,14 +43,14 @@ practices and standards.
 
 ## Use Cases
 SageMaker SSH Helper supports a variety of use cases:
-- [Connecting to SageMaker training jobs with SSM](#training) - open a shell to the training job to examine its file systems,
-monitor resources, produce thread-dumps for stuck jobs, and interactively run your train script.
+- [Connecting to SageMaker training jobs with SSM](#training) - open a shell to a single- or multi-node training job to examine its file systems,
+monitor resources, produce thread-dumps for stuck jobs, and interactively run your train script
 - [Connecting to SageMaker inference endpoints with SSM](#inference)
 - [Connecting to SageMaker batch transform jobs](#batch-transform)
 - [Connecting to SageMaker processing jobs](#processing)  
 - [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server) - let SageMaker run your code that connects to PyCharm, to start line-by-line debugging with [PyDev.Debugger](https://pypi.org/project/pydevd-pycharm/), a.k.a. pydevd
 - [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter) - let PyCharm run or debug your code line-by-line inside SageMaker container with SSH interpreter
-- [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio)  
+- [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio) - iterate fast on a single node at early stages of development without submitting SageMaker jobs  
 
 If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.md).
 
@@ -153,13 +153,15 @@ With the instance id at hand, you will be able to connect to the training contai
 
 A. Connecting using command line:  
 
-1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
-Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
-   
-2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
+1. On the local machine, make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Run the following command to perform the installation:
 
-3. Run this command (replace the target value with the instance id for your SageMaker job). Example:
+```shell
+sm-local-configure
+```
+
+*Note:* If you start your training job from SageMaker Studio notebook, and execute the installation command from the image terminal, make sure that Python environment is activated, e.g., with `conda activate base`.
+
+2. Run this command (replace the target value with the instance id for your SageMaker job). Example:
 ```shell
 aws ssm start-session --target mi-1234567890abcdef0
 ```
@@ -425,34 +427,34 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 This procedure uses PyCharm's Professional feature: [Remote debugging with the Python remote debug server configuration](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-debug-config)
 
-1. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
-Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
-   
-2. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
+1. On the local machine, make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Run the following command to perform the installation:
 
-3. In PyCharm, go to the Run/Debug Configurations (Run -> Edit Configurations...), add a new Python Debug Server.
+```shell
+sm-local-configure
+```
+
+2. In PyCharm, go to the Run/Debug Configurations (Run -> Edit Configurations...), add a new Python Debug Server.
 Choose the fixed port, e. g. `12345`.
 
-4. Take the correct version of `pydevd-pycharm` package from the configuration window 
+3. Take the correct version of `pydevd-pycharm` package from the configuration window 
 and install it either through `requirements.txt` or by calling `pip` from your source code.
 
-5. Add commands to connect to the Debug Server to your code **after** the `setup_and_start_ssh()` (e.g., into [a training script](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/source_dir/training_debug/train_debug.py) that you submit as an entry point for a training job):
+4. Add commands to connect to the Debug Server to your code **after** the `setup_and_start_ssh()` (e.g., into [a training script](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/source_dir/training_debug/train_debug.py) that you submit as an entry point for a training job):
 ```python
 import pydevd_pycharm
 pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True, suspend=True)
 ```
 *Tip*: Check the argument's description in [the library source code](https://github.com/JetBrains/intellij-community/blob/dee787ef05d1187a71b7667652f6b25f3f573a1b/python/helpers/pydev/pydevd.py#L1663).
 
-6. Set extra breakpoints in your code with PyCharm, if needed
-7. Start the Debug Server in PyCharm
-8. Submit your code to SageMaker with SSH Helper as described in previous sections.
+5. Set extra breakpoints in your code with PyCharm, if needed
+6. Start the Debug Server in PyCharm
+7. Submit your code to SageMaker with SSH Helper as described in previous sections.
 Make sure you allow enough time for manually setting up the connection
 (do not set `connection_wait_time_seconds` to 0, recommended minimum value is 600, i.e. 10 minutes).
 Don't worry to set it to higher values, e.g. to 30 min, because you will be able to terminate the waiting loop 
 once you connect.
 
-9. Start the port forwarding script once SSH helper connects to SSM and starts waiting inside the training job:
+8. Start the port forwarding script once SSH helper connects to SSM and starts waiting inside the training job:
 ```shell
 sm-local-ssh-training connect <<training_job_name>>
 ```
@@ -480,9 +482,9 @@ otherwise the debugger will miss your breakpoints.
 *Tip:* If you don't want `ssh` command to complain about remote host keys, when you switch to a different node,
 consider adding this two options to the command: `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`.
 
-10. Stop the waiting loop – connect to the instance and terminate the loop.
+9. Stop the waiting loop – connect to the instance and terminate the loop.
 
-As already mentioned in the step 8, make sure you've put enough timeout to allow the port forwarding script set up a tunnel 
+As already mentioned, make sure you've put enough timeout to allow the port forwarding script set up a tunnel 
 before execution of your script continues.
 
 You can use the following CLI command from your local machine to stop the waiting loop (the `sm-wait` remote process):
@@ -495,16 +497,16 @@ Alternatively, if logged to the remote container already, run the `pkill` comman
 pkill sm-wait
 ```
 
-11. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug Server.
+10. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug Server.
 
 If everything is set up correctly, and you followed all the steps, PyCharm will stop at your breakpoint, highlight the line and wait for your input. Debug Server window will say “connected”. You can now press, for example, F8 to "Step Over" the code line or F7 to "Step Into" the code line.
 
 ## <a name="remote-interpreter"></a>Remote code execution with PyCharm / VSCode over SSH
 
-Follow the following steps from the section [Remote debugging with PyCharm Debug Server](#pycharm-debug-server):
-1, 2 and 8, 9, 10.
+Follow the steps from the section [Remote debugging with PyCharm Debug Server](#pycharm-debug-server):
+1, 7, 8, 9.
 
-Before terminating the waiting loop (step 10), make sure you configured and connected to SSH host and port 
+Before terminating the waiting loop (step 9), make sure you configured and connected to SSH host and port 
 `localhost:11022` from your IDE as the remote Python interpreter. 
 Provide `~/.ssh/sagemaker-ssh-gw` as the private key.
 
@@ -551,15 +553,19 @@ Follow the next steps for your local IDE integration with SageMaker Studio:
 Once configured, from the Launcher choose the environment, puck up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
 
-2. On the local machine, make sure that the latest AWS CLI **v2** is installed (v1 won't work), as described in 
-[the documentation for AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).  
-Verify that running `aws --version` prints `aws-cli/2.x.x ...`  
-   
-3. Install AWS Session Manager CLI plugin as described in [the SSM documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
+2. On the local machine, install the library: 
 
-4. Install the library: `pip install sagemaker-ssh-helper` .
+```
+pip install sagemaker-ssh-helper
+```
 
-5. Start SSH tunnel and port forwarding from a terminal session as follows:
+3. Make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Run the following command to perform the installation:
+
+```shell
+sm-local-configure
+```
+
+4. Start SSH tunnel and port forwarding from a terminal session as follows:
 
 ```shell
 sm-local-ssh-ide connect <<kernel_gateway_app_name>>
@@ -577,11 +583,11 @@ and optionally the remote port `443` will be connected to your local PyCharm lic
 
 Feel free to use the script as a template. Clone and customize it, if you want to change the ports and hosts.
 
-6. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
+5. Connect local PyCharm or VSCode with remote Python interpreter by using `root@localhost:10022` as SSH parameters.
 Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
 
 > *Note:* The SSH key is automatically generated on your local machine every time 
-> when you run `sm-local-ssh-ide` command from step 5.
+> when you run `sm-local-ssh-ide` command from step 4.
 
  * [Instructions for SSH in PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
  * [Instructions for SSH in VSCode](https://code.visualstudio.com/docs/remote/ssh)
@@ -613,7 +619,7 @@ with `sm-ssh-ide start` command.
 You can also start the VNC session to [vnc://localhost:5901](vnc://localhost:5901) (e.g. on macOS with Screen Sharing app)
 and run IDE or any other GUI app on the remote desktop instead of your local machine.
 
-7. If you want to switch to another [kernel](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-change-image.html) 
+6. If you want to switch to another [kernel](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-change-image.html) 
 or [instance](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-switch-instance-type.html), feel free to do so from SageMaker Studio UI and re-run
 [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb).
 
@@ -626,7 +632,7 @@ you will only need to re-run `sm-local-ssh-ide` command on your local machine.
 If you're using lifecycle configuration script, just start another image terminal with different environment settings 
 from Launcher.
 
-8. Don't forget to [shut down](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-shut-down.html)
+7. Don't forget to [shut down](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-run-and-manage-shut-down.html)
 SageMaker Studio resources, if you don't need them anymore, e.g., launched notebooks, terminals, apps and instances.
 
 #### Troubleshooting IDE integration
