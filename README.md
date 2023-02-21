@@ -48,8 +48,8 @@ monitor resources, produce thread-dumps for stuck jobs, and interactively run yo
 - [Connecting to SageMaker inference endpoints with SSM](#inference)
 - [Connecting to SageMaker batch transform jobs](#batch-transform)
 - [Connecting to SageMaker processing jobs](#processing)  
-- [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server)  
-- [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter)
+- [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server) - let SageMaker run your code that connects to PyCharm, to start line-by-line debugging with [PyDev.Debugger](https://pypi.org/project/pydevd-pycharm/), a.k.a. pydevd
+- [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter) - let PyCharm run or debug your code line-by-line inside SageMaker container with SSH interpreter
 - [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio)  
 
 If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.md).
@@ -437,7 +437,7 @@ Choose the fixed port, e. g. `12345`.
 4. Take the correct version of `pydevd-pycharm` package from the configuration window 
 and install it either through `requirements.txt` or by calling `pip` from your source code.
 
-5. Add commands to connect to the Debug Server to your code:
+5. Add commands to connect to the Debug Server to your code **after** the `setup_and_start_ssh()` (e.g., into [a training script](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/source_dir/training_debug/train_debug.py) that you submit as an entry point for a training job):
 ```python
 import pydevd_pycharm
 pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True, suspend=True)
@@ -465,7 +465,7 @@ to allow you easily connect with SSH from command line.
 *Tip:* If you want to connect processing, batch transform jor or to an inference endpoint with SSH, use
 `sm-local-ssh-processing`, `sm-local-ssh-transform` or `sm-local-ssh-inference` scripts respectively.
 
-While this script is running, you may connect with SSH to the specified local port:
+While the `sm-local-ssh-training` script is running, you *may* connect with SSH to the specified local port (but it's not needed for PyCharm Debugger to work):
 
 ```shell
 ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost
@@ -495,7 +495,9 @@ Alternatively, if logged to the remote container already, run the `pkill` comman
 pkill sm-wait
 ```
 
-11. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug server.
+11. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug Server.
+
+If everything is set up correctly, and you followed all the steps, PyCharm will stop at your breakpoint, highlight the line and wait for your input. Debug Server window will say “connected”. You can now press, for example, F8 to "Step Over" the code line or F7 to "Step Into" the code line.
 
 ## <a name="remote-interpreter"></a>Remote code execution with PyCharm / VSCode over SSH
 
@@ -529,8 +531,11 @@ while True:
     time.sleep(10)
 ```
 
-Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.amazonaws.cn/en_us/sagemaker/latest/dg/train-warm-pools.html) 
+Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) 
 feature, which is also helpful in such a scenario.
+
+*Pro Tip:* Note that you can debug your code line by line in this scenario, too! See [the tutorial in PyCharm documentation](https://www.jetbrains.com/help/pycharm/debugging-your-first-python-application.html#debug). Some users might prefer this option instead of using Debug Server as a simpler alternative.
+
 
 ## <a name="studio"></a>Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode
 
@@ -541,7 +546,7 @@ Follow the next steps for your local IDE integration with SageMaker Studio:
 
 1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it.
 
-*Tip:* Alternatively, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
+*Tip:* Alternatively, instead of using `SageMaker_SSH_IDE.ipynb`, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
 (you may need to ask your administrator to do this).
 Once configured, from the Launcher choose the environment, puck up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
@@ -562,7 +567,7 @@ sm-local-ssh-ide <<kernel_gateway_app_name>>
 
 The parameter <<kernel_gateway_app_name>> is either taken from SageMaker Studio when you run notebook [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb), 
 or from the image terminal as a `hostname` output, or you can find it in the list of running apps in AWS Console under Amazon SageMaker -> Control Panel -> User Details.
-It looks like this: `datascience-1-0-ml-g4dn-xlarge-1234567890abcdef0`.
+It looks like this: `sagemaker-data-science-ml-m5-large-1234567890abcdef0`.
 
 The local port `10022` will be connected to the remote SSH server port, to let you connect with SSH from IDE.  
 In addition, the local port `8889` will be connected to remote Jupyter notebook port, the port `5901` to the remote VNC server 
@@ -581,7 +586,7 @@ Also provide `~/.ssh/sagemaker-ssh-gw` as the private key.
  * [Instructions for SSH in PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
  * [Instructions for SSH in VSCode](https://code.visualstudio.com/docs/remote/ssh)
 
-*Tip (PyCharm):* When you configure Python interpreter in PyCharm, it's recommended to configure the path mapping (*"Sync folders"* deployment option) for you project to point into `/root/project_name` instead of default `/tmp/pycharm_project_123`. This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir. 
+*Tip (PyCharm):* When you configure Python interpreter in PyCharm, it's recommended to configure [the path mapping](https://www.jetbrains.com/help/pycharm/deployment-mappings-tab.htm) (*"Sync folders"* deployment option) for you project to point into `/root/project_name` instead of default `/tmp/pycharm_project_123`. This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir. 
 
 *Tip (PyCharm):* Also instead of creating a new venv, point the Python interpreter to the existing location. 
 You can find this location by running a cell with `import sys; sys.executable` command in a SageMaker Studio notebook. You will get something like `/opt/conda/bin/python`.
@@ -625,6 +630,8 @@ from Launcher.
 SageMaker Studio resources, if you don't need them anymore, e.g., launched notebooks, terminals, apps and instances.
 
 #### Troubleshooting IDE integration
+
+* Check that the managed instance in AWS Console in Systems Manager -> Fleet Manager section appears as "Online". Check that you're able to connect to the node from the Console by selecting Node actions -> Start terminal session. 
 
 * Check that the instance ID your local machine tries to connect to and instance ID 
 that `init-ssm` command produced in the notebook are the same.
