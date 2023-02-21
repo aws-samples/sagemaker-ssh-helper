@@ -30,6 +30,8 @@ cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
 }
 EOF
 
+cp /etc/amazon/ssm/seelog.xml.template /etc/amazon/ssm/seelog.xml
+
 CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
 
 response=$(aws ssm create-activation \
