@@ -36,6 +36,11 @@ The scripts like `sm-local-ssh-ide` and `sm-local-ssh-training` will now work fr
 Git Bash session under a regular user, and you may continue to work in your local IDE 
 on Windows as usual.
 
+### How do you start the SSM session without knowing EC2 instance or container ID?
+
+Indeed, when you run a SageMaker job, there are no EC2 instances or generic containers visible in AWS console, because the instances and containers are managed by the SageMaker service.
+The trick that SageMaker SSH Helper is using is [the hybrid activations](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-managedinstances.html), with SageMaker containers effectively becoming managed instances when SSM agent starts, akin to on-premises instances. The managed instances have an ID that starts with 'mi-' prefix and once they connect to the Systems Manager, you're able to see them in AWS Console in Systems Manager -> Node Manager -> Fleet Manager section.
+
 
 ### For Training, should I use Warm Pools or SageMaker SSH Helper?
 
@@ -221,6 +226,14 @@ AWS_REGION=eu-west-2 AWS_DEFAULT_REGION=eu-west-2 \
   sm-local-ssh-processing connect <<processing_job_name>>
 ```
 We set both `AWS_REGION` and `AWS_DEFAULT_REGION`, because depending on your environment, either of this variable can be already set, and it can override another one.
+
+### How to configure an AWS CLI profile to work with SageMaker SSH Helper?
+
+You can control AWS CLI settings with [environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), in particular, this is how to select the AWS CLI profile with `sm-local-ssh-*` tools:
+
+```shell
+AWS_PROFILE=<<profile_name>> sm-local-ssh-ide <<kernel_gateway_app_name>> 
+```
 
 ### How do I automate my pipeline with SageMaker SSH Helper end-to-end?
 There’s plenty of methods already available for you to automate everything.
