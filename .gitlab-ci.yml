@@ -49,7 +49,7 @@ run_tests:
     # Run tests
     - echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
     - cd tests
-    - coverage run -m pytest --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
+    - coverage run -m pytest --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
     - coverage report
     - coverage xml
     - cd -
@@ -68,6 +68,7 @@ run_tests:
       - pip_freeze_after_test.txt
       - pip_freeze_diff_test.txt
       - tests/pytest_report.xml
+      - tests/pytest_report.html
       - tests/coverage.xml
       - bandit.txt
       - flake8.txt
