@@ -1,0 +1,23 @@
+#!/bin/bash
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
+uname -a
+cat /etc/issue
+cat /etc/os-release
+
+# Smoke test - Python version
+python --version
+
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -o -q -d /tmp/ /tmp/awscliv2.zip
+/tmp/aws/install
+aws --version
+
+echo "AWS default region - $AWS_DEFAULT_REGION"
+echo "AWS region - $AWS_REGION"
+aws configure list
+
+_install_session_manager_plugin_ubuntu

@@ -14,6 +14,6 @@ def setup_and_start_ssh():
 
     if start_ssh == "true" and node_rank < ssh_instance_count:
         print(f"Starting SSH Helper setup")
-        subprocess.check_call(["bash", os.path.join(os.path.dirname(__file__), "sm-setup-ssh")])
+        subprocess.check_call(["bash", os.path.join(os.path.dirname(os.path.abspath(__file__)), "sm-setup-ssh")])  # nosec B607  # absolute path is calculated
     else:
         print(f"Skipping SSH Helper setup")

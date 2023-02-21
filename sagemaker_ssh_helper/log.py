@@ -117,4 +117,3 @@ class SSHLog:
             )
         lines = response['results']
         return lines
-

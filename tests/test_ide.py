@@ -18,7 +18,12 @@ def test_sagemaker_studio(request):
     services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
     services_running = services_running.decode('latin1')
 
+    python_version = ssm_proxy.run_command_with_output("/opt/conda/bin/python --version")
+    python_version = python_version.decode('latin1')
+
     ssm_proxy.disconnect()
 
     assert "127.0.0.1:8889" in services_running
     assert "127.0.0.1:5901" in services_running
+
+    assert "Python 3.8" in python_version

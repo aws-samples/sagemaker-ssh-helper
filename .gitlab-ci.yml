@@ -1,48 +1,73 @@
-# Official language image. Look for the different tagged releases at:
-# https://hub.docker.com/r/library/python/tags/
 image: public.ecr.aws/docker/library/python:3.8
 
 stages:
-  - scan_source_code
   - test
-
-scan_source_code:
-  stage: scan_source_code
-  script:
-    - pip install bandit
-    # TODO: replace with inline # nosec
-    - bandit -r ./ --skip B603,B404,B101,B607 2>&1 | tee bandit.txt
-  artifacts:
-    paths:
-      - bandit.txt
 
 run_tests:
   stage: test
   resource_group: ssh-helper-tests
   script:
-    # Smoke test - Python version
-    - python --version
-    # Install AWS CLI
-    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-    - unzip -o -q -d /tmp/ /tmp/awscliv2.zip
-    - /tmp/aws/install
-    - aws --version
-    - echo "AWS default region - $AWS_DEFAULT_REGION"
-    - echo "AWS region - $AWS_REGION"
-    - aws configure list
-    # Install SSM plugin
-    - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
-    - dpkg -i session-manager-plugin.deb
-    - session-manager-plugin --version
     # Install the package
+    - pip freeze --all | tee pip_freeze_before.txt
+    - pip install '.'
+    - pip check
+    - pip freeze --all | tee pip_freeze_after.txt
     - pip install '.[test]'
-    - pip freeze | tee pip_freeze.txt
+    - pip check
+    - pip freeze --all | tee pip_freeze_after_test.txt
+    - '( diff pip_freeze_before.txt pip_freeze_after.txt || : ) | tee pip_freeze_diff.txt'
+    - '( diff pip_freeze_after.txt pip_freeze_after_test.txt || : ) | tee pip_freeze_diff_test.txt'
+    # Scanning sources
+    - bandit -r ./sagemaker_ssh_helper/ ./tests/ *.py --skip B603,B404,B101 2>&1 | tee bandit.txt
+    - flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ *.py | tee flake8.txt
+    # Update IAM/SSM policies
+    - curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+    - apt-get install -y nodejs
+    - npm install -g aws-cdk
+    - cdk --version
+    - cd cdk
+    - cdk deploy SSH-IAM-SSM-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
+    - cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
+    - AWS_REGION=eu-west-2 cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
+    - cd -
+    # Configure local env
+    - sm-local-configure
+    # Assume CI/CD role
+    - sts=( $(
+        aws sts assume-role
+        --role-arn "$GITLAB_ROLE_ARN"
+        --role-session-name "gitlab-ci"
+        --duration-seconds 18000
+        --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+        --output text
+        ) )
+    - export AWS_ACCESS_KEY_ID=${sts[0]}
+    - export AWS_SECRET_ACCESS_KEY=${sts[1]}
+    - export AWS_SESSION_TOKEN=${sts[2]}
+    # Build BYOC docker image for tests
+    - sm-docker build . --file tests/byoc/Dockerfile --repo byoc-ssh:latest
     # Run tests
     - echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
-    - cd tests; pytest --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
+    - cd tests
+    - coverage run -m pytest --junitxml=pytest_report.xml -m 'not manual' -o sagemaker_role=$SAGEMAKER_ROLE -o kernel_gateway_name=$KERNEL_GATEWAY_NAME $PYTEST_EXTRA_ARGS
+    - coverage report
+    - coverage xml
+    - cd -
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     when: always
     reports:
       junit: tests/pytest_report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: tests/coverage.xml
     paths:
-      - pip_freeze.txt
+      - pip_freeze_before.txt
+      - pip_freeze_after.txt
+      - pip_freeze_diff.txt
+      - pip_freeze_after_test.txt
+      - pip_freeze_diff_test.txt
+      - tests/pytest_report.xml
+      - tests/coverage.xml
+      - bandit.txt
+      - flake8.txt

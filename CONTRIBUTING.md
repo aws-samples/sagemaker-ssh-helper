@@ -15,7 +15,7 @@ on these features or planning to implement them in the future.
 
 To start development, install the library on your local machine:
 ```shell
-pip install '.[test]'
+pip install '.[test,dev]'
 ```
 
 Make sure all tests are working:

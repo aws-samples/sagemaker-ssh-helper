@@ -1,15 +1,21 @@
+import boto3
 import pytest
 
 from sagemaker.pytorch import PyTorch
 from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper, SSHEstimatorWrapper
-
-
-def test_sm_role_ini(request):
-    assert str(request.config.getini('sagemaker_role')).startswith("arn:aws:iam::")
+from test_util import _create_bucket_if_doesnt_exist
 
 
 def test_ssm_role_from_arn():
     assert SSHEnvironmentWrapper.ssm_role_from_iam_arn("arn:aws:iam::012345678901:role/service-role/SageMakerRole") \
+           == 'service-role/SageMakerRole'
+
+
+def test_ssm_role_from_arn_cn_us_gov():
+    # See: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+    assert SSHEnvironmentWrapper.ssm_role_from_iam_arn("arn:aws-cn:iam::012345678901:role/service-role/SageMakerRole") \
+           == 'service-role/SageMakerRole'
+    assert SSHEnvironmentWrapper.ssm_role_from_iam_arn("arn:aws-us-gov:iam::012345678901:role/service-role/SageMakerRole") \
            == 'service-role/SageMakerRole'
 
 
@@ -88,3 +94,11 @@ def test_wrapper_infers_ssm_role_simple():
         connection_wait_time_seconds=3600
     )
     assert wrapper.ssm_iam_role == 'SageMakerRole'
+
+
+def test_bucket_exists():
+    account_id = boto3.client('sts').get_caller_identity().get('Account')
+    custom_bucket_name = f'sagemaker-test-bucket-{account_id}'
+    _ = _create_bucket_if_doesnt_exist('eu-west-1', custom_bucket_name)
+    bucket = _create_bucket_if_doesnt_exist('eu-west-1', custom_bucket_name)
+    bucket.delete()

@@ -1,18 +1,25 @@
 import setuptools
 
 required_packages = [
-    "sagemaker>=2.125.0"
+    "sagemaker>=2.125.0",
+    "psutil",
+    "sagemaker-training"
 ]
 
 extras = {
     "test": [
-        "black",
         "coverage",
         "flake8",
         "mock",
         "pydocstyle",
         "pytest",
         "pytest-cov",
+        "bandit",
+        "aws-cdk-lib==2.64.0",
+        "constructs>=10.0.0,<11.0.0",
+        "sagemaker-studio-image-build",
+    ],
+    "dev": [
         "sagemaker-pytorch-training",
         "sagemaker-pytorch-inference",
         "torch-model-archiver",
@@ -20,17 +27,22 @@ extras = {
         "wheel",
         "build",
         "twine",
-        "pydevd-pycharm~=213.6777.50",
+        "pydevd-pycharm~=222.4459.20",
         "scikit-learn"
     ],
-    "test-macos": [
+
+    # Fix installation on Apple M1 (see https://github.com/scipy/scipy/issues/13102):
+    # conda install scipy
+    # conda install sentencepiece
+    # conda install grpcio
+    "dev-macos": [
         "tensorflow-macos==2.9.2",
         "numpy==1.22.4"
     ]
 }
 setuptools.setup(
     name='sagemaker-ssh-helper',
-    version='1.9.2.dev0',
+    version='1.10.0.dev0',
     author="Amazon Web Services",
     description="A helper library to connect into Amazon SageMaker with AWS Systems Manager and SSH",
     long_description="SageMaker SSH Helper is a library that helps you to securely connect to Amazon SageMaker's "
@@ -53,11 +65,13 @@ setuptools.setup(
              'sagemaker_ssh_helper/sm-local-ssh-transform',
              'sagemaker_ssh_helper/sm-local-ssh-inference',
              'sagemaker_ssh_helper/sm-local-ssh-processing',
+             'sagemaker_ssh_helper/sm-local-configure',
              'sagemaker_ssh_helper/sm-start-ssh',
              'sagemaker_ssh_helper/sm-ssh-ide',
              'sagemaker_ssh_helper/sm-save-env',
              'sagemaker_ssh_helper/sm-init-ssm',
-             'sagemaker_ssh_helper/sm-setup-ssh'],
+             'sagemaker_ssh_helper/sm-setup-ssh',
+             ],
     python_requires=">=3.7",
     install_requires=required_packages,
     extras_require=extras,
@@ -72,5 +86,6 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ]
 )

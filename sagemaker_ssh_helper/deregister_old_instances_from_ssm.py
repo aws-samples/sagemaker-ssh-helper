@@ -63,7 +63,7 @@ def filter_to_ssh_helper_instances(prefilter_instances):
     filters_def = [
         {'key': 'PingStatus', 'value': 'ConnectionLost'},
     ]
-    
+
     instances = prefilter_instances
     for filter_def in filters_def:
         instances = filter_instances_regex(instances, filter_def['key'], filter_def['value'])
@@ -78,7 +78,7 @@ def is_approved_to_deregister(instance_count):
     import sys
     if '--preapproving-deregistration' in sys.argv:
         return True
-    
+
     # read interactively
     user_input = input(f'Do you want to deregister these {instance_count} instances? (y/n) ')
     return user_input == 'y'
@@ -97,7 +97,8 @@ def deregister(ssh_helper_instances):
             print('Aborting execution.')
             break
     print(f'Successfully deregistered {deregistered_success_count} out of {len(ssh_helper_instances)}'
-              f' instances to deregister.')
+          f' instances to deregister.')
+
 
 def main():
     print('This utility will deregister from SSM all SageMaker SSH Helper related managed instances.')
@@ -105,14 +106,14 @@ def main():
     print('Usage: python deregister_old_instances_from_ssm.py [--preapproving-deregistration]')
     print('--preapproving-deregistration: will automatically approve the deregistration of all instances found, without prompting.')
     print('')
-    
+
     all_managed_instances = get_ssm_managed_instances()
-    
+
     print(f'Found {len(all_managed_instances)} managed instances in total in SSM')
     ssh_helper_instances = filter_to_ssh_helper_instances(all_managed_instances)
     num_of_instances_to_deregister = len(ssh_helper_instances)
     print(f'Found {num_of_instances_to_deregister} managed instances related to SSH Helper')
-    
+
     if is_approved_to_deregister(num_of_instances_to_deregister):
         deregister(ssh_helper_instances)
 

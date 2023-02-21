@@ -29,4 +29,4 @@ do
     echo "sm-wait: Still waiting ($loop)..."
 done
 
-echo "sm-wait: Waiting complete. No 'pkill' command received. Do you need to increase timeout?"
+echo "sm-wait: Waiting complete. No 'pkill' command received. Had SSM initialization failed? Do you need to increase timeout?"

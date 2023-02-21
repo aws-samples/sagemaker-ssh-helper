@@ -17,11 +17,4 @@
   <component name="connectionManager">
     <option name="activeConnectionId" value="sso;https://view.awsapps.com/start" />
   </component>
-  <component name="connectionPinningManager">
-    <option name="pinnedConnections">
-      <map>
-        <entry key="aws.codewhisperer" value="sso;https://view.awsapps.com/start" />
-      </map>
-    </option>
-  </component>
 </project>

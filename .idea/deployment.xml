@@ -12,9 +12,8 @@
       <paths name="root@localhost:11022">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_clean" web="" />
-            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_debug" />
+            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_clean" web="/" />
+            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_debug" web="/" />
           </mappings>
         </serverdata>
       </paths>

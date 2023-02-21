@@ -7,7 +7,7 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 import subprocess
 # Take the command from Python Debug Server dialog in PyCharm
-subprocess.check_call("pip install pydevd-pycharm~=213.6777.50".split())
+subprocess.check_call("pip install pydevd-pycharm~=222.4459.20".split())
 
 # Next command is the patch for https://youtrack.jetbrains.com/issue/PY-40552
 subprocess.check_call("sed -i~ -e s~s.replace~str(s).replace~ "
