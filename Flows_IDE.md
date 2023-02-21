@@ -21,7 +21,7 @@ AWS SSM agent and other packages from the Internet, and installs them.
 9-12. Optionally: The DS starts a process to copy over his SSH Public key to the container, needed to set up port forwarding via SSH (e.g., for remote debugging)
 
 13. The DS uses the AWS SSM CLI to start a shell providing the managed instance ID as a parameter.
-Optionally, user starts SSM with SSH port forwarding with the helper command `sm-local-ssh-ide <<kernel_gateway_name>>`.
+Optionally, user starts SSM with SSH port forwarding with the helper command `sm-local-ssh-ide connect <<kernel_gateway_name>>`.
 14. AWS SSM IAM rules verify that the user is allowed to take this action and that the instance is tagged with the DS's AWS user/role name. Once verified, a session is created with the SSM Agent running in the container.
 15. The SSM agent generates a shell by spinning off a new bash shell process.
 Optionally, SSH port forwarding starts over SSM connection to let user connect to remote processes over TCP

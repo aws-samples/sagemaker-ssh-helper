@@ -562,7 +562,7 @@ Verify that running `aws --version` prints `aws-cli/2.x.x ...`
 5. Start SSH tunnel and port forwarding from a terminal session as follows:
 
 ```shell
-sm-local-ssh-ide <<kernel_gateway_app_name>>
+sm-local-ssh-ide connect <<kernel_gateway_app_name>>
 ```
 
 The parameter <<kernel_gateway_app_name>> is either taken from SageMaker Studio when you run notebook [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb), 
