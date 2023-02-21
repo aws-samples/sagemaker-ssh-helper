@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Commands:
-# connect <kernel_gateway_name>
+# connect <kernel_gateway_name> [--ssh-only]
 # run-command <command> <args...>
 
 # SageMaker Studio Kernel Gateway name is usually the same as the hostname,
@@ -12,6 +12,7 @@ COMMAND=$1
 if [[ "$COMMAND" == "connect" ]]; then
 
   SM_STUDIO_KGW_NAME="$2"
+  OPTIONS="$3"
 
   echo "Querying SSM instance ID for kernel gateway $SM_STUDIO_KGW_NAME"
 
@@ -34,11 +35,17 @@ EOF
   fi
 
 
-  sm-local-start-ssh "$INSTANCE_ID" \
-      -L localhost:10022:localhost:22 \
-      -L localhost:5901:localhost:5901 \
-      -L localhost:8889:localhost:8889 \
-      -R 127.0.0.1:443:"$JB_LICENSE_SERVER_HOST":443
+  if [[ "$OPTIONS" == "--ssh-only" ]]; then
+    sm-local-start-ssh "$INSTANCE_ID" \
+        -L localhost:10022:localhost:22
+  else
+    sm-local-start-ssh "$INSTANCE_ID" \
+        -L localhost:10022:localhost:22 \
+        -L localhost:5901:localhost:5901 \
+        -L localhost:8889:localhost:8889 \
+        -R 127.0.0.1:443:"$JB_LICENSE_SERVER_HOST":443
+  fi
+
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 

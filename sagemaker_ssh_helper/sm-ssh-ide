@@ -58,7 +58,8 @@ EOF
     
     _install_aws_cli
     _install_ssm_agent_ubuntu
-    
+    _install_session_manager_plugin_ubuntu
+
     echo "startxfce4" > ~/.xsession
     chmod +x ~/.xsession
 
@@ -116,11 +117,18 @@ import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper
 print(SSHEnvironmentWrapper.ssm_role_from_iam_arn(sagemaker.get_execution_role()))
 EOF
     )
+    SSH_CREATOR=$($SM_STUDIO_PYTHON <<EOF
+import boto3; print(boto3.client('sts').get_caller_identity().get('UserId'));
+EOF
+    )
+
+    SSH_RESOURCE_NAME=$(jq --raw-output '.ResourceName' < /opt/ml/metadata/resource-metadata.json)
+    SSH_TIMESTAMP=$(date +%s)
 
     echo "sm-ssh-ide: Will use SSM role: $SSH_SSM_ROLE"
 
     export SSH_SSM_ROLE
-    export SSH_SSM_TAGS="Key=SSHOwner, Value=$LOCAL_USER_ID"
+    export SSH_SSM_TAGS="[{\"Key\": \"SSHOwner\", \"Value\": \"$LOCAL_USER_ID\"}, {\"Key\": \"SSHCreator\", \"Value\": \"$SSH_CREATOR\"}, {\"Key\": \"SSHTimestamp\", \"Value\": \"$SSH_TIMESTAMP\"}, {\"Key\": \"SSHResourceName\", \"Value\": \"$SSH_RESOURCE_NAME\"}]"
 
     echo "sm-ssh-ide: Will add the following tags to the managed instance: $SSH_SSM_TAGS"
 
@@ -130,6 +138,8 @@ EOF
 elif [[ "$1" == "start" ]]; then
     echo "sm-ssh-ide: Using SageMaker Studio Python: $SM_STUDIO_PYTHON"
 
+    OPTIONS=$2
+
     set -e
 
     if [[ -f /tmp/.ssh-ide-local-lock ]]; then
@@ -138,19 +148,23 @@ elif [[ "$1" == "start" ]]; then
 
     touch /tmp/.ssh-ide-local-lock
 
-    export USER=root
-    vncserver :1
-
     service ssh start
 
-    "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install --root-user-action ignore -q notebook
+    if [[ "$OPTIONS" != "--ssh-only" ]]; then
 
-    "$SM_STUDIO_PYTHON" -m jupyter notebook --no-browser --port=8889 --ip=127.0.0.1 --allow-root \
-      >/tmp/jupyter-notebook.log 2>&1 &
+      export USER=root
+      vncserver :1
 
-    sleep 2
+      "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install --root-user-action ignore -q notebook
 
-    tail /tmp/jupyter-notebook.log
+      "$SM_STUDIO_PYTHON" -m jupyter notebook --no-browser --port=8889 --ip=127.0.0.1 --allow-root \
+        >/tmp/jupyter-notebook.log 2>&1 &
+
+      sleep 2
+
+      tail /tmp/jupyter-notebook.log
+
+    fi
 
 elif [[ "$1" == "ssm-agent" ]]; then
 
