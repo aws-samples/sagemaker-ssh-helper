@@ -12,7 +12,7 @@ run_tests:
     - pip install '.'
     - pip check
     - pip freeze --all | tee pip_freeze_after.txt
-    - pip install '.[test]'
+    - pip install '.[cdk,test]'
     - pip check
     - pip freeze --all | tee pip_freeze_after_test.txt
     - '( diff pip_freeze_before.txt pip_freeze_after.txt || : ) | tee pip_freeze_diff.txt'
