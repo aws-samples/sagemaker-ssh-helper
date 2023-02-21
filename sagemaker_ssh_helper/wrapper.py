@@ -43,8 +43,9 @@ class SSHEnvironmentWrapper(ABC):
         self.ssh_log = SSHLog(region_name=self.sagemaker_session.boto_region_name)
 
         if ssm_iam_role != '':
-            if ssm_iam_role.startswith("arn:aws:iam::"):
-                raise ValueError("ssm_iam_role should be only the part after role/, not ARN")
+            if self._is_arn(ssm_iam_role):
+                raise ValueError(f"ssm_iam_role should be only the part after role/, not a full ARN. "
+                                 f"Got: {ssm_iam_role}")
 
         self.ssm_iam_role = ssm_iam_role
         self.bootstrap_on_start = bootstrap_on_start
@@ -75,8 +76,8 @@ class SSHEnvironmentWrapper(ABC):
 
     @classmethod
     def ssm_role_from_iam_arn(cls, iam_arn: str):
-        if not iam_arn.startswith('arn:aws:iam::'):
-            raise ValueError("iam_arn should start with 'arn:aws:iam::'")
+        if not cls._is_arn(iam_arn):
+            raise ValueError(f"iam_arn should be a full ARN, got: '{iam_arn}'")
         role_position = iam_arn.find(":role/")
         if role_position == -1:
             raise ValueError("':role/' not found in the iam_arn")
@@ -111,6 +112,11 @@ class SSHEnvironmentWrapper(ABC):
             ssm_proxy.terminate_waiting_loop()
 
         return ssm_proxy
+
+    @staticmethod
+    def _is_arn(arn):
+        import re
+        return re.match(r'^arn:(aws|aws-cn|aws-us-gov):iam::([0-9]+):role/(\S+)$', arn)
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
@@ -274,8 +280,8 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
     def augmented_input(self):
         f"""
         Attaches the helper as the processing input. Required for processing jobs until the package is in PyPI.
-        
-        Useful for processing jobs that don't support source_dir in run() method, e. g. {PySparkProcessor} and 
+
+        Useful for processing jobs that don't support source_dir in run() method, e. g. {PySparkProcessor} and
           {ScriptProcessor} / {SKLearnProcessor}
 
         :return: a ProcessingInput to pass into processor#run(..., inputs=[...])

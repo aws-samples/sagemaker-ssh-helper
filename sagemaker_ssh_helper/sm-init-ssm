@@ -30,6 +30,8 @@ cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
 }
 EOF
 
+CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
+
 response=$(aws ssm create-activation \
   --description "Activation for Amazon SageMaker integration with SSH and IDEs" \
   --iam-role "$SSH_SSM_ROLE" \

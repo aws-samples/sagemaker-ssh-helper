@@ -42,29 +42,43 @@ function _install_unzip() {
 }
 
 function _install_aws_cli() {
+  echo "sagemaker-ssh-helper: Installing AWS CLI v2"
+  which aws || echo "sagemaker-ssh-helper: No previous installation of AWS CLI detected"
+  which pip >/dev/null 2>&1 && pip uninstall --root-user-action ignore -y awscli
   curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
   unzip -o -q -d /tmp/ /tmp/awscliv2.zip
   /tmp/aws/install --update
 }
 
 function _install_ssm_agent_ubuntu() {
-  CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
-  curl -sS -o /tmp/amazon-ssm-agent.deb "https://s3.$CURRENT_REGION.amazonaws.com/amazon-ssm-$CURRENT_REGION/latest/debian_amd64/amazon-ssm-agent.deb"
+  curl -sS -o /tmp/amazon-ssm-agent.deb "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
   dpkg -i /tmp/amazon-ssm-agent.deb
 }
 
 function _install_ssm_agent_centos() {
-  CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
-  yum install -y "https://s3.$CURRENT_REGION.amazonaws.com/amazon-ssm-$CURRENT_REGION/latest/linux_amd64/amazon-ssm-agent.rpm"
+  yum install -y "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm" \
+    || echo "Already installed?"
 }
 
 function _install_ssm_agent() {
+  echo "sagemaker-ssh-helper: Installing SSM Agent"
   if _is_centos; then
     _install_ssm_agent_centos
   else
     _install_ssm_agent_ubuntu
   fi
 }
+
+function _install_session_manager_plugin_ubuntu() {
+  curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "/tmp/session-manager-plugin.deb"
+  dpkg -i /tmp/session-manager-plugin.deb
+}
+
+function _install_session_manager_plugin_centos() {
+  yum install -y "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" \
+    || echo "Already installed?"
+}
+
 
 function _install_curl_ubuntu() {
   apt-get install -y --no-install-recommends curl
