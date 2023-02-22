@@ -14,8 +14,6 @@ if [[ "$COMMAND" == "connect" ]]; then
   SM_STUDIO_KGW_NAME="$2"
   OPTIONS="$3"
 
-  echo "Querying SSM instance ID for kernel gateway $SM_STUDIO_KGW_NAME"
-
   INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
 import logging; logging.basicConfig(level=logging.INFO);
