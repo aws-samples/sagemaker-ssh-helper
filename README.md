@@ -292,7 +292,7 @@ predicted_value = predictor.predict(data=..., target_model=model_name)
 ```
 
 **Important:** Make sure that you're passing to `add_model()` the model ready for deployment with dependencies located at `model.repacked_model_data`,
-not the `estimator.model_data` that points to the trained model artifact.
+not the `estimator.model_data` that points to the trained model artifact. To obtain model suitable for inference, you might want to deploy first your model to a temporary single-node endpoint, so that SageMaker Python SDK takes care of repacking the model.
 
 Also note that SageMaker SSH Helper will be lazy loaded together with your model upon the first prediction request.
 So you should try to connect to the multi-model endpoint only after calling `predict()`.
