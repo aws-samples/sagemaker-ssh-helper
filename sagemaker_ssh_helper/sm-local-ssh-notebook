@@ -1,29 +1,24 @@
 #!/bin/bash
 
 # Commands:
-# connect <processing_job_name>
-# stop-waiting
+# connect <notebook-instance-name>
 # run-command <command> <args...>
 
 COMMAND=$1
 
 if [[ "$COMMAND" == "connect" ]]; then
-  JOB_NAME=$2
+
+  NOTEBOOK_INSTANCE_NAME="$2"
 
   INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.manager import SSMManager;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSMManager().get_processing_instance_ids("$JOB_NAME", timeout_in_sec=300)[0])
+print(SSMManager().get_notebook_instance_ids("$NOTEBOOK_INSTANCE_NAME", timeout_in_sec=300)[0])
 EOF
   )
 
   sm-local-start-ssh "$INSTANCE_ID" \
-      -R localhost:12345:localhost:12345 \
-      -L localhost:14022:localhost:22
-
-elif [[ "$COMMAND" == "stop-waiting" ]]; then
-
-  $0 run-command pkill sm-wait
+      -L localhost:17022:localhost:22
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 
@@ -31,7 +26,7 @@ elif [[ "$COMMAND" == "run-command" ]]; then
   ARGS=$*
 
   # shellcheck disable=SC2086
-  ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost \
+  ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     $ARGS
 

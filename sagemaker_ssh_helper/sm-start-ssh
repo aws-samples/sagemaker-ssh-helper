@@ -28,6 +28,9 @@ fi
 # Save and dump SageMaker environment for SSH sessions
 sm-save-env
 
+# Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
+ps wwwe -p 1 | tail -1
+
 sed -i -e 's~^PermitRootLogin~#PermitRootLogin~' /etc/ssh/sshd_config
 echo PermitRootLogin yes >> /etc/ssh/sshd_config
 

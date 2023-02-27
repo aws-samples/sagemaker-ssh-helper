@@ -117,20 +117,10 @@ import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper
 print(SSHEnvironmentWrapper.ssm_role_from_iam_arn(sagemaker.get_execution_role()))
 EOF
     )
-    SSH_CREATOR=$($SM_STUDIO_PYTHON <<EOF
-import boto3; print(boto3.client('sts').get_caller_identity().get('UserId'));
-EOF
-    )
-
-    SSH_RESOURCE_NAME=$(jq --raw-output '.ResourceName' < /opt/ml/metadata/resource-metadata.json)
-    SSH_TIMESTAMP=$(date +%s)
-
     echo "sm-ssh-ide: Will use SSM role: $SSH_SSM_ROLE"
 
     export SSH_SSM_ROLE
-    export SSH_SSM_TAGS="[{\"Key\": \"SSHOwner\", \"Value\": \"$LOCAL_USER_ID\"}, {\"Key\": \"SSHCreator\", \"Value\": \"$SSH_CREATOR\"}, {\"Key\": \"SSHTimestamp\", \"Value\": \"$SSH_TIMESTAMP\"}, {\"Key\": \"SSHResourceName\", \"Value\": \"$SSH_RESOURCE_NAME\"}]"
-
-    echo "sm-ssh-ide: Will add the following tags to the managed instance: $SSH_SSM_TAGS"
+    export SSH_OWNER_TAG=$LOCAL_USER_ID
 
     # Init SSM and pipe the output to CloudWatch (stdout of the pid 1).
     sm-init-ssm | tee /proc/1/fd/1

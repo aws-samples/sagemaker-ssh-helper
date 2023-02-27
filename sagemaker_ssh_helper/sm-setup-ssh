@@ -24,7 +24,11 @@ flock /tmp/sm-install-lock bash "$0" install-helper-scripts
 # flock prevents from starting more than 1 process
 # redirection to /proc/1/fd/1 will write logs to CloudWatch
 if [[ ! -f /tmp/sm-start-ssh-lock ]]; then
-  nohup flock -n /tmp/sm-start-ssh-lock sm-start-ssh >/proc/1/fd/1 2>&1 &
+  if [[ "$SSH_LOG_TO_STDOUT" == "true" ]]; then
+    flock -n /tmp/sm-start-ssh-lock sm-start-ssh &
+  else
+    nohup flock -n /tmp/sm-start-ssh-lock sm-start-ssh >/proc/1/fd/1 2>&1 &
+  fi
 fi
 
 sm-wait "${SSH_WAIT_TIME_SECONDS:-60}"

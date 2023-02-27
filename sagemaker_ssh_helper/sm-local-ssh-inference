@@ -19,7 +19,7 @@ EOF
 
   sm-local-start-ssh "$INSTANCE_ID" \
       -R localhost:12345:localhost:12345 \
-      -L localhost:11022:localhost:22
+      -L localhost:12022:localhost:22
 
 elif [[ "$COMMAND" == "stop-waiting" ]]; then
 

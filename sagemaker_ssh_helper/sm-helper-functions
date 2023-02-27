@@ -59,7 +59,7 @@ function _install_aws_cli_macos() {
 function _install_aws_cli() {
   echo "sagemaker-ssh-helper: Installing AWS CLI v2"
   which aws || echo "sagemaker-ssh-helper: No previous installation of AWS CLI detected"
-  which pip >/dev/null 2>&1 && pip install -U pip && pip uninstall --root-user-action ignore -y awscli
+  which pip >/dev/null 2>&1 && pip uninstall -y awscli
 
   # See: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
   if _is_macos; then

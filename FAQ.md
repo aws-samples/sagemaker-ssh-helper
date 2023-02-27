@@ -36,6 +36,12 @@ The scripts like `sm-local-ssh-ide` and `sm-local-ssh-training` will now work fr
 Git Bash session under a regular user, and you may continue to work in your local IDE 
 on Windows as usual.
 
+### Are SageMaker notebook instances supported?
+
+Yes, the setup is similar to SageMaker Studio. Run [SageMaker_SSH_Notebook.ipynb](SageMaker_SSH_Notebook.ipynb) on the notebook instance and `sm-local-ssh-notebook connect <<notebook-instance-name>>` your local machine. 
+
+Review the instructions for [SageMaker Studio integration with PyCharm / VSCode](README.md#studio) for the rest of  details.
+
 ### How do you start the SSM session without knowing EC2 instance or container ID?
 
 Indeed, when you run a SageMaker job, there are no EC2 instances or generic containers visible in AWS console, because the instances and containers are managed by the SageMaker service.
@@ -69,7 +75,7 @@ Yes, requires adding same IAM permissions to SageMaker role as described in the 
 
 ### How SageMaker SSH Helper protects users from impersonating each other?
 
-This logic is enforced by IAM policy. See the step 3b in [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) 
+This logic is enforced by IAM policy. See the manual step 3 in [IAM_SSM_Setup.md](IAM_SSM_Setup.md#manual-setup) 
 for a policy example.
 
 It works as follows: the SageMaker SSH Helper assigns on behalf of the user the tag `SSHOwner`
@@ -81,7 +87,7 @@ When a user attempts to connect to an instance, IAM will authorize the user base
 on their ID and the value of the `SSHOwner` tag. The user will be denied to access the instance 
 if the instance doesn't belong to them.
 
-Another important part of it is the IAM policy with `ssm:AddTagsToResource` action, described in the step 1d.
+Another important part of it is the IAM policy with `ssm:AddTagsToResource` action, described in the manual step 2.
 Limiting this action only to SageMaker role as a resource will allow adding and updating tags only for
 the newly created activations (instances) and not for existing ones that may already belong to other users.
 
@@ -114,6 +120,8 @@ In this case, make sure that SageMaker SSH Helper is installed in your `Dockerfi
 ```dockerfile
 RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--NEW--
 ```
+
+**Important:** Make sure that the version installed into the container matches the version of the library on your local machine.
 
 The code for running estimators and inference will look like this:
 ```python
@@ -187,6 +195,51 @@ predicted_value = predictor.predict(data=..., target_model=model_path)
 
 See [#7](https://github.com/aws-samples/sagemaker-ssh-helper/issues/7) for this request.
 
+### What if I want to use an estimator in a hyperparameter tuning job (HPO) and connect to a stuck training job with SSM?
+
+In this case, `wrapper.get_instance_ids()` won't really work because you don't call `fit()` directly on the estimator and SSH Helper does not understand what training job you are trying to connect to.
+
+You should use extra lower-level APIs to fetch the training job name of your interest first, and then either use `SSMManager` (recommended) or `SSHLog` (slower) to fetch their instance ids from the code:
+
+```python
+import time
+
+from sagemaker.mxnet import MXNet
+from sagemaker.tuner import HyperparameterTuner
+
+from sagemaker_ssh_helper.manager import SSMManager
+from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
+
+estimator = MXNet(...)
+
+_ = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=0)
+
+objective_metric_name = ...
+hyperparameter_ranges = ...
+metric_definitions = ...
+
+tuner = HyperparameterTuner(estimator,
+                            objective_metric_name,
+                            hyperparameter_ranges,
+                            metric_definitions,
+                            ...
+                            )
+
+tuner.fit(wait=False)
+
+time.sleep(15)  # allow training jobs to start
+
+analytics = tuner.analytics()
+training_jobs = analytics.training_job_summaries()
+training_job_name = training_jobs[0]['TrainingJobName']
+
+instance_ids = SSMManager().get_training_instance_ids(training_job_name, 300)
+
+print(f'To connect over SSM run: aws ssm start-session --target {instance_ids[0]}')
+```
+
+*Note:* If you want to connect to a stuck training job from the command line with SSH, use `sm-local-ssh-training` script, as for any other regular training job.
+
 ### How to start a job with SageMaker SSH Helper in an AWS Region different from my default one?
 
 Define the SSH wrapper as usual, e.g.:
@@ -239,7 +292,7 @@ AWS_PROFILE=<<profile_name>> sm-local-ssh-ide <<kernel_gateway_app_name>>
 There’s plenty of methods already available for you to automate everything.
 Take a loot at the [end-to-end automated tests](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/test_end_to_end.py) as an example.
 
-There's `get_instance_ids()` method already mentioned in the documentation. Underlying automation methods are available in the [SSHLog class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/log.py).
+There's `get_instance_ids()` method already mentioned in the documentation. Underlying automation methods are available in the [SSMManager class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/manager.py) and the [SSHLog class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/log.py).
 
 Also check the method `start_ssm_connection_and_continue()` from the [SSHEnvironmentWrapper class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/wrapper.py) - it automates creating the SSH tunnel, running remote commands and stopping the waiting loop as well as graceful disconnect. Underlying implementation is in the [SSMProxy class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/proxy.py).
 
@@ -277,7 +330,7 @@ An error occurred (BadRequest) when calling the StartSession operation: Enable a
 ```
 
 First, check that your instance shows as an advanced instance in Fleet Manager.
-If it doesn't show up there, you've probably missed the step "2h" in [IAM_SSM_Setup.md](IAM_SSM_Setup.md).
+If it doesn't show up there, you've probably missed the manual step 1 in [IAM_SSM_Setup.md](IAM_SSM_Setup.md#manual-setup).
 
 Also check that you're connecting from the same AWS region. Run the following command on your local machine and check that the region is the same as in your AWS console:
 ```shell

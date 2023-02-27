@@ -17,6 +17,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="root@localhost:17022 agent">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/opt/ml/input/data/notebook/sagemaker-ssh-helper" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>

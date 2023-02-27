@@ -17,19 +17,20 @@ from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
 
 from sagemaker_ssh_helper.log import SSHLog
+from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
 
 
 class SSHEnvironmentWrapper(ABC):
     logger = logging.getLogger('sagemaker-ssh-helper')
-    ssh_log = None
-    augmented = False
 
     def __init__(self,
                  ssm_iam_role: str,
                  bootstrap_on_start: bool = True,
                  connection_wait_time_seconds: int = 600,
-                 sagemaker_session: sagemaker.Session = None):
+                 sagemaker_session: sagemaker.Session = None,
+                 local_user_id: str = None,
+                 log_to_stdout: bool = False):
         f"""
         :param ssm_iam_role: the SSM role without prefix, e.g. 'service-role/SageMakerRole'
             See https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-managed-instance-activation.html .
@@ -39,7 +40,10 @@ class SSHEnvironmentWrapper(ABC):
         :param connection_wait_time_seconds: How long to wait before a SageMaker entry point.
             Can be 0 (don't wait).
         """
+        self.log_to_stdout = log_to_stdout
+        self.local_user_id = local_user_id
         self.sagemaker_session = sagemaker_session or sagemaker.Session()
+        self.ssm_manager = SSMManager(region_name=self.sagemaker_session.boto_region_name)
         self.ssh_log = SSHLog(region_name=self.sagemaker_session.boto_region_name)
 
         if ssm_iam_role != '':
@@ -50,6 +54,7 @@ class SSHEnvironmentWrapper(ABC):
         self.ssm_iam_role = ssm_iam_role
         self.bootstrap_on_start = bootstrap_on_start
         self.connection_wait_time_seconds = connection_wait_time_seconds
+        self.augmented = False
 
     @classmethod
     def dependency_dir(cls):
@@ -59,8 +64,11 @@ class SSHEnvironmentWrapper(ABC):
         self.augmented = True
 
     def _augment_env(self, env):
-        caller_id = boto3.client('sts').get_caller_identity()
-        user_id = caller_id.get('UserId')
+        if self.local_user_id is None:
+            caller_id = boto3.client('sts').get_caller_identity()
+            user_id = caller_id.get('UserId')
+        else:
+            user_id = self.local_user_id
 
         user_id_masked = list(user_id)
         for i in range(3, len(user_id_masked) - 4):
@@ -71,7 +79,8 @@ class SSHEnvironmentWrapper(ABC):
 
         env.update({'START_SSH': str(self.bootstrap_on_start).lower(),
                     'SSH_SSM_ROLE': self.ssm_iam_role,
-                    'SSH_SSM_TAGS': f"Key=SSHOwner,Value={user_id}",
+                    'SSH_OWNER_TAG': user_id,
+                    'SSH_LOG_TO_STDOUT': str(self.log_to_stdout).lower(),
                     'SSH_WAIT_TIME_SECONDS': f"{self.connection_wait_time_seconds}"})
 
     @classmethod
@@ -122,9 +131,10 @@ class SSHEnvironmentWrapper(ABC):
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
     def __init__(self, estimator: sagemaker.estimator.EstimatorBase, ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True, connection_wait_time_seconds: int = 600,
-                 ssh_instance_count: int = 2):
+                 ssh_instance_count: int = 2, local_user_id: str = None,
+                 log_to_stdout: bool = False):
         super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds,
-                         estimator.sagemaker_session)
+                         estimator.sagemaker_session, local_user_id, log_to_stdout)
 
         if estimator.instance_groups is not None:
             # TODO: add support for heterogeneous clusters
@@ -151,23 +161,33 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         self.estimator.environment = env
 
     def get_instance_ids(self, retry=360):
+        training_job = self._latest_training_job()
+        return self.ssm_manager.get_training_instance_ids(training_job.name, retry * 10, self.ssh_instance_count)
+
+    def _latest_training_job(self):
         training_job: _TrainingJob = self.estimator.latest_training_job
-        return self.ssh_log.get_training_ssm_instance_ids(training_job.name, retry, self.ssh_instance_count)
+        if training_job is None:
+            raise AssertionError("No training jobs found for estimator. Did you call estimator.fit() first?")
+        return training_job
 
     def wait_training_job(self):
-        training_job: _TrainingJob = self.estimator.latest_training_job
+        training_job = self._latest_training_job()
         training_job.wait()
 
     def stop_training_job(self):
-        training_job: _TrainingJob = self.estimator.latest_training_job
+        training_job = self._latest_training_job()
         training_job.stop()
         training_job.wait()
 
     @classmethod
     def create(cls, estimator: sagemaker.estimator.EstimatorBase, connection_wait_time_seconds: int = 600,
-               ssh_instance_count: int = 2):
+               ssh_instance_count: int = 2, local_user_id: str = None, log_to_stdout: bool = False):
+        # noinspection PyProtectedMember
+        if estimator._current_job_name:
+            raise AssertionError("You should call wrapper.create() before estimator.fit().")
         result = SSHEstimatorWrapper(estimator, connection_wait_time_seconds=connection_wait_time_seconds,
-                                     ssh_instance_count=ssh_instance_count)
+                                     ssh_instance_count=ssh_instance_count, local_user_id=local_user_id,
+                                     log_to_stdout=log_to_stdout)
         result._augment()
         return result
 
@@ -192,13 +212,15 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         self.model.env = env
 
     def get_instance_ids(self, retry=360):
-        return self.ssh_log.get_endpoint_ssm_instance_ids(self.model.endpoint_name, retry)
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.model.endpoint_name, retry * 10)
 
     def wait_for_endpoint(self):
         self.sagemaker_session.wait_for_endpoint(self.model.endpoint_name)
 
     @classmethod
     def create(cls, model: sagemaker.model.Model, connection_wait_time_seconds: int = 600):
+        if model.endpoint_name:
+            raise AssertionError("You should call wrapper.create() before model.deploy().")
         result = SSHModelWrapper(model, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
@@ -237,13 +259,15 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
             self.mdm.env = env
 
     def get_instance_ids(self, retry=360):
-        return self.ssh_log.get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry)
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry * 10)
 
     def wait_for_endpoint(self):
         self.sagemaker_session.wait_for_endpoint(self.mdm.endpoint_name)
 
     @classmethod
     def create(cls, mdm: sagemaker.multidatamodel.MultiDataModel, connection_wait_time_seconds: int = 600):
+        if hasattr(mdm, 'endpoint_name') and mdm.endpoint_name:
+            raise AssertionError("You should call wrapper.create() before mdm.deploy().")
         result = SSHMultiModelWrapper(mdm, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
@@ -271,7 +295,7 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
     def get_instance_ids(self, retry=360):
         job: ProcessingJob = self.processor.latest_job
-        return self.ssh_log.get_processing_ssm_instance_ids(job.job_name, retry)
+        return self.ssm_manager.get_processing_instance_ids(job.job_name, retry * 10)
 
     def wait_processing_job(self):
         job: ProcessingJob = self.processor.latest_job
@@ -297,6 +321,8 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
     @classmethod
     def create(cls, processor: sagemaker.processing.Processor, connection_wait_time_seconds: int = 600):
+        if processor.latest_job:
+            raise AssertionError("You should call wrapper.create() before processor.run()")
         result = SSHProcessorWrapper(processor, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
@@ -313,7 +339,7 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
 
     def get_instance_ids(self, retry=360):
         job: _TransformJob = self.transformer.latest_transform_job
-        return SSHLog().get_transformer_ssm_instance_ids(job.job_name, retry)
+        return self.ssm_manager.get_transformer_instance_ids(job.job_name, retry * 10)
 
     def wait_transform_job(self):
         job: _TransformJob = self.transformer.latest_transform_job
@@ -326,6 +352,8 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
         if model_wrapper.model.name != transformer.model_name:
             raise ValueError(f"Transformer and model should have the same name, "
                              f"got: {transformer.model_name} and {transformer.model_name}")
+        if transformer.latest_transform_job:
+            raise AssertionError("You should call wrapper.create() before transformer.transform()")
         result = SSHTransformerWrapper(transformer, model_wrapper)
         result._augment()
         return result

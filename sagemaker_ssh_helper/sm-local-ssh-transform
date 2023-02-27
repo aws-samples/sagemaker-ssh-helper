@@ -11,15 +11,15 @@ if [[ "$COMMAND" == "connect" ]]; then
   JOB_NAME=$2
 
   INSTANCE_ID=$(python <<EOF
-import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
+import sagemaker; from sagemaker_ssh_helper.manager import SSMManager;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSHLog().get_transformer_ssm_instance_ids("$JOB_NAME", retry=30)[0])
+print(SSMManager().get_transformer_instance_ids("$JOB_NAME", timeout_in_sec=300)[0])
 EOF
   )
 
   sm-local-start-ssh "$INSTANCE_ID" \
       -R localhost:12345:localhost:12345 \
-      -L localhost:11022:localhost:22
+      -L localhost:16022:localhost:22
 
 elif [[ "$COMMAND" == "stop-waiting" ]]; then
 

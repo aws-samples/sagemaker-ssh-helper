@@ -11,9 +11,9 @@ if [[ "$COMMAND" == "connect" ]]; then
   JOB_NAME=$2
 
   INSTANCE_ID=$(python <<EOF
-import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
+import sagemaker; from sagemaker_ssh_helper.manager import SSMManager;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSHLog().get_training_ssm_instance_ids("$JOB_NAME", retry=30)[0])
+print(SSMManager().get_training_instance_ids("$JOB_NAME", timeout_in_sec=300)[0])
 EOF
   )
 
