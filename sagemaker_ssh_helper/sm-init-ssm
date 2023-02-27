@@ -34,14 +34,43 @@ cp /etc/amazon/ssm/seelog.xml.template /etc/amazon/ssm/seelog.xml
 
 CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
 
+_install_jq
+
+SSH_CREATOR=$(aws sts get-caller-identity | jq --raw-output '.UserId')
+SSH_TIMESTAMP=$(date +%s)
+
+if [ -f /opt/ml/metadata/resource-metadata.json ]; then
+  # SageMaker Studio and notebook instances
+  RESOURCE_NAME=$(jq --raw-output '.ResourceName' < /opt/ml/metadata/resource-metadata.json)
+  RESOURCE_ARN=$(jq --raw-output '.ResourceArn' < /opt/ml/metadata/resource-metadata.json)
+elif [ -f /opt/ml/config/processingjobconfig.json ]; then
+  # Processing job
+  RESOURCE_NAME=$(jq --raw-output '.ProcessingJobName' < /opt/ml/config/processingjobconfig.json)
+  RESOURCE_ARN=$(jq --raw-output '.ProcessingJobArn' < /opt/ml/config/processingjobconfig.json)
+elif [[ "$TRAINING_JOB_NAME" != "" ]]; then
+  # Training job
+  RESOURCE_NAME=$TRAINING_JOB_NAME
+  RESOURCE_ARN=$TRAINING_JOB_ARN  # empty for local mode
+elif [[ "$TRANSFORM_JOB_ARN" != "" ]]; then
+  # Transform job
+  RESOURCE_NAME=$(echo $TRANSFORM_JOB_ARN | awk -F/ '{print $2}')
+  RESOURCE_ARN=$TRANSFORM_JOB_ARN
+else
+  # Probably, endpoint
+  RESOURCE_NAME=""
+  RESOURCE_ARN=""
+fi
+
+echo "sm-init-ssm: Detected SageMaker resource: $RESOURCE_NAME [$RESOURCE_ARN]"
+
+SSH_SSM_TAGS="[{\"Key\": \"SSHOwner\", \"Value\": \"$SSH_OWNER_TAG\"}, {\"Key\": \"SSHCreator\", \"Value\": \"$SSH_CREATOR\"}, {\"Key\": \"SSHTimestamp\", \"Value\": \"$SSH_TIMESTAMP\"}, {\"Key\": \"SSHResourceName\", \"Value\": \"$RESOURCE_NAME\"}, {\"Key\": \"SSHResourceArn\", \"Value\": \"$RESOURCE_ARN\"}]"
+
 response=$(aws ssm create-activation \
   --description "Activation for Amazon SageMaker integration with SSH and IDEs" \
   --iam-role "$SSH_SSM_ROLE" \
   --registration-limit 1 \
   --region "$CURRENT_REGION" \
   --tags "$SSH_SSM_TAGS")
-
-_install_jq
 
 acode=$(echo $response | jq --raw-output '.ActivationCode')
 aid=$(echo $response | jq --raw-output '.ActivationId')
