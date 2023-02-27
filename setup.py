@@ -3,7 +3,6 @@ import setuptools
 required_packages = [
     "sagemaker>=2.125.0",
     "psutil",
-    "sagemaker-training"
 ]
 
 extras = {
@@ -23,6 +22,7 @@ extras = {
         "aws-cdk-lib==2.64.0",
         "constructs>=10.0.0,<11.0.0",
         "sagemaker-studio-image-build",
+        "sagemaker-training",
     ],
     "dev": [
         "sagemaker-pytorch-training",
@@ -66,6 +66,7 @@ setuptools.setup(
              'sagemaker_ssh_helper/sm-local-start-ssh',
              'sagemaker_ssh_helper/sm-local-install-force',
              'sagemaker_ssh_helper/sm-local-ssh-ide',
+             'sagemaker_ssh_helper/sm-local-ssh-notebook',
              'sagemaker_ssh_helper/sm-local-ssh-training',
              'sagemaker_ssh_helper/sm-local-ssh-transform',
              'sagemaker_ssh_helper/sm-local-ssh-inference',

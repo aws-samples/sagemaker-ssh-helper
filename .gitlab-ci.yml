@@ -26,9 +26,11 @@ run_tests:
     - npm install -g aws-cdk
     - cdk --version
     - cd cdk
-    - cdk deploy SSH-IAM-SSM-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
-    - cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
-    - AWS_REGION=eu-west-2 cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$GITLAB_ROLE_ARN
+    - USER_ROLE=$GITLAB_ROLE_ARN
+    - cdk deploy SSH-IAM-SSM-Stack-Tests --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - cdk deploy SSH-IAM-SSM-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - AWS_REGION=eu-west-2 cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
     - cd -
     # Configure local env
     - sm-local-configure

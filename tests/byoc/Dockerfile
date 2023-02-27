@@ -6,9 +6,6 @@
 
 # See https://aws.amazon.com/blogs/machine-learning/using-the-amazon-sagemaker-studio-image-build-cli-to-build-container-images-from-your-studio-notebooks/ .
 
-# TODO: implement Dockerfile build in CI/CD (not easy from GitLab container)
-
-
 FROM public.ecr.aws/docker/library/ubuntu:20.04
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
@@ -22,11 +19,13 @@ RUN apt-get -y update && apt-get install -y --no-install-recommends \
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 RUN pip --no-cache-dir install numpy scipy scikit-learn pandas flask gunicorn
-RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--- NEW
 
-# For developers:
-# COPY . /tmp/sagemaker-ssh-helper/
-# RUN pip --no-cache-dir install /tmp/sagemaker-ssh-helper/
+# Test official release (for users):
+# RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--- NEW
+
+# Test current release (for developers):
+COPY . /tmp/sagemaker-ssh-helper/
+RUN pip --no-cache-dir install /tmp/sagemaker-ssh-helper/
 
 ENV PYTHONUNBUFFERED=TRUE
 ENV PYTHONDONTWRITEBYTECODE=TRUE
