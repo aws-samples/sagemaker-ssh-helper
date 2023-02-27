@@ -639,11 +639,7 @@ SageMaker Studio resources, if you don't need them anymore, e.g., launched noteb
 
 * Check that the managed instance in AWS Console in Systems Manager -> Fleet Manager section appears as "Online". Check that you're able to connect to the node from the Console by selecting Node actions -> Start terminal session. 
 
-* Check that the instance ID your local machine tries to connect to and instance ID 
-that `init-ssm` command produced in the notebook are the same.
-
-If you initialized SSM multiple times in your kernel app, you can see this error message 
-shortly after the re-initialization:
+If instance is "Offline", you might see this error message when calling an `sm-local-ssh-ide` command:
 
 ```text
 An error occurred (TargetNotConnected) when calling the StartSession operation: mi-1234567890abcdef0 is not connected.
@@ -655,8 +651,10 @@ or this one:
 An error occurred (InvalidInstanceId) when calling the SendCommand operation: Instances [[mi-1234567890abcdef0]] not in a valid state for account 555555555555
 ```
 
-The reason for this error is that CloudWatch logs arrive with some delay, and previous instance ID is fetched 
-instead of a new one. Wait for 30-60 seconds to allow logs to come through and try again.
+* Check SSM agent logs inside SageMaker Studio. From the image terminal run:
+```text
+tail /var/log/amazon/ssm/*.log && date
+```
 
 * Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
 
@@ -664,19 +662,13 @@ instead of a new one. Wait for 30-60 seconds to allow logs to come through and t
 ps xfa | grep sshd
 ```
 
-If it's not started, there might be some errors in the output of the notebook, and you might get this error on 
-the local machine:
+If it's not started, there might be some errors in the output of the notebook, and you might get this error on  the local machine:
 
 ```text
 Connection closed by UNKNOWN port 65535
 ```
 
-Check carefully the notebook output in SageMaker Studio and try to stop and start SSM & services again.
-
-* Also check SSM agent logs inside SageMaker Studio. From the image terminal run:
-```text
-tail /var/log/amazon/ssm/*.log && date
-```
+Check carefully the notebook output in SageMaker Studio to see if there are any installation or configuration problems that have to be fixed.
 
 * Sometimes you can see this error message on your local machine when trying to connect with SSM, even 
 if you correctly completed all configuration steps, including the step to enable advanced tier:
@@ -698,3 +690,5 @@ or AWS config file:
 ```text
     region                eu-west-1      config-file    ~/.aws/config
 ```
+
+* As the final effort, try to re-initialize the instance by restarting the notebook: Kernel -> Restart Kernel and Run All Cells.
