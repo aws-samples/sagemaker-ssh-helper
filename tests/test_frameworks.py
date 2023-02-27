@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import pytest
@@ -532,3 +533,29 @@ def test_train_estimator_ssh(request):
 
     finally:
         predictor.delete_endpoint()
+
+
+def test_train_mxnet_ssh(request):
+    logging.info("Starting training")
+
+    from sagemaker.mxnet import MXNet
+    estimator = MXNet(entry_point=os.path.basename('source_dir/training/train.py'),
+                      source_dir='source_dir/training/',
+                      dependencies=[SSHEstimatorWrapper.dependency_dir()],
+                      base_job_name='ssh-training-mxnet',
+                      role=request.config.getini('sagemaker_role'),
+                      py_version='py38',
+                      framework_version='1.9',
+                      instance_count=1,
+                      instance_type='ml.m5.xlarge',
+                      max_run=60 * 30,
+                      keep_alive_period_in_seconds=1800,
+                      container_log_level=logging.INFO)
+
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+    estimator.fit(wait=False)
+    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.wait_training_job()
+    logging.info("Finished training")
+
+    assert estimator.model_data.find("model.tar.gz") != -1
