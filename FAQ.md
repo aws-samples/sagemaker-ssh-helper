@@ -2,6 +2,37 @@
 
 We often see a lot of questions that surface repeatedly. This repository is an attempt to gather some of those and provide some answers!
 
+## Table of contents
+
+* [General Questions](#general-questions)
+  * [Is Windows supported?](#is-windows-supported)
+  * [Are SageMaker notebook instances supported?](#are-sagemaker-notebook-instances-supported)
+  * [How do you start the SSM session without knowing EC2 instance or container ID?](#how-do-you-start-the-ssm-session-without-knowing-ec2-instance-or-container-id)
+  * [For training, should I use Warm Pools or SageMaker SSH Helper?](#for-training-should-i-use-warm-pools-or-sagemaker-ssh-helper)
+  * [How can I do remote development on a SageMaker training job, using SSH Helper?](#how-can-i-do-remote-development-on-a-sagemaker-training-job-using-ssh-helper)
+  * [Can I also use this solution to connect into my jobs from SageMaker Studio?](#can-i-also-use-this-solution-to-connect-into-my-jobs-from-sagemaker-studio)
+  * [How SageMaker SSH Helper protects users from impersonating each other?](#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other)
+  * [How to troubleshoot jobs that are failing with the exception or error?](#how-to-troubleshoot-jobs-that-are-failing-with-the-exception-or-error)
+  * [I see folders like Desktop, Documents, Downloads, Pictures in SageMaker Studio, is it fine?](#i-see-folders-like-desktop-documents-downloads-pictures-in-sagemaker-studio-is-it-fine)
+  * [I'm running SageMaker in a VPC. Do I need to make extra configuration?](#im-running-sagemaker-in-a-vpc-do-i-need-to-make-extra-configuration)
+* [API Questions](#api-questions)
+  * [I'm using boto3 Python SDK instead of SageMaker Python SDK, how can I use SageMaker SSH Helper?](#im-using-boto3-python-sdk-instead-of-sagemaker-python-sdk-how-can-i-use-sagemaker-ssh-helper)
+  * [How can I change the SSH authorized keys bucket and location when running sm-local-ssh-* commands?](#how-can-i-change-the-ssh-authorized-keys-bucket-and-location-when-running-sm-local-ssh--commands)
+  * [What if I want to train and deploy a model as a simple Estimator in my own container, without passing entry_point and source_dir?](#what-if-i-want-to-train-and-deploy-a-model-as-a-simple-estimator-in-my-own-container-without-passing-entry_point-and-source_dir)
+  * [What if I want to deploy a Multi Data Model without passing a reference to a Model object, only with image_uri?](#what-if-i-want-to-deploy-a-multi-data-model-without-passing-a-reference-to-a-model-object-only-with-image_uri)
+  * [What if I want to use an estimator in a hyperparameter tuning job (HPO) and connect to a stuck training job with SSM?](#what-if-i-want-to-use-an-estimator-in-a-hyperparameter-tuning-job-hpo-and-connect-to-a-stuck-training-job-with-ssm)
+  * [How to start a job with SageMaker SSH Helper in an AWS Region different from my default one?](#how-to-start-a-job-with-sagemaker-ssh-helper-in-an-aws-region-different-from-my-default-one)
+  * [How to configure an AWS CLI profile to work with SageMaker SSH Helper?](#how-to-configure-an-aws-cli-profile-to-work-with-sagemaker-ssh-helper)
+  * [How do I automate my pipeline with SageMaker SSH Helper end-to-end?](#how-do-i-automate-my-pipeline-with-sagemaker-ssh-helper-end-to-end)
+* [Troubleshooting](#troubleshooting)
+  * [Something doesn't work for me, what should I do?](#something-doesnt-work-for-me-what-should-i-do)
+  * [I’m getting an API throttling error in the logs](#im-getting-an-api-throttling-error-in-the-logs)
+  * [How can I see which SSM commands are running in the container?](#how-can-i-see-which-ssm-commands-are-running-in-the-container)
+  * [How can I clean up offline instances from System Manager?](#how-can-i-clean-up-offline-instances-from-system-manager)
+  * [There's a big delay between getting the mi-* instance ID and until I can successfully start a session to the container.](#theres-a-big-delay-between-getting-the-mi--instance-id-and-until-i-can-successfully-start-a-session-to-the-container)
+  * [I get an error about advanced-instances tier configured incorrectly](#i-get-an-error-about-advanced-instances-tier-configured-incorrectly)
+
+
 ## General Questions
 
 ### Is Windows supported?
@@ -48,7 +79,7 @@ Indeed, when you run a SageMaker job, there are no EC2 instances or generic cont
 The trick that SageMaker SSH Helper is using is [the hybrid activations](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-managedinstances.html), with SageMaker containers effectively becoming managed instances when SSM agent starts, akin to on-premises instances. The managed instances have an ID that starts with 'mi-' prefix and once they connect to the Systems Manager, you're able to see them in AWS Console in Systems Manager -> Node Manager -> Fleet Manager section.
 
 
-### For Training, should I use Warm Pools or SageMaker SSH Helper?
+### For training, should I use Warm Pools or SageMaker SSH Helper?
 
 SageMaker [Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) is a built-in SageMaker Training feature which is great when you want to use the SageMaker API to:
 
@@ -71,7 +102,7 @@ introduced in the documentation in the section [Remote code execution with PyCha
 
 ### Can I also use this solution to connect into my jobs from SageMaker Studio?
 
-Yes, requires adding same IAM permissions to SageMaker role as described in the [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) for your local role (section 3).
+Yes, requires adding same IAM permissions to SageMaker role as described in the [IAM_SSM_Setup.md](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/IAM_SSM_Setup.md) for your local role (section 3 in manual setup).
 
 ### How SageMaker SSH Helper protects users from impersonating each other?
 
@@ -102,7 +133,18 @@ A variation of this solution is to create a wrapper script, which executes your 
 
 Yes, it's fine. They don't contain any of your local data. These are the freshly created folders by the VNC server and XFC4 remote desktop environment. You will see them if you connect to SageMaker Studio with VNC client after running `sm-local-ssh-ide` command, as described [in the IDE integration section of the documentation](README.md#a-namestudioalocal-ide-integration-with-sagemaker-studio-over-ssh-for-pycharm--vscode).
 
+### I'm running SageMaker in a VPC. Do I need to make extra configuration?
+You might want (optionally) to configure [AWS PrivateLink for Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html). But be aware that SageMaker SSH Helper needs Internet access to download and install extra packages inside SageMaker, such as AWS CLI and Sessions Manager Agent. To make it work, you will need a NAT gateway.
+
+
 ## API Questions
+
+### I'm using boto3 Python SDK instead of SageMaker Python SDK, how can I use SageMaker SSH Helper?
+This is a tricky question. In short, this use case is not supported by SageMaker SSH Helper.
+However, [you can](https://repost.aws/questions/QU8-U_XgPVRSuLTSXf8eW8fA/can-we-connect-to-the-instance-via-ssh-or-other-means-where-a-triton-sagemaker-endpoint-is-deployed) analyze the source code and re-implement SageMaker SSH Helper behaviour with boto3, e.g., by passing environment variables from your code.
+In general, this is not recommended, because the set of environment variables and internal logic is a subject to future changes. These changes won't necessarily appear in the release notes and can break your code.
+
+
 ### How can I change the SSH authorized keys bucket and location when running `sm-local-ssh-*` commands?
 The **public** key is transferred to the container through the default SageMaker bucket with the S3 URI that looks 
 like `s3://sagemaker-eu-west-1-555555555555/ssh-authorized-keys/`.
@@ -297,8 +339,60 @@ There's `get_instance_ids()` method already mentioned in the documentation. Unde
 Also check the method `start_ssm_connection_and_continue()` from the [SSHEnvironmentWrapper class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/wrapper.py) - it automates creating the SSH tunnel, running remote commands and stopping the waiting loop as well as graceful disconnect. Underlying implementation is in the [SSMProxy class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/proxy.py).
 
 
-## AWS SSM Troubleshooting
-### I’m getting an API throttling error in the logs: `An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
+## Troubleshooting
+
+### Something doesn't work for me, what should I do?
+
+Below are the generic tips to start with:
+
+* Check that the managed instance in AWS Console in Systems Manager -> Fleet Manager section appears as "Online". Check that you're able to connect to the node from the Console by selecting Node actions -> Start terminal session. 
+
+If instance is "Offline", you might see this error message when calling an `sm-local-ssh-*` commands:
+
+```text
+An error occurred (TargetNotConnected) when calling the StartSession operation: mi-1234567890abcdef0 is not connected.
+```
+
+or this one:
+
+```text
+An error occurred (InvalidInstanceId) when calling the SendCommand operation: Instances [[mi-1234567890abcdef0]] not in a valid state for account 555555555555
+```
+
+* (SageMaker Studio) Check SSM agent logs. From the image terminal run:
+```text
+tail /var/log/amazon/ssm/*.log && date
+```
+
+Note that the error messages related to `EC2Identity` are not relevant, because SageMaker is a managed service and users have no access to underlying EC2 infrastructure:
+
+```text
+2023-03-27 20:07:23 ERROR [EC2Identity] failed to get identity instance id. Error: RequestError: send request failed
+caused by: Get "http://169.254.169.254/latest/meta-data/instance-id": dial tcp 169.254.169.254:80: connect: invalid argument
+```
+
+ These messages are kind of expected and can be safely ignored.
+
+* Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
+
+```shell
+ps xfa | grep sshd
+```
+
+If it's not started, there might be some errors in the output of the notebook, and you might get this error on  the local machine:
+
+```text
+Connection closed by UNKNOWN port 65535
+```
+
+Check carefully the notebook output in SageMaker Studio to see if there are any installation or configuration problems that have to be fixed.
+
+* (SageMaker Studio) Try to re-initialize the instance by restarting the notebook: Kernel -> Restart Kernel and Run All Cells.
+
+
+### I’m getting an API throttling error in the logs
+
+`An error occurred (ThrottlingException) when calling the CreateActivation operation (reached max retries: 4): Rate exceeded`
 
 This error happens when too many instances are trying to register to SSM at the same time - This will likely happen when you run a SageMaker training job with multiple instances.  
 As a workaround, for SageMaker training job, you should connect to any of the nodes that successfully registered in SSM (say “algo-1”), then from there you could hope over to other nodes with the existing passwordless SSH.  
@@ -308,9 +402,16 @@ You could also submit an AWS Support ticket to increase the API rate limit, but 
 Login into the container and run:  
 `tail -f  /var/log/amazon/ssm/amazon-ssm-agent.log`
 
-### How can I clean up System Manager after receiving `ERROR Registration failed due to error registering the instance with AWS SSM. RegistrationLimitExceeded: Registration limit of 20000 reached for SSM On-prem managed instances.`
+### How can I clean up offline instances from System Manager?
+
+If you run many jobs, at some point you can get this error:
+`ERROR Registration failed due to error registering the instance with AWS SSM. RegistrationLimitExceeded: Registration limit of 20000 reached for SSM On-prem managed instances.`
+
 SageMaker containers are transient in nature. SM SSH Helper registers this container to SSM as a "managed instances". Currently, there's no built-in mechanism to deregister them when a job is completed. This accumulation of registrations might cause you to arrive at an SSM registration limit. To resolve this, consider cleaning up stale, SM SSH Helper related registrations, manually via the UI, or using [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py).  
-WARNING: you should be careful NOT deregister managed instances that are not related to SM SSH Helper. [deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the current registered manage instances in the AWS Console Fleet manager, before actually removing them.  
+
+*WARNING:* you should be careful NOT deregister managed instances that are not related to SM SSH Helper.
+
+[deregister_old_instances_from_ssm.py](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/deregister_old_instances_from_ssm.py) includes a number of filters to deregister only SM SSH Helper relevant managed instances. It's recommended you review the current registered manage instances in the AWS Console Fleet manager, before actually removing them.  
 Deregistering requires an administrator / power user IAM privileges. 
 
 ### There's a big delay between getting the mi-* instance ID and until I can successfully start a session to the container. 
@@ -335,4 +436,11 @@ If it doesn't show up there, you've probably missed the manual step 1 in [IAM_SS
 Also check that you're connecting from the same AWS region. Run the following command on your local machine and check that the region is the same as in your AWS console:
 ```shell
 aws configure list | grep region 
+```
+
+It will provide you the locally configured region and will show where this setting is coming from, e.g., env variables 
+or AWS config file:
+
+```text
+    region                eu-west-1      config-file    ~/.aws/config
 ```
