@@ -7,6 +7,9 @@
           <mappings>
             <mapping deploy="/root/sagemaker-ssh-helper" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/venv" />
+          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="root@localhost:11022">
