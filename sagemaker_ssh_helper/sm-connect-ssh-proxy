@@ -57,4 +57,5 @@ echo "Connecting to $INSTANCE_ID as proxy and starting port forwarding with the 
 ssh -o User=root -o IdentityFile="${SSH_KEY}" -o IdentitiesOnly=yes \
   -o ProxyCommand="aws ssm start-session --region '${CURRENT_REGION}' --target '${INSTANCE_ID}' --document-name AWS-StartSSHSession --parameters portNumber=%p" \
   -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+  -o PasswordAuthentication=no \
   -o StrictHostKeyChecking=no -N $PORT_FWD_ARGS "$INSTANCE_ID"
