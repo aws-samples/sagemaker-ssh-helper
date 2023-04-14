@@ -13,7 +13,7 @@ def handler(data, context):
         (bytes, string): data to return to client, (optional) response content type
     """
     processed_input = _process_input(data, context)
-    response = requests.post(context.rest_uri, data=processed_input)
+    response = requests.post(context.rest_uri, data=processed_input, timeout=5)
     return _process_output(response, context)
 
 
