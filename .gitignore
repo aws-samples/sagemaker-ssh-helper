@@ -14,3 +14,4 @@
 __pycache__
 /tests/output/
 /tests/.pytest_cache/
+/cdk.out/

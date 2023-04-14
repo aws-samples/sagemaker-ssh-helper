@@ -28,22 +28,17 @@ Note that if you connect to AWS from your local CLI as an IAM user, you will nee
 b. Execute the following commands (you can copy-paste them as a whole script):
 
 ```shell
-git clone --depth 1 https://github.com/aws-samples/sagemaker-ssh-helper.git
+pip install 'sagemaker-ssh-helper[cdk]'
 
-cd sagemaker-ssh-helper/
-pip install '.[cdk]'
+APP="python -m sagemaker_ssh_helper.cdk.app"
 
-cd cdk/
+cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION"
 
-cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+AWS_REGION="$REGION" cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
   -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
   -c user_role="$USER_ROLE_ARN"
 
-cdk deploy SSH-IAM-SSM-Stack \
-  -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
-  -c user_role="$USER_ROLE_ARN"
-
-cdk deploy SSM-Advanced-Tier-Stack \
+AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
   -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
   -c user_role="$USER_ROLE_ARN"
 ```
@@ -55,11 +50,9 @@ REGION=
 ```
 
 ```shell
-cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
-  -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
-  -c user_role="$USER_ROLE_ARN"
+cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION"
 
-AWS_REGION="$REGION" cdk deploy SSM-Advanced-Tier-Stack \
+AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
   -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
   -c user_role="$USER_ROLE_ARN"
 ```

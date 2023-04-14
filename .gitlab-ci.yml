@@ -7,6 +7,8 @@ run_tests:
   stage: test
   resource_group: ssh-helper-tests
   script:
+    - export AWS_REGION=eu-west-1
+    - export AWS_DEFAULT_REGION=eu-west-1
     # Install the package
     - pip freeze --all | tee pip_freeze_before.txt
     - pip install '.'
@@ -25,15 +27,23 @@ run_tests:
     - apt-get install -y nodejs
     - npm install -g aws-cdk
     - cdk --version
-    - cd cdk
+    - REGION=$AWS_REGION
     - USER_ROLE=$GITLAB_ROLE_ARN
-    - cdk deploy SSH-IAM-SSM-Stack-Tests --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
-    - cdk deploy SSH-IAM-SSM-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
-    - cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
-    - AWS_REGION=eu-west-2 cdk deploy SSM-Advanced-Tier-Stack --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
-    - cd -
+    - APP="python -m sagemaker_ssh_helper.cdk.app"
+    # cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" --require-approval never
+    - AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack-Tests 
+        --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack
+        --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack
+        --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
+    - REGION=eu-west-2
+    # cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" --require-approval never
+    - AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack
+        --require-approval never -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE
     # Configure local env
     - sm-local-configure
+    - source tests/generate_sagemaker_config.sh
     # Assume CI/CD role
     - sts=( $(
         aws sts assume-role
