@@ -1,7 +1,7 @@
 import setuptools
 
 required_packages = [
-    "sagemaker>=2.125.0",
+    "sagemaker>=2.145.0",
     "psutil",
 ]
 
