@@ -34,6 +34,9 @@ ps wwwe -p 1 | tail -1
 sed -i -e 's~^PermitRootLogin~#PermitRootLogin~' /etc/ssh/sshd_config
 echo PermitRootLogin yes >> /etc/ssh/sshd_config
 
+sed -i -e 's~^AuthorizedKeysFile~#AuthorizedKeysFile~' /etc/ssh/sshd_config
+echo "AuthorizedKeysFile /etc/ssh/authorized_keys" >> /etc/ssh/sshd_config
+
 # Start SSH server
 if _is_centos; then
   # NOTE: systemctl will not work in CentOS SageMaker container (e.g. Spark processing) because lack of

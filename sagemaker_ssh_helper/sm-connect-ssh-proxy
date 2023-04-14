@@ -36,10 +36,10 @@ aws --no-cli-pager ssm send-command \
     --parameters "commands=[
         'id',
         'aws sts get-caller-identity',
-        'mkdir -p /root/.ssh/authorized_keys.d/',
-        'aws s3 cp --recursive ${SSH_AUTHORIZED_KEYS} /root/.ssh/authorized_keys.d/',
-        'cat /root/.ssh/authorized_keys.d/* > /root/.ssh/authorized_keys',
-        'cat /root/.ssh/authorized_keys'
+        'mkdir -p /etc/ssh/authorized_keys.d/',
+        'aws s3 cp --recursive ${SSH_AUTHORIZED_KEYS} /etc/ssh/authorized_keys.d/',
+        'cat /etc/ssh/authorized_keys.d/* > /etc/ssh/authorized_keys',
+        'cat /etc/ssh/authorized_keys'
       ]" \
     --no-paginate --output text
 

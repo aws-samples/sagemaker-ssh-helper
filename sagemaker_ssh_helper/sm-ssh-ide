@@ -63,7 +63,11 @@ EOF
     echo "startxfce4" > ~/.xsession
     chmod +x ~/.xsession
 
-    sed -i~~ -e 's/^\#ClientAliveInterval 0$/ClientAliveInterval 15/' /etc/ssh/sshd_config
+    sed -i -e 's~^ClientAliveInterval~#ClientAliveInterval~' /etc/ssh/sshd_config
+    echo "ClientAliveInterval 15" >> /etc/ssh/sshd_config
+
+    sed -i -e 's~^AuthorizedKeysFile~#AuthorizedKeysFile~' /etc/ssh/sshd_config
+    echo "AuthorizedKeysFile /etc/ssh/authorized_keys" >> /etc/ssh/sshd_config
 
 elif [[ "$1" == "set-jb-license-server" ]]; then
 
