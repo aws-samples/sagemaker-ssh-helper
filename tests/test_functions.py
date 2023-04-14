@@ -1,5 +1,8 @@
+import logging
+
 import boto3
 import pytest
+import sagemaker.config
 
 from sagemaker.pytorch import PyTorch
 from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper, SSHEstimatorWrapper
@@ -102,3 +105,18 @@ def test_bucket_exists():
     _ = _create_bucket_if_doesnt_exist('eu-west-1', custom_bucket_name)
     bucket = _create_bucket_if_doesnt_exist('eu-west-1', custom_bucket_name)
     bucket.delete()
+
+
+def test_sagemaker_default_config_location():
+    f"""
+    See: https://sagemaker.readthedocs.io/en/stable/overview.html#default-configuration-file-location
+    See: {sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA}
+    """
+    import os
+    from platformdirs import site_config_dir, user_config_dir
+
+    # Prints the location of the admin config file
+    logging.info(os.path.join(site_config_dir("sagemaker"), "config.yaml"))
+
+    # Prints the location of the user config file
+    logging.info(os.path.join(user_config_dir("sagemaker"), "config.yaml"))

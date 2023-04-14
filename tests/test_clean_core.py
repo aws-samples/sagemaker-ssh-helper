@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 import sagemaker
@@ -11,12 +12,11 @@ from sagemaker.utils import name_from_base
 
 
 # noinspection DuplicatedCode
-def test_clean_train_warm_pool(request):
+def test_clean_train_warm_pool():
     logging.info("Starting training")
 
-    estimator = PyTorch(entry_point='train_clean.py',
+    estimator = PyTorch(entry_point=os.path.basename('source_dir/training_clean/train_clean.py'),
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
