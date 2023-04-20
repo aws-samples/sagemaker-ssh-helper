@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="accountSettings">
-    <option name="activeProfile" value="profile:default" />
+    <option name="activeProfile" value="profile:ssh" />
     <option name="activeRegion" value="eu-west-1" />
     <option name="recentlyUsedProfiles">
       <list>
+        <option value="profile:ssh" />
         <option value="profile:default" />
       </list>
     </option>
@@ -16,5 +17,13 @@
   </component>
   <component name="connectionManager">
     <option name="activeConnectionId" value="sso;https://view.awsapps.com/start" />
+  </component>
+  <component name="connectionPinningManager">
+    <option name="pinnedConnections">
+      <map>
+        <entry key="aws.codecatalyst" value="sso;https://view.awsapps.com/start" />
+        <entry key="aws.codewhisperer" value="sso;https://view.awsapps.com/start" />
+      </map>
+    </option>
   </component>
 </project>

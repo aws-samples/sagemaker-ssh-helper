@@ -20,8 +20,7 @@ LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE"
 hostname
 cat /opt/ml/metadata/resource-metadata.json
 
-pip install -U pip
-pip uninstall --root-user-action ignore -y awscli
+pip uninstall --root-user-action ignore -y -q awscli
 pip install --root-user-action ignore -q sagemaker-ssh-helper
 
 # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
