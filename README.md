@@ -8,11 +8,12 @@ SageMaker SSH Helper is a library that helps you to securely connect to Amazon S
 realtime inference endpoints, and SageMaker Studio notebook containers for fast interactive experimentation, 
 remote debugging, and advanced troubleshooting.
 
-The two most common scenarios for the library, also known as "SSH into SageMaker", are:
+The three most common scenarios for the library, also known as "SSH into SageMaker", are:
 1. A terminal session into a container running in SageMaker to diagnose a stuck training job, use CLI commands 
 like nvidia-smi, or iteratively fix and re-execute your training script within seconds. 
 2. Remote debugging of a code running in SageMaker from your local favorite IDE like 
 PyCharm Professional Edition or Visual Studio Code.
+3. Port forwarding to access tools running inside SageMaker, e.g., Dask dashboard, Tensorboard or Spark Web UI.
 
 Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, connect with your browser to a TensorBoard process running in the cloud, or start a VNC session to SageMaker Studio to run GUI apps.  
 
