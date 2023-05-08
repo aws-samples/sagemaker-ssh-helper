@@ -71,7 +71,20 @@ on Windows as usual.
 
 Yes, the setup is similar to SageMaker Studio. Run [SageMaker_SSH_Notebook.ipynb](SageMaker_SSH_Notebook.ipynb) on the notebook instance and `sm-local-ssh-notebook connect <<notebook-instance-name>>` your local machine. 
 
-Review the instructions for [SageMaker Studio integration with PyCharm / VSCode](README.md#studio) for the rest of  details.
+Add the following configuration to `~/.ssh/config` on the local machine:
+
+```text
+Host sagemaker-notebook
+  HostName localhost
+  IdentityFile ~/.ssh/sagemaker-ssh-gw
+  Port 17022
+  User root
+```
+
+Review the instructions for [SageMaker Studio integration with PyCharm / VSCode](README.md#studio) for more details. 
+
+Note that unlike `sm-local-ssh-ide`, `sm-local-ssh-notebook` doesn't support VNC or remote notebook connection. Connecting to notebook instances with SageMaker SSH Helper is more akin to connecting to a training job. It uses [SageMaker local mode](https://sagemaker.readthedocs.io/en/stable/overview.html?#local-mode) to run the container with the SSM agent.
+
 
 ### How do you start the SSM session without knowing EC2 instance or container ID?
 
@@ -307,7 +320,7 @@ torch_processor = PyTorchProcessor(
     role=role,
     instance_count=1,
     instance_type="ml.m5.xlarge",
-    max_runtime_in_seconds=60 * 60 * 3,
+    max_runtime_in_seconds=60 * 30,
 )
 
 ssh_wrapper = SSHProcessorWrapper.create(torch_processor, connection_wait_time_seconds=wait_time)
