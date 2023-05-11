@@ -1,11 +1,18 @@
 #!/bin/bash
 
 # Commands:
-# connect <kernel_gateway_name> [--ssh-only]
+# connect <kernel_gateway_name> [--ssh-only] [<extra_ssh_args>]
 # run-command <command> <args...>
+# TODO: create <kernel_gateway_name> [--force-recreate] --domain <domain> --profile <profile> --image datascience-1.0 --instance ml.t3.medium  (use local user id)
+# TODO: list
+# TODO: open-firefox, open-chrome, open-safari
+# TODO: set-kernel-gateway-name, get-kernel-gateway-name
 
 # SageMaker Studio Kernel Gateway name is usually the same as the hostname,
 # e. g. sagemaker-data-science-ml-m5-large-1234567890abcdef0
+
+# To open SageMaker Studio UI in Firefox from command line on macOS, use the following command:
+# open -a Firefox $(AWS_PROFILE=terry aws sagemaker create-presigned-domain-url --domain-id d-lnwlaexample --user-profile-name terry-whitlock --query AuthorizedUrl --output text)
 
 COMMAND=$1
 
@@ -14,6 +21,8 @@ if [[ "$COMMAND" == "connect" ]]; then
   SM_STUDIO_KGW_NAME="$2"
   OPTIONS="$3"
 
+  # FIXME: distinguish between user profiles
+
   INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.manager import SSMManager;
 import logging; logging.basicConfig(level=logging.INFO);
@@ -21,6 +30,8 @@ print(SSMManager().get_studio_kgw_instance_ids("$SM_STUDIO_KGW_NAME", timeout_in
 EOF
   )
 
+  # TODO: set-jb-license-server
+  # TODO: check that it's not started with 'http'
   # replace with your JetBrains License Server host, or leave it as is if you don't use one
   JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
 
@@ -34,14 +45,21 @@ EOF
 
 
   if [[ "$OPTIONS" == "--ssh-only" ]]; then
+    shift
+    shift
+    shift
     sm-local-start-ssh "$INSTANCE_ID" \
-        -L localhost:10022:localhost:22
+        -L localhost:10022:localhost:22 \
+        $*
   else
+    shift
+    shift
     sm-local-start-ssh "$INSTANCE_ID" \
         -L localhost:10022:localhost:22 \
         -L localhost:5901:localhost:5901 \
         -L localhost:8889:localhost:8889 \
-        -R 127.0.0.1:443:"$JB_LICENSE_SERVER_HOST":443
+        -R 127.0.0.1:443:"$JB_LICENSE_SERVER_HOST":443 \
+        $*
   fi
 
 
@@ -51,7 +69,7 @@ elif [[ "$COMMAND" == "run-command" ]]; then
   ARGS=$*
 
   # shellcheck disable=SC2086
-  ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost \
+  ssh -4 -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     $ARGS
 
