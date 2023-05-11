@@ -8,8 +8,6 @@ source "$dir"/sm-helper-functions
 
 _install_helper_scripts
 
-set -v
-
 # Log IP addresses of the container (useful only in training in combination with VPC + VPN)
 echo "SSH Helper Log IP: $(hostname -I)"
 
@@ -30,6 +28,9 @@ sm-save-env
 
 # Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
 ps wwwe -p 1 | tail -1
+
+sed -i -e 's~^ClientAliveInterval~#ClientAliveInterval~' /etc/ssh/sshd_config
+echo "ClientAliveInterval 15" >> /etc/ssh/sshd_config
 
 sed -i -e 's~^PermitRootLogin~#PermitRootLogin~' /etc/ssh/sshd_config
 echo PermitRootLogin yes >> /etc/ssh/sshd_config

@@ -15,7 +15,7 @@ like nvidia-smi, or iteratively fix and re-execute your training script within s
 PyCharm Professional Edition or Visual Studio Code.
 3. Port forwarding to access diagnostic tools running inside SageMaker, e.g., Dask dashboard, TensorBoard or Spark Web UI.
 
-Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, connect with your browser to a TensorBoard process running in the cloud, or start a VNC session to SageMaker Studio to run GUI apps.  
+Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, or start a VNC session to SageMaker Studio to run GUI apps.  
 
 Also see our [Frequently Asked Questions](FAQ.md), especially if you're using Windows on your local machine.
 
@@ -49,6 +49,7 @@ monitor resources, produce thread-dumps for stuck jobs, and interactively run yo
 - [Connecting to SageMaker inference endpoints with SSM](#inference)
 - [Connecting to SageMaker batch transform jobs](#batch-transform)
 - [Connecting to SageMaker processing jobs](#processing)  
+- [Forwarding TCP ports over SSH tunnel](#port-forwarding) - to access remote apps like Dask or Streamlit
 - [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server) - let SageMaker run your code that connects to PyCharm, to start line-by-line debugging with [PyDev.Debugger](https://pypi.org/project/pydevd-pycharm/), a.k.a. pydevd
 - [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter) - let PyCharm run or debug your code line-by-line inside SageMaker container with SSH interpreter
 - [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio) - iterate fast on a single node at early stages of development without submitting SageMaker jobs  
@@ -424,6 +425,31 @@ import sagemaker_ssh_helper
 sagemaker_ssh_helper.setup_and_start_ssh()
 ```
 
+## <a name="port-forwarding"></a>Forwarding TCP ports over SSH tunnel
+
+Previous sections focused on connecting to non-interactive SageMaker containers with SSM.
+
+Next sections rely on the Session Manager capability to create an SSH tunnel over SSM connection. SageMaker SSH Helper in turn runs SSH session over SSH tunnel and forwards the ports, including the SSH server port 22 itself.
+
+The helper script behind this logic is `sm-local-start-ssh`:
+
+```shell
+sm-local-start-ssh "$INSTANCE_ID" \
+  -R localhost:12345:localhost:12345 \
+  -L localhost:8787:localhost:8787 \
+  -L localhost:11022:localhost:22
+```
+
+You can pass `-L` parameters for forwarding remote container port to local machine (e.g., `8787` for [Dask dashboard](https://docs.dask.org/en/stable/dashboard.html) or `8501` for [Streamlit apps](https://docs.streamlit.io/library/get-started)) or `-R` for forwarding local port to remote container. Read more about these options in the [SSH manual](https://man.openbsd.org/ssh).
+
+This low-level script takes the managed instance ID as a parameter. The next sections describe how to use the higher-level APIs that take the SageMaker resource name as a parameter and resolve it into the instance ID automatically (a.k.a. `sm-local-ssh-*` scripts):
+
+* `sm-local-ssh-training`
+* `sm-local-ssh-processing`
+* `sm-local-ssh-inference`
+* `sm-local-ssh-transform`
+* `sm-local-ssh-ide`
+
 ## <a name="pycharm-debug-server"></a>Remote debugging with PyCharm Debug Server over SSH
 
 This procedure uses PyCharm's Professional feature: [Remote debugging with the Python remote debug server configuration](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-debug-config)
@@ -540,16 +566,22 @@ The dummy script may look like this:
 
 ```python
 import time
+from datetime import timedelta
 
-import sagemaker_ssh_helper
-sagemaker_ssh_helper.setup_and_start_ssh()
+from sagemaker_ssh_helper import setup_and_start_ssh, is_last_session_timeout
 
-while True:
+setup_and_start_ssh()
+
+while not is_last_session_timeout(timedelta(minutes=30)):
     time.sleep(10)
 ```
 
+The method `is_last_session_timeout()` will help to prevent unused resources and the job will end if there's were no SSM or SSH sessions for the specified period of time.
+
+Keep in mind that SSM sessions will [terminate automatically due to user inactivity](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-preferences-timeout.html), but SSH sessions will keep running until either a user terminates them or network timeout occurs (e.g., when local machine hibernates).
+
 Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) 
-feature, which is also helpful in such a scenario.
+feature, which is also helpful in the scenario when you need to rerun your code multiple times.
 
 *Pro Tip:* Note that you can debug your code line by line in this scenario, too! See [the tutorial in PyCharm documentation](https://www.jetbrains.com/help/pycharm/debugging-your-first-python-application.html#debug). Some users might prefer this option instead of using Debug Server as a simpler alternative.
 

@@ -1,7 +1,9 @@
 import time
+from datetime import timedelta
 
-import sagemaker_ssh_helper
-sagemaker_ssh_helper.setup_and_start_ssh()
+from sagemaker_ssh_helper import setup_and_start_ssh, is_last_session_timeout
 
-while True:
+setup_and_start_ssh()
+
+while not is_last_session_timeout(timedelta(minutes=30)):
     time.sleep(10)
