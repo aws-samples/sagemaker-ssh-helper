@@ -162,5 +162,6 @@ function _install_noVNC_linux() {
   echo "Got latest noVNC release tag: $novnc_tag"
 
   curl -sSL "https://api.github.com/repos/novnc/noVNC/tarball/$novnc_tag" -o "/tmp/noVNC.tgz"
-  tar xzf /tmp/noVNC.tgz --transform 's/^novnc-noVNC-[0-9a-f]\+/noVNC/'
+  mkdir -p /tmp/noVNC
+  tar xzf /tmp/noVNC.tgz -C /tmp/noVNC --strip-components=1
 }

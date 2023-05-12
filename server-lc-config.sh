@@ -17,8 +17,8 @@ pip uninstall -y -q awscli
 pip install -q sagemaker-ssh-helper
 
 # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
-#git clone https://github.com/aws-samples/sagemaker-ssh-helper.git
-#cd sagemaker-ssh-helper && pip install . && cd ..
+#git clone https://github.com/aws-samples/sagemaker-ssh-helper.git /tmp/sagemaker-ssh-helper/
+#cd /tmp/sagemaker-ssh-helper/ && pip install . && cd ..
 
 ps xfaeww
 
@@ -31,5 +31,5 @@ sm-local-configure
 
 _install_noVNC_linux
 
-cd noVNC
+cd /tmp/noVNC
 nohup ./utils/novnc_proxy --vnc 127.0.0.1:5901 &
