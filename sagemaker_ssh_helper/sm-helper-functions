@@ -153,15 +153,3 @@ function _install_sudo() {
     apt-get install -y --no-install-recommends sudo
   fi
 }
-
-function _install_noVNC_linux() {
-  json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
-  latest_noVNC_release=$(curl -s https://api.github.com/repos/novnc/noVNC/releases/latest)
-
-  novnc_tag=$(echo "$latest_noVNC_release" | grep "tag_name" | sed -e "$json_value_regexp")
-  echo "Got latest noVNC release tag: $novnc_tag"
-
-  curl -sSL "https://api.github.com/repos/novnc/noVNC/tarball/$novnc_tag" -o "/tmp/noVNC.tgz"
-  mkdir -p /tmp/noVNC
-  tar xzf /tmp/noVNC.tgz -C /tmp/noVNC --strip-components=1
-}
