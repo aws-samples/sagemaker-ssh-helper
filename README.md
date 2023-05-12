@@ -52,7 +52,8 @@ monitor resources, produce thread-dumps for stuck jobs, and interactively run yo
 - [Forwarding TCP ports over SSH tunnel](#port-forwarding) - to access remote apps like Dask or Streamlit
 - [Remote debugging with PyCharm Debug Server over SSH](#pycharm-debug-server) - let SageMaker run your code that connects to PyCharm, to start line-by-line debugging with [PyDev.Debugger](https://pypi.org/project/pydevd-pycharm/), a.k.a. pydevd
 - [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter) - let PyCharm run or debug your code line-by-line inside SageMaker container with SSH interpreter
-- [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio) - iterate fast on a single node at early stages of development without submitting SageMaker jobs  
+- [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio) - iterate fast on a single node at early stages of development without submitting SageMaker jobs
+- [Web VNC](#web-vnc) - run any IDE or tool in a browser though [AWS Jupyter Proxy](https://github.com/aws/aws-jupyter-proxy) extension
 
 If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.md).
 
@@ -699,3 +700,42 @@ from Launcher.
 SageMaker Studio resources, if you don't need them anymore, e.g., launched notebooks, terminals, apps and instances.
 
 See the [troubleshooting section of the FAQ](FAQ.md#troubleshooting), if something doesn't work as you expect.
+
+## <a name="web-vnc"></a>Web VNC
+
+At times, you cannot install all the software on your local machine, also because this is the software to process the data, and you cannot copy massive amount of the data to your local machine. 
+
+By combining the [noVNC](https://novnc.com/) tool with [AWS Jupyter Proxy](https://github.com/aws/aws-jupyter-proxy) extension you can run virtually any IDE like PyCharm, VSCode, PyDev, or any tool like Blender (to work with 3D data), OpenShot (to work with audio-video data), etc., from a SageMaker Studio web interface.
+
+It's also helpful in situations when you cannot run SSH client on your local machine to forward ports for web tools, like Dask dashboard. In this case, you run a tool in the remote browser running through the web VNC (browser-in-a-browser), like on the below screenshot. You might notice that PyCharm and VSCode are also running in the background:
+![WebWNC Screenshot](images/webVNC.png)
+
+To achieve this result, your Administrator should configure your SageMaker IAM role with both `SSHSageMakerServerPolicy` and `SSHSageMakerClientPolicy`. Configuration of IAM credentials for the local machine is not required in this case. See [IAM_SSM_Setup.md](IAM_SSM_Setup.md) for more details.
+
+Then follow these steps:
+
+1. On the SageMaker Studio System terminal run the commands from [server-lc-config.sh](server-lc-config.sh).
+
+Alternatively, ask the Administrator to [attach the lifecycle config](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) to the SageMaker Studio domain or to your profile as the `JupyterServer` config.
+
+2. Follow the step 1 for [the IDE configuration procedure](#studio), i.e., run the IDE notebook or lifecycle config inside the kernel gateway of your choice. 
+
+Instead of your local user ID put the SageMaker Studio user ID (you can get it by running `aws sts get-caller-identity` from a SageMaker Studio terminal).
+
+3. On the System terminal, run:
+
+```shell
+sm-local-ssh-ide connect <<kernel_gateway_app_name>>
+```
+
+Add additional params to the command, e.g., `-L localhost:8787:localhost:8787` to forward the Dask dashboard that is running inside the kernel gateway.
+
+4. Navigate to `https://d-egm0dexample.studio.eu-west-1.sagemaker.aws/jupyter/default/proxy/6080/vnc.html?host=d-egm0dexample.studio.eu-west-1.sagemaker.aws&port=443&path=jupyter/default/proxy/6080/websockify`
+
+Replace both occurrences of `d-egm0dexample` with your SageMaker Studio domain ID, and `eu-west-1` with your AWS Region.
+
+You will see the noVNC welcome screen.
+
+5. Press "Connect" and enter your password (default is `123456`).
+
+Congratulations! You now have successfully logged into the remote desktop environment running inside a SageMaker Studio kernel gateway.
