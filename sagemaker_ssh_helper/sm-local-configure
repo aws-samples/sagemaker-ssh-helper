@@ -13,6 +13,8 @@ cat /etc/os-release || :
 python --version
 
 # Install AWS CLI
+_install_unzip
+_install_curl
 _install_aws_cli
 
 echo "AWS default region - $AWS_DEFAULT_REGION"

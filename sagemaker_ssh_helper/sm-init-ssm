@@ -14,6 +14,7 @@ _install_helper_scripts
 
 set -e
 
+_install_sudo
 _install_unzip
 _install_curl
 _install_aws_cli
@@ -78,5 +79,4 @@ aid=$(echo $response | jq --raw-output '.ActivationId')
 echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
 
 # See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-ssm-user-permissions.html
-_install_sudo
 echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users

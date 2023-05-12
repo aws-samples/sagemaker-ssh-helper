@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A lifecycle configuration script for SageMaker Studio.
+# A lifecycle configuration script for SageMaker Studio kernel gateway.
 # See SageMaker_SSH_IDE.ipynb for manual configuration and for explanation of commands.
 # See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc.html .
 

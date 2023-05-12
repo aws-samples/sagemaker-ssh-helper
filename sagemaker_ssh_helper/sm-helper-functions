@@ -39,16 +39,16 @@ function _is_macos() {
 
 function _install_unzip() {
   if _is_centos; then
-    yum install -y unzip
+    sudo yum install -y unzip
   else
-    apt-get install -y --no-install-recommends unzip
+    sudo apt-get install -y --no-install-recommends unzip
   fi
 }
 
 function _install_aws_cli_linux() {
   curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
   unzip -o -q -d /tmp/ /tmp/awscliv2.zip
-  /tmp/aws/install --update
+  sudo /tmp/aws/install --update
 }
 
 function _install_aws_cli_macos() {
@@ -92,11 +92,11 @@ function _install_ssm_agent() {
 function _install_session_manager_plugin_ubuntu() {
   curl -sS "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" \
     -o "/tmp/session-manager-plugin.deb"
-  dpkg -i /tmp/session-manager-plugin.deb
+  sudo dpkg -i /tmp/session-manager-plugin.deb
 }
 
 function _install_session_manager_plugin_centos() {
-  yum install -y "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" \
+  sudo yum install -y "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" \
     || echo "Already installed?"
 }
 
@@ -123,11 +123,11 @@ function _install_session_manager_plugin() {
 
 
 function _install_curl_ubuntu() {
-  apt-get install -y --no-install-recommends curl
+  sudo apt-get install -y --no-install-recommends curl
 }
 
 function _install_curl_centos() {
-  yum install -y curl
+  sudo yum install -y curl
 }
 
 function _install_curl() {
@@ -152,4 +152,15 @@ function _install_sudo() {
   else
     apt-get install -y --no-install-recommends sudo
   fi
+}
+
+function _install_noVNC_linux() {
+  json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
+  latest_noVNC_release=$(curl -s https://api.github.com/repos/novnc/noVNC/releases/latest)
+
+  novnc_tag=$(echo "$latest_noVNC_release" | grep "tag_name" | sed -e "$json_value_regexp")
+  echo "Got latest noVNC release tag: $novnc_tag"
+
+  curl -sSL "https://api.github.com/repos/novnc/noVNC/tarball/$novnc_tag" -o "/tmp/noVNC.tgz"
+  tar xzf /tmp/noVNC.tgz --transform 's/^novnc-noVNC-[0-9a-f]\+/noVNC/'
 }
