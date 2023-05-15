@@ -56,6 +56,7 @@ EOF
 
     apt-get -qq -y install ssh curl net-tools procps less jq curl vim rsync
     
+    _install_sudo
     _install_aws_cli
     _install_ssm_agent_ubuntu
     _install_session_manager_plugin_ubuntu
@@ -69,10 +70,11 @@ EOF
     sed -i -e 's~^AuthorizedKeysFile~#AuthorizedKeysFile~' /etc/ssh/sshd_config
     echo "AuthorizedKeysFile /etc/ssh/authorized_keys" >> /etc/ssh/sshd_config
 
+# TODO: set-local-user-id
 elif [[ "$1" == "set-jb-license-server" ]]; then
 
     JB_LICENSE_SERVER_HOST="$2"
-    
+
     if [ -f ~/.sm-jb-license-server ]; then
         echo "sm-ssh-ide: PyCharm license server host is already configured in ~/.sm-jb-license-server, skipping override"
     else
@@ -81,6 +83,7 @@ elif [[ "$1" == "set-jb-license-server" ]]; then
     fi
 
     JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
+    # TODO: check that it's not started with 'http'
 
     if grep -q "$JB_LICENSE_SERVER_HOST" /etc/hosts; then
         echo "sm-ssh-ide: Skipping the update of /etc/hosts with PyCharm license server (already there)"
