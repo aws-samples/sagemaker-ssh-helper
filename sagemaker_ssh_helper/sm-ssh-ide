@@ -185,6 +185,17 @@ elif [[ "$1" == "get-studio-python-version" ]]; then
 
     $SM_STUDIO_PYTHON --version
 
+elif [[ "$1" == "env-diagnostics" ]]; then
+
+    echo "System Python location: $(which python || echo 'Not found')"
+    echo "System Python version: $(python --version || echo 'Not found')"
+
+    echo "Conda location: $(which conda || echo 'Not found')"
+    echo "Conda environments: $(conda env list || echo 'Not found')"
+
+    echo "SageMaker Studio Python location: $($0 get-studio-python-location || echo 'Not found')"
+    echo "SageMaker Studio Python version: $($0 get-studio-python-version || echo 'Not found')"
+
 elif [[ "$1" == "stop" ]]; then
 
     pkill -ef amazon-ssm-agent || echo "sm-ssh-ide: SSM agent already stopped?"
