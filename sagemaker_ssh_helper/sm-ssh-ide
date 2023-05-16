@@ -1,6 +1,11 @@
 #!/bin/bash -l
 # Very important to start with 'bash -l' - to escape SageMaker Studio notebook environment
 
+if [ ! -f /opt/.sagemakerinternal/conda/bin/python ]; then
+  echo "sm-ssh-ide: ERROR: Must be running inside SageMaker Studio"
+  exit 2
+fi
+
 dir=$(dirname "$0")
 source "$dir"/sm-helper-functions
 
@@ -196,7 +201,7 @@ elif [[ "$1" == "env-diagnostics" ]]; then
     echo "Conda location: $(which conda || echo 'Not found')"
     echo "Conda environments: $(conda env list || echo 'Not found')"
 
-    echo "SageMaker Studio Python location: $($0 get-studio-python-location || echo 'Not found')"
+    echo "SageMaker Studio Python location: $($0 get-studio-python-path || echo 'Not found')"
     echo "SageMaker Studio Python version: $($0 get-studio-python-version || echo 'Not found')"
 
 elif [[ "$1" == "stop" ]]; then
