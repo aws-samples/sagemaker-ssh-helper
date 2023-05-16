@@ -6,6 +6,9 @@ source "$dir"/sm-helper-functions
 
 _install_helper_scripts
 
+# TODO: install into another separate venv (not to pollute main venv, both for conda and non-conda envs)
+# TODO: determine python location only when needed
+
 SM_STUDIO_PYTHON=$(/opt/.sagemakerinternal/conda/bin/python -c \
     "from jupyter_client.kernelspec import KernelSpecManager; \
     print(KernelSpecManager().get_all_specs()['python3']['spec']['argv'][0])")
@@ -45,6 +48,9 @@ EOF
     [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1
     
     apt-mark hold light-locker
+
+    # TODO: if [[ "$OPTIONS" != "--ssh-only" ]];
+    # TODO: example docker to skip installation of system packages completely - move to customer BYOC studio image
 
     apt-get -qq -y install dbus-x11 xfce4 xfce4-goodies epiphany-browser
     
@@ -152,7 +158,7 @@ elif [[ "$1" == "start" ]]; then
       export USER=root
       vncserver :1
 
-      "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install --root-user-action ignore -q notebook
+      "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install -q notebook
 
       "$SM_STUDIO_PYTHON" -m jupyter notebook --no-browser --port=8889 --ip=127.0.0.1 --allow-root \
         >/tmp/jupyter-notebook.log 2>&1 &
@@ -170,6 +176,14 @@ elif [[ "$1" == "ssm-agent" ]]; then
 elif [[ "$1" == "status" ]]; then
 
     netstat -nptl | grep '5901\|8889'
+
+elif [[ "$1" == "get-studio-python-path" ]]; then
+
+    echo $SM_STUDIO_PYTHON
+
+elif [[ "$1" == "get-studio-python-version" ]]; then
+
+    $SM_STUDIO_PYTHON --version
 
 elif [[ "$1" == "stop" ]]; then
 
