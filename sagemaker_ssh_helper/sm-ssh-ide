@@ -160,6 +160,9 @@ elif [[ "$1" == "start" ]]; then
 
       "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install -q notebook
 
+      # TODO: remote the below temp fix for "cannot import name 'Callable' from 'traitlets" when starting notebook
+      "$SM_STUDIO_PYTHON_PREFIX"/bin/pip install --force-reinstall traitlets
+
       "$SM_STUDIO_PYTHON" -m jupyter notebook --no-browser --port=8889 --ip=127.0.0.1 --allow-root \
         >/tmp/jupyter-notebook.log 2>&1 &
 
