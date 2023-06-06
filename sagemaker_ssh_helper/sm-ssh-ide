@@ -12,6 +12,7 @@ source "$dir"/sm-helper-functions
 _install_helper_scripts
 
 # TODO: install into another separate venv (not to pollute main venv, both for conda and non-conda envs)
+# See custom conda env example here: https://repost.aws/knowledge-center/sagemaker-lifecycle-script-timeout .
 # TODO: determine python location only when needed
 
 SM_STUDIO_PYTHON=$(/opt/.sagemakerinternal/conda/bin/python -c \
@@ -203,6 +204,10 @@ elif [[ "$1" == "env-diagnostics" ]]; then
 
     echo "SageMaker Studio Python location: $($0 get-studio-python-path || echo 'Not found')"
     echo "SageMaker Studio Python version: $($0 get-studio-python-version || echo 'Not found')"
+
+    # Should be the same as `jupyter kernelspec list` executed from SageMaker Studio Python
+    echo "Jupyter Kernels: $(find $JUPYTER_PATH -name 'kernel.json')"
+    find "$JUPYTER_PATH" -name 'kernel.json' -print0 | xargs -0 cat
 
 elif [[ "$1" == "stop" ]]; then
 
