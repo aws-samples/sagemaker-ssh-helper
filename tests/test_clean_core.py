@@ -60,7 +60,7 @@ def test_clean_inference(request):
     predicted_value = predictor.predict(data=[1])
     assert predicted_value == [43]
 
-    predictor.delete_endpoint()
+    predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
@@ -137,7 +137,8 @@ def test_clean_inference_mms(request, instance_type):
         assert predicted_value == [20043]
 
     finally:
-        predictor.delete_endpoint()
+        if predictor:
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
@@ -225,4 +226,4 @@ def test_clean_inference_mms_without_model(request, instance_type):
         assert predicted_value == [20043]
 
     finally:
-        predictor.delete_endpoint()
+        predictor.delete_endpoint(delete_endpoint_config=False)
