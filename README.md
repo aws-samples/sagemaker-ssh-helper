@@ -73,7 +73,7 @@ pip install sagemaker-ssh-helper
 
 ### Step 2: Modify your start training job code
 1. Add import for SSHEstimatorWrapper
-2. Add a `dependencies` parameter to the Estimator object.
+2. Add a `dependencies` parameter to the Estimator object. Alternatively, add `sagemaker_ssh_helper` into `requirements.txt`.
 3. Add an `SSHEstimatorWrapper.create(estimator,...)` call before calling `fit()` and add SageMaker SSH Helper 
 as `dependencies`.
 4. Add a call to `ssh_wrapper.get_instance_ids()` to get the SSM instance(s) id. We'll use this as the target 
@@ -82,26 +82,33 @@ to connect to later on.
 For example:
 
 ```python
+import logging
 from sagemaker.pytorch import PyTorch
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper  # <--NEW--
 
 role = ...
 
-estimator = PyTorch(entry_point='train.py',
-                    source_dir='source_dir/training/',
-                    dependencies=[SSHEstimatorWrapper.dependency_dir()],  # <--NEW--
-                    role=role,
-                    framework_version='1.9.1',
-                    py_version='py38',
-                    instance_count=1,
-                    instance_type='ml.m5.xlarge')
+estimator = PyTorch(
+    entry_point='train.py',
+    source_dir='source_dir/training/',
+    dependencies=[SSHEstimatorWrapper.dependency_dir()],  # <--NEW 
+    # (alternatively, add sagemaker_ssh_helper into requirements.txt 
+    # inside source dir) --
+    role=role,
+    framework_version='1.9.1',
+    py_version='py38',
+    instance_count=1,
+    instance_type='ml.m5.xlarge'
+)
 
 ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)  # <--NEW--
 
 estimator.fit(wait=False)
 
 instance_ids = ssh_wrapper.get_instance_ids()  # <--NEW--
-print(f'To connect over SSM run: aws ssm start-session --target {instance_ids[0]}')  # <--NEW--
+
+logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
 ```
 
 *Note:* `connection_wait_time_seconds` is the amount of time the SSH helper will wait inside SageMaker before it continues normal execution. It's useful for training jobs, when you want to connect before training starts.
@@ -138,7 +145,7 @@ and will appear in the job's CloudWatch log like this:
 Successfully registered the instance with AWS SSM using Managed instance-id: mi-1234567890abcdef0
 ``` 
 
-To fetch the instance IDs from the logs in an automated way, call the Python method of `ssh_wrapper`, 
+To fetch the instance IDs in an automated way, call the Python method of `ssh_wrapper`, 
 as mentioned in the previous step:
 
 ```python
@@ -218,21 +225,29 @@ Adding SageMaker SSH Helper to inference endpoint is similar to training with th
 1. Wrap your model into `SSHModelWrapper` before calling `deploy()` and add SSH Helper to `dependencies`:
 
 ```python
+from sagemaker import Predictor
 from sagemaker_ssh_helper.wrapper import SSHModelWrapper  # <--NEW--
 
 estimator = ...
 ...
 endpoint_name = ... 
 
-model = estimator.create_model(entry_point='inference.py',
-                               source_dir='source_dir/inference/',
-                               dependencies=[SSHModelWrapper.dependency_dir()])  # <--NEW--
+model = estimator.create_model(
+    entry_point='inference_ssh.py',
+    source_dir='source_dir/inference/',
+    dependencies=[SSHModelWrapper.dependency_dir()]  # <--NEW 
+    # (alternatively, add sagemaker_ssh_helper into requirements.txt 
+    # inside source dir) --
+)
 
 ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)  # <--NEW--
 
-predictor = model.deploy(initial_instance_count=1,
-                         instance_type='ml.m5.xlarge',
-                         endpoint_name=endpoint_name)
+predictor: Predictor = model.deploy(
+    initial_instance_count=1,
+    instance_type='ml.m5.xlarge',
+    endpoint_name=endpoint_name,
+    wait=True
+)
 
 predicted_value = predictor.predict(data=...)
 ```
@@ -561,7 +576,7 @@ Note, that if you stop the waiting loop, SageMaker will run your training script
 
 But there's a useful trick: submit a dummy script `train_placeholder.py` with the infinite loop, and while this loop will be running, you can 
 run your real training script again and again with the remote interpreter.
-Setting `max_run` parameter of the estimator is highly recommended in this case.
+Setting `max_run` parameter of the estimator is highly recommended in this case. 
 
 The dummy script may look like this:
 
@@ -580,6 +595,8 @@ while not is_last_session_timeout(timedelta(minutes=30)):
 The method `is_last_session_timeout()` will help to prevent unused resources and the job will end if there's were no SSM or SSH sessions for the specified period of time.
 
 Keep in mind that SSM sessions will [terminate automatically due to user inactivity](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-preferences-timeout.html), but SSH sessions will keep running until either a user terminates them or network timeout occurs (e.g., when local machine hibernates).
+
+Consider also sending e-mail notifications for users of the long-running jobs, so the users don't forget to shut down unused resources.
 
 Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) 
 feature, which is also helpful in the scenario when you need to rerun your code multiple times.
