@@ -170,7 +170,8 @@ a. Attach the inline policy named `SSHSageMakerClientPolicy`. Replace `<<ACCOUNT
             "Action": [
                 "logs:GetQueryResults",
                 "ssm:DescribeInstanceInformation",
-                "ssm:ListTagsForResource"
+                "ssm:ListTagsForResource",
+                "ssm:GetCommandInvocation"
             ],
             "Resource": "*",
             "Effect": "Allow"

@@ -28,6 +28,7 @@ class IamSsmStack(Stack):
                                   actions=[
                                       "ssm:DescribeInstanceInformation",
                                       "ssm:ListTagsForResource",
+                                      "ssm:GetCommandInvocation",
                                   ],
                                   resources=["*"]
                               ),
@@ -127,6 +128,7 @@ class IamSsmStack(Stack):
                                   actions=[
                                       "ssm:CreateActivation",
                                       "ssm:ListAssociations",
+                                      "ssm:ListInstanceAssociations",
                                       "ec2messages:GetMessages",
                                       "ec2messages:AcknowledgeMessage",
                                       "ec2messages:SendReply",
@@ -142,7 +144,6 @@ class IamSsmStack(Stack):
                                   effect=Effect.ALLOW,
                                   actions=[
                                       "ssm:UpdateInstanceInformation",
-                                      "ssm:ListInstanceAssociations"
                                   ],
                                   resources=[f"arn:{Aws.PARTITION}:ssm:*:{Aws.ACCOUNT_ID}:managed-instance/mi-*"],
                                   conditions={
