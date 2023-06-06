@@ -10,33 +10,24 @@ information to effectively respond to your bug report or contribution.
 
 SageMaker SSH helper uses Test Driven Development (TDD) methodology to implement its features.
 
-Before implementing new features, check [TODO](TODO) list. The contributors are either working already 
-on these features or planning to implement them in the future.
+Before implementing new features, check [TODO](TODO) list and [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues). The contributors are either working already on these features or planning to implement them in the future.
 
 To start development, install the library on your local machine:
 ```shell
-pip install '.[test,dev]'
+pip install '.[test,dev,cdk]'
 ```
+
+Configure SageMaker execution role through [defaults](https://sagemaker.readthedocs.io/en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk) config.
 
 Make sure all tests are working:
 ```shell
 cd tests
-pytest -m 'not manual' \
-  -o sagemaker_role=arn:aws:iam::<<YOUR_ACCOUNT_ID>>:role/service-role/<<YOUR_AmazonSageMaker_ExecutionRole>> \
+coverage run -m pytest -m 'not manual' \
   -o kernel_gateway_name=<<YOUR_KERNEL_GATEWAY_NAME>>
 ```
 *Tip:* You can pass your parameters either in command line or set it in `tests/pytest.ini`.
 
-Check `tests/test_end_to_end.py` for automation of steps 
-required for training / processing and inference:
-
-1. `test_train_e2e()` - a simple training job
-2. `test_inference_e2e()` - a training job followed by deployment
-3. `test_inference_e2e_mms()` - a training job followed by deployment to a multi-model endpoint
-4. `test_processing_e2e()` - a Spark processing job
-5. `test_processing_framework_e2e()` - a PyTorch framework processing job
-
-Then write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
+Write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
 
 ### Code formatting
 
