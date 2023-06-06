@@ -16,16 +16,17 @@ VNC_PASSWORD="123456"
 # OR keep it as is and put the value into ~/.sm-ssh-owner to override
 LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE"
 
+set -e
 
 hostname
 cat /opt/ml/metadata/resource-metadata.json
 
-pip uninstall --root-user-action ignore -y -q awscli
-pip install --root-user-action ignore -q sagemaker-ssh-helper
+pip uninstall -y -q awscli
+pip install -q sagemaker-ssh-helper
 
 # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
-#git clone https://github.com/aws-samples/sagemaker-ssh-helper.git
-#cd sagemaker-ssh-helper && pip install . && cd ..
+#git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
+#cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
 
 apt-get -y update
 apt-get -y install procps

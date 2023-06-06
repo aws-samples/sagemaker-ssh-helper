@@ -70,6 +70,7 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:DescribeTrainingJob",
                                       "sagemaker:DescribeProcessingJob",
                                       "sagemaker:DescribeModel",
+                                      "sagemaker:DescribeEndpointConfig",
                                       "sagemaker:DescribeEndpoint",
                                       "sagemaker:DescribeTransformJob",
                                       "sagemaker:DescribeHyperParameterTuningJob",
@@ -78,6 +79,9 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:DeleteEndpoint",
                                       "sagemaker:InvokeEndpoint",
                                       "sagemaker:StopTrainingJob",
+                                      "sagemaker:CreateApp",
+                                      "sagemaker:DeleteApp",
+                                      "sagemaker:DescribeApp",
                                   ],
                                   resources=["*"]
                               ),
