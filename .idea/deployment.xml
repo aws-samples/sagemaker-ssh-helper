@@ -2,29 +2,36 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="root@localhost:10022 key">
+      <paths name="root@sagemaker-inference:12022 agent">
         <serverdata>
           <mappings>
-            <mapping deploy="/root/sagemaker-ssh-helper" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/tmp/pycharm_project_873" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/venv" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cdk.out" />
+            <excludedPath local="true" path="$PROJECT_DIR$/build" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tests/htmlcov" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tests/output" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tests/prof" />
           </excludedPaths>
         </serverdata>
       </paths>
-      <paths name="root@localhost:11022">
+      <paths name="root@sagemaker-studio:10022 agent">
         <serverdata>
           <mappings>
-            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_clean" web="/" />
-            <mapping deploy="/opt/ml/code/" local="$PROJECT_DIR$/tests/source_dir/training_debug" web="/" />
+            <mapping deploy="/root/sagemaker-ssh-helper" local="$PROJECT_DIR$" />
           </mappings>
-        </serverdata>
-      </paths>
-      <paths name="root@localhost:17022 agent">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/opt/ml/input/data/notebook/sagemaker-ssh-helper" local="$PROJECT_DIR$" />
-          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/build" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cdk.out" />
+            <excludedPath local="true" path="$PROJECT_DIR$/dist" />
+            <excludedPath local="true" path="$PROJECT_DIR$/sagemaker_ssh_helper.egg-info" />
+            <excludedPath local="true" path="$PROJECT_DIR$/venv" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tests/.pytest_cache" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tests/output" />
+            <excludedPath path="/root/sagemaker-ssh-helper/.ipynb_checkpoints" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

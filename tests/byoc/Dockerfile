@@ -1,11 +1,12 @@
 # Based on https://github.com/aws/amazon-sagemaker-examples/blob/main/advanced_functionality/scikit_bring_your_own/container/Dockerfile
 
-# Run from SageMaker Studio at the project root (where setup.py is located):
 # pip install sagemaker-studio-image-build
-# sm-docker build . --file tests/byoc/Dockerfile --repo byoc-ssh:latest
+
+# Run inside the tests/ directory:
+# sm-docker build . --file byoc/Dockerfile --repo byoc-ssh:latest
 
 # See https://aws.amazon.com/blogs/machine-learning/using-the-amazon-sagemaker-studio-image-build-cli-to-build-container-images-from-your-studio-notebooks/ .
-
+# Also see https://medium.com/@pandey.vikesh/why-bring-your-own-container-to-amazon-sagemaker-and-how-to-do-it-right-bc158fe41ed1 .
 FROM public.ecr.aws/docker/library/ubuntu:20.04
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
@@ -24,12 +25,12 @@ RUN pip --no-cache-dir install numpy scipy scikit-learn pandas flask gunicorn
 # RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--- NEW
 
 # Test current release (for developers):
-COPY . /tmp/sagemaker-ssh-helper/
+COPY ../ /tmp/sagemaker-ssh-helper/
 RUN pip --no-cache-dir install /tmp/sagemaker-ssh-helper/
 
 ENV PYTHONUNBUFFERED=TRUE
 ENV PYTHONDONTWRITEBYTECODE=TRUE
 ENV PATH="/opt/program:${PATH}"
 
-COPY tests/byoc/decision_trees /opt/program
+COPY byoc/decision_trees /opt/program
 WORKDIR /opt/program

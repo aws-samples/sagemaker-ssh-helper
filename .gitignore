@@ -15,3 +15,8 @@ __pycache__
 /tests/output/
 /tests/.pytest_cache/
 /cdk.out/
+/tests/.coverage
+/tests/coverage.xml
+/tests/htmlcov/
+/tests/prof/
+/djl-serving/

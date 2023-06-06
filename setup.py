@@ -18,6 +18,7 @@ extras = {
         "pytest",
         "pytest-cov",
         "pytest-html",
+        "pytest-profiling",
         "bandit",
         "aws-cdk-lib==2.64.0",
         "constructs>=10.0.0,<11.0.0",

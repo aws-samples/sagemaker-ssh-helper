@@ -1,0 +1,24 @@
+[run]
+branch = True
+dynamic_context = test_function
+
+source =
+    ./
+    ./source_dir/training_clean
+    ./source_dir/inference_tf_clean
+    ./source_dir/processing
+    ./source_dir/training_placeholder
+    ./source_dir/training
+    ./source_dir/inference_clean_model2
+    ./source_dir/inference_tf_clean_model2
+    ./source_dir/inference_tf_model2
+    ./source_dir/training_debug
+    ./source_dir/inference_clean
+    ./source_dir/inference
+    ./source_dir/inference_model2
+    ./source_dir/inference_tf
+    ../venv/lib/python3.8/site-packages/sagemaker_ssh_helper/
+    ../venv/lib/python3.8/site-packages/sagemaker/
+
+omit =
+    **/sagemaker_ssh_helper/cdk/**
