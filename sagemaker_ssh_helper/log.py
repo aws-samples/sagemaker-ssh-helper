@@ -4,14 +4,19 @@ import time
 from datetime import datetime, timedelta
 
 import boto3
+from botocore.exceptions import ClientError
+from sagemaker import Session
+
+from sagemaker_ssh_helper.aws import AWS
 
 
 class SSHLog:
-    logger = logging.getLogger('sagemaker-ssh-helper')
+    logger = logging.getLogger('sagemaker-ssh-helper:SSHLog')
 
     def __init__(self, region_name=None) -> None:
         super().__init__()
-        self.region_name = region_name
+        self.region_name = region_name or Session().boto_region_name
+        self.aws_console = AWS(self.region_name)
 
     def get_ip_addresses(self, training_job_name, retry=0):
         SSHLog.logger.info(f"Querying SSH IP addresses for job {training_job_name}")
@@ -80,10 +85,11 @@ class SSHLog:
 
     def get_ssm_instance_ids(self, log_group, stream_name, retry=0, sleep_between_retries_seconds=10,
                              expected_count=1):
+        self.logger.info("Using AWS Region: %s", self.region_name)
         mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
 
         while not mi_ids and retry > 0:
-            SSHLog.logger.info(f"SSH Helper not yet started? Retrying. Attempts left: {retry}")
+            SSHLog.logger.info(f"SSH Helper not yet started on the remote? Retrying. Attempts left: {retry}")
             time.sleep(sleep_between_retries_seconds)
             mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
             retry -= 1
@@ -102,12 +108,19 @@ class SSHLog:
 
     def _query_log_group(self, log_group, query):
         boto_client = boto3.client('logs', region_name=self.region_name)
-        start_query_response = boto_client.start_query(
-            logGroupName=log_group,
-            startTime=int((datetime.now() - timedelta(weeks=2)).timestamp()),
-            endTime=int(datetime.now().timestamp()),
-            queryString=query
-        )
+        try:
+            start_query_response = boto_client.start_query(
+                logGroupName=log_group,
+                startTime=int((datetime.now() - timedelta(weeks=2)).timestamp()),
+                endTime=int(datetime.now().timestamp()),
+                queryString=query
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                return []
+            else:
+                raise
+
         query_id = start_query_response['queryId']
         response = None
         while response is None or response['status'] == 'Running':
@@ -117,3 +130,72 @@ class SSHLog:
             )
         lines = response['results']
         return lines
+
+    def get_training_cloudwatch_url(self, training_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"cloudwatch/home?region={self.region_name}#" \
+               f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252FTrainingJobs$3F" \
+               f"logStreamNameFilter$3D{training_job_name}$252F"
+
+    def get_training_metadata_url(self, training_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/jobs/{training_job_name}"
+
+    def get_endpoint_cloudwatch_url(self, endpoint_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"cloudwatch/home?region={self.region_name}#" \
+               f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252FEndpoints$252F{endpoint_name}"
+
+    def get_endpoint_metadata_url(self, endpoint_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/endpoints/{endpoint_name}"
+
+    def get_endpoint_config_metadata_url(self, endpoint_config_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/endpointConfig/{endpoint_config_name}"
+
+    def get_model_metadata_url(self, model_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/models/{model_name}"
+
+    def get_processing_cloudwatch_url(self, processing_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"cloudwatch/home?region={self.region_name}#" \
+               f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252FProcessingJobs$3F" \
+               f"logStreamNameFilter$3D{processing_job_name}$252F"
+
+    def get_processing_metadata_url(self, processing_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/processing-jobs/{processing_job_name}"
+
+    def get_transform_cloudwatch_url(self, transform_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"cloudwatch/home?region={self.region_name}#" \
+               f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252FTransformJobs$3F" \
+               f"logStreamNameFilter$3D{transform_job_name}$252F"
+
+    def get_transform_metadata_url(self, transform_job_name):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/transform-jobs/{transform_job_name}"
+
+    def get_ide_cloudwatch_url(self, domain, user, app_name):
+        if domain and user:
+            return f"https://{self.aws_console.get_console_domain()}/" \
+                   f"cloudwatch/home?region={self.region_name}#" \
+                   f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
+                   f"$3FlogStreamNameFilter$3D{domain}$252F{user}$252FKernelGateway$252F{app_name}"
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"cloudwatch/home?region={self.region_name}#" \
+               f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
+               f"$3FlogStreamNameFilter$3DKernelGateway$252F{app_name}"
+
+    def get_ide_metadata_url(self, domain, user):
+        return f"https://{self.aws_console.get_console_domain()}/" \
+               f"sagemaker/home?region={self.region_name}#" \
+               f"/studio/{domain}/user/{user}"

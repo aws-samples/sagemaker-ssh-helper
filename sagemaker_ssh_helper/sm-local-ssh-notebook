@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Commands:
-# connect <notebook-instance-name>
+# connect <notebook-instance-name> [<extra_ssh_args>]
 # run-command <command> <args...>
 
 COMMAND=$1
@@ -17,8 +17,11 @@ print(SSMManager().get_notebook_instance_ids("$NOTEBOOK_INSTANCE_NAME", timeout_
 EOF
   )
 
+  shift
+  shift
   sm-local-start-ssh "$INSTANCE_ID" \
-      -L localhost:17022:localhost:22
+      -L localhost:17022:localhost:22 \
+      $*
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 
@@ -26,7 +29,7 @@ elif [[ "$COMMAND" == "run-command" ]]; then
   ARGS=$*
 
   # shellcheck disable=SC2086
-  ssh -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost \
+  ssh -4 -i ~/.ssh/sagemaker-ssh-gw -p 10022 root@localhost \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     $ARGS
 

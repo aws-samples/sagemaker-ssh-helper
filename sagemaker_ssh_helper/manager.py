@@ -14,7 +14,7 @@ class SSMManager:
         self.clock_timestamp_override = clock_timestamp_override
         self.redo_attempts = redo_attempts
         self.sleep_between_retries_in_seconds = sleep_between_retries_in_seconds
-        self.region_name = region_name
+        self.region_name = region_name or boto3.session.Session().region_name
 
     def list_all_instances_with_tags(self) -> Dict[str, Dict[str, str]]:
         ssm = boto3.client('ssm', region_name=self.region_name)
@@ -68,6 +68,7 @@ class SSMManager:
         return self.get_instance_ids('notebook-instance', f"{instance_name}", timeout_in_sec)
 
     def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+        # TODO: use tag filter instead, for faster performance
         all_instances = self.list_all_instances_with_tags()
         result_pairs = []
         for mi_id in all_instances:
@@ -90,10 +91,14 @@ class SSMManager:
     def get_instance_ids(self, arn_resource_type, arn_resource_name,
                          timeout_in_sec=0,
                          expected_count=1):
+        if arn_resource_name.startswith('mi-'):
+            self.logger.warning("SageMaker resource name usually doesn't not start with 'mi-', "
+                                "did you pass the SSM instance ID by mistake?")
+        self.logger.info("Using AWS Region: %s", self.region_name)
         mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
 
         while not mi_ids and timeout_in_sec > 0:
-            self.logger.info(f"SSH Helper not yet started? Retrying. Seconds left: {timeout_in_sec}")
+            self.logger.info(f"SSM Agent not yet started on the remote? Retrying. Seconds left: {timeout_in_sec}")
             time.sleep(self.sleep_between_retries_in_seconds)
             mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
             timeout_in_sec -= self.sleep_between_retries_in_seconds

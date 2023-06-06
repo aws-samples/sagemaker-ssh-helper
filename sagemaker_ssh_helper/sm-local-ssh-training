@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Commands:
-# connect <training_job_name>
+# connect <training_job_name> [<extra_ssh_args>]
 # stop-waiting
 # run-command <command> <args...>
 
@@ -11,15 +11,18 @@ if [[ "$COMMAND" == "connect" ]]; then
   JOB_NAME=$2
 
   INSTANCE_ID=$(python <<EOF
-import sagemaker; from sagemaker_ssh_helper.manager import SSMManager;
+import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSMManager().get_training_instance_ids("$JOB_NAME", timeout_in_sec=300)[0])
+print(SSHEstimatorWrapper.attach("$JOB_NAME").get_instance_ids(timeout_in_sec=300)[0])
 EOF
   )
 
+  shift
+  shift
   sm-local-start-ssh "$INSTANCE_ID" \
       -R localhost:12345:localhost:12345 \
-      -L localhost:11022:localhost:22
+      -L localhost:11022:localhost:22 \
+      $*
 
 elif [[ "$COMMAND" == "stop-waiting" ]]; then
 
@@ -31,7 +34,7 @@ elif [[ "$COMMAND" == "run-command" ]]; then
   ARGS=$*
 
   # shellcheck disable=SC2086
-  ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost \
+  ssh -4 -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     $ARGS
 

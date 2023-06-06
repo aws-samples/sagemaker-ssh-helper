@@ -1,9 +1,11 @@
+from __future__ import annotations
 import logging
 import os
 from abc import ABC, abstractmethod
 
 import boto3
 import sagemaker
+from sagemaker import Session
 # noinspection PyProtectedMember
 from sagemaker.estimator import _TrainingJob  # need access to sagemaker internals to get last training job name
 from sagemaker.multidatamodel import MultiDataModel
@@ -16,6 +18,8 @@ from sagemaker.transformer import _TransformJob  # need access to sagemaker inte
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
 
+from sagemaker_ssh_helper.aws import AWS
+from sagemaker_ssh_helper.detached_sagemaker import DetachedEstimator
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
@@ -85,6 +89,8 @@ class SSHEnvironmentWrapper(ABC):
 
     @classmethod
     def ssm_role_from_iam_arn(cls, iam_arn: str):
+        if not iam_arn:
+            raise ValueError("iam_arn cannot be empty")
         if not cls._is_arn(iam_arn):
             raise ValueError(f"iam_arn should be a full ARN, got: '{iam_arn}'")
         role_position = iam_arn.find(":role/")
@@ -93,11 +99,18 @@ class SSHEnvironmentWrapper(ABC):
         return iam_arn[role_position + 6:]
 
     @abstractmethod
-    def get_instance_ids(self, retry=360):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
         f"""
-        :param retry: how many retries (each retry is 10 seconds), 360 is for 1 hour
+        :param timeout_in_sec:
+        :param retry: (deprecated, use timeout_in_sec) how many retries (each retry is 10 seconds), 360 is for 1 hour
         """
-        pass
+        raise ValueError("Not implemented")
+
+    def retry_deprecated_warning(self, retry, timeout_in_sec):
+        if retry:
+            self.logger.warning("retry is deprecated, use timeout_in_sec instead")
+            timeout_in_sec = retry * 10
+        return timeout_in_sec
 
     def start_ssm_connection_and_continue(self, ssh_listen_port: int, retry: int = 360,
                                           extra_args: str = ""):
@@ -106,7 +119,8 @@ class SSHEnvironmentWrapper(ABC):
 
     def start_ssm_connection(self, ssh_listen_port: int, retry: int = 360,
                              extra_args: str = "") -> SSMProxy:
-        instance_ids = self.get_instance_ids(retry)
+        self.logger.info(f"Starting SSM connection")
+        instance_ids = self.get_instance_ids(timeout_in_sec=retry * 10)
         if not instance_ids:
             raise ValueError("instance_ids cannot be empty")
 
@@ -114,8 +128,14 @@ class SSHEnvironmentWrapper(ABC):
         if "mi-" not in instance_id:
             raise ValueError(f"instance_id doesn't start with 'mi-': {instance_id}")
 
-        ssm_proxy = SSMProxy(ssh_listen_port, extra_args, self.sagemaker_session.boto_region_name)
-        ssm_proxy.connect_to_ssm_instance(instance_id)
+        ssm_proxy = SSMProxy(ssh_listen_port, extra_args, self.sagemaker_session.boto_region_name,
+                             self.get_cloudwatch_url())
+        try:
+            ssm_proxy.connect_to_ssm_instance(instance_id)
+        except Exception as e:
+            self.logger.error(f"Failed to connect to SSM instance: {e}")
+            ssm_proxy.disconnect()
+            raise
 
         if self.connection_wait_time_seconds > 0:
             ssm_proxy.terminate_waiting_loop()
@@ -124,8 +144,15 @@ class SSHEnvironmentWrapper(ABC):
 
     @staticmethod
     def _is_arn(arn):
-        import re
-        return re.match(r'^arn:(aws|aws-cn|aws-us-gov):iam::([0-9]+):role/(\S+)$', arn)
+        return AWS.is_arn(arn)
+
+    @abstractmethod
+    def get_cloudwatch_url(self):
+        raise ValueError("Not implemented")
+
+    @abstractmethod
+    def get_metadata_url(self):
+        raise ValueError("Not implemented")
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
@@ -160,9 +187,13 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         env.update({'SSH_INSTANCE_COUNT': str(self.ssh_instance_count)})
         self.estimator.environment = env
 
-    def get_instance_ids(self, retry=360):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        self.logger.info("Resolving training instance IDs through SSM tags")
+        self.logger.info(f"Remote training logs are at {self.get_cloudwatch_url()}")
+        self.logger.info(f"Estimator metadata is at {self.get_metadata_url()}")
         training_job = self._latest_training_job()
-        return self.ssm_manager.get_training_instance_ids(training_job.name, retry * 10, self.ssh_instance_count)
+        return self.ssm_manager.get_training_instance_ids(training_job.name, timeout_in_sec, self.ssh_instance_count)
 
     def _latest_training_job(self):
         training_job: _TrainingJob = self.estimator.latest_training_job
@@ -171,25 +202,46 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         return training_job
 
     def wait_training_job(self):
+        self.logger.info("Waiting for training job to complete")
         training_job = self._latest_training_job()
         training_job.wait()
+        self.logger.info("Training job is complete")
 
     def stop_training_job(self):
+        self.logger.info("Stopping training job")
         training_job = self._latest_training_job()
         training_job.stop()
         training_job.wait()
+        self.logger.info("Training job is stopped")
 
     @classmethod
     def create(cls, estimator: sagemaker.estimator.EstimatorBase, connection_wait_time_seconds: int = 600,
-               ssh_instance_count: int = 2, local_user_id: str = None, log_to_stdout: bool = False):
+               ssh_instance_count: int = 2, local_user_id: str = None,
+               log_to_stdout: bool = False) -> SSHEstimatorWrapper:
         # noinspection PyProtectedMember
         if estimator._current_job_name:
-            raise AssertionError("You should call wrapper.create() before estimator.fit().")
+            raise ValueError(
+                "You should call wrapper.create() before starting a training job with estimator.fit()."
+            )
         result = SSHEstimatorWrapper(estimator, connection_wait_time_seconds=connection_wait_time_seconds,
                                      ssh_instance_count=ssh_instance_count, local_user_id=local_user_id,
                                      log_to_stdout=log_to_stdout)
         result._augment()
         return result
+
+    @classmethod
+    def attach(cls, training_job_name, sagemaker_session: Session = None):
+        estimator = DetachedEstimator.attach(training_job_name, sagemaker_session or Session())
+        return SSHEstimatorWrapper(estimator)
+
+    def get_cloudwatch_url(self):
+        return self.ssh_log.get_training_cloudwatch_url(self.latest_training_job_name())
+
+    def get_metadata_url(self):
+        return self.ssh_log.get_training_metadata_url(self.latest_training_job_name())
+
+    def latest_training_job_name(self):
+        return self._latest_training_job().name
 
 
 class SSHModelWrapper(SSHEnvironmentWrapper):
@@ -211,19 +263,45 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         self._augment_env(env)
         self.model.env = env
 
-    def get_instance_ids(self, retry=360):
-        return self.ssh_log.get_endpoint_ssm_instance_ids(self.model.endpoint_name, retry * 10)
+    # noinspection DuplicatedCode
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        self.logger.info("Resolving endpoint instance IDs through CloudWatch logs")
+        self.logger.info(f"Remote endpoint logs are at {self.get_cloudwatch_url()}")
+        self.logger.info(f"Endpoint metadata is at {self.get_metadata_url()}")
+        self.logger.info(f"Endpoint config metadata is at {self.get_config_metadata_url()}")
+        self.logger.info(f"Model metadata is at {self.get_model_metadata_url()}")
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.model.endpoint_name, timeout_in_sec)
 
     def wait_for_endpoint(self):
+        self.logger.info("Waiting for endpoint")
         self.sagemaker_session.wait_for_endpoint(self.model.endpoint_name)
+        self.logger.info("Endpoint is ready")
 
     @classmethod
-    def create(cls, model: sagemaker.model.Model, connection_wait_time_seconds: int = 600):
+    def create(cls, model: sagemaker.model.Model, connection_wait_time_seconds: int = 600) -> SSHModelWrapper:
         if model.endpoint_name:
             raise AssertionError("You should call wrapper.create() before model.deploy().")
-        result = SSHModelWrapper(model, connection_wait_time_seconds=connection_wait_time_seconds)
+        result: SSHModelWrapper = SSHModelWrapper(model, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
+
+    def get_cloudwatch_url(self):
+        return self.ssh_log.get_endpoint_cloudwatch_url(self.model.endpoint_name)
+
+    def get_metadata_url(self):
+        return self.ssh_log.get_endpoint_metadata_url(self.model.endpoint_name)
+
+    def get_config_metadata_url(self):
+        return self.ssh_log.get_endpoint_config_metadata_url(self.model.endpoint_name)
+
+    def get_model_metadata_url(self):
+        return self.ssh_log.get_model_metadata_url(self.model.name)
+
+    def endpoint_is_online(self):
+        describe_result = boto3.client('sagemaker').describe_endpoint(EndpointName=self.model.name)
+        status = describe_result["EndpointStatus"]
+        return status == 'InService'
 
 
 class SSHMultiModelWrapper(SSHEnvironmentWrapper):
@@ -258,19 +336,41 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
             self._augment_env(env)
             self.mdm.env = env
 
-    def get_instance_ids(self, retry=360):
-        return self.ssh_log.get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, retry * 10)
+    # noinspection DuplicatedCode
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        self.logger.info("Resolving multi-model endpoint instance IDs through SSM tags")
+        self.logger.info(f"Remote multi-model endpoint logs are at {self.get_cloudwatch_url()}")
+        self.logger.info(f"Multi-model endpoint metadata is at {self.get_metadata_url()}")
+        self.logger.info(f"Endpoint config metadata is at {self.get_config_metadata_url()}")
+        self.logger.info(f"Model metadata is at {self.get_model_metadata_url()}")
+        return self.ssh_log.get_endpoint_ssm_instance_ids(self.mdm.endpoint_name, timeout_in_sec)
 
     def wait_for_endpoint(self):
+        self.logger.info("Waiting for endpoint")
         self.sagemaker_session.wait_for_endpoint(self.mdm.endpoint_name)
+        self.logger.info("Endpoint is ready")
 
     @classmethod
-    def create(cls, mdm: sagemaker.multidatamodel.MultiDataModel, connection_wait_time_seconds: int = 600):
+    def create(cls, mdm: sagemaker.multidatamodel.MultiDataModel,
+               connection_wait_time_seconds: int = 600) -> SSHMultiModelWrapper:
         if hasattr(mdm, 'endpoint_name') and mdm.endpoint_name:
             raise AssertionError("You should call wrapper.create() before mdm.deploy().")
         result = SSHMultiModelWrapper(mdm, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
+
+    def get_cloudwatch_url(self):
+        return self.ssh_log.get_endpoint_cloudwatch_url(self.mdm.endpoint_name)
+
+    def get_metadata_url(self):
+        return self.ssh_log.get_endpoint_metadata_url(self.mdm.endpoint_name)
+
+    def get_config_metadata_url(self):
+        return self.ssh_log.get_endpoint_config_metadata_url(self.mdm.endpoint_name)
+
+    def get_model_metadata_url(self):
+        return self.ssh_log.get_model_metadata_url(self.mdm.name)
 
 
 class SSHProcessorWrapper(SSHEnvironmentWrapper):
@@ -293,13 +393,18 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
         self._augment_env(env)
         self.processor.env = env
 
-    def get_instance_ids(self, retry=360):
-        job: ProcessingJob = self.processor.latest_job
-        return self.ssm_manager.get_processing_instance_ids(job.job_name, retry * 10)
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        self.logger.info("Resolving processing instance IDs through SSM tags")
+        self.logger.info(f"Remote processing logs are at {self.get_cloudwatch_url()}")
+        self.logger.info(f"Processor metadata is at {self.get_metadata_url()}")
+        return self.ssm_manager.get_processing_instance_ids(self.get_processor_latest_job_name(), timeout_in_sec)
 
     def wait_processing_job(self):
+        self.logger.info("Waiting for processing job to complete")
         job: ProcessingJob = self.processor.latest_job
         job.wait()
+        self.logger.info("Processing job is complete")
 
     def augmented_input(self):
         f"""
@@ -320,12 +425,22 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
                                input_name='sagemaker_ssh_helper')
 
     @classmethod
-    def create(cls, processor: sagemaker.processing.Processor, connection_wait_time_seconds: int = 600):
+    def create(cls, processor: sagemaker.processing.Processor,
+               connection_wait_time_seconds: int = 600) -> SSHProcessorWrapper:
         if processor.latest_job:
             raise AssertionError("You should call wrapper.create() before processor.run()")
         result = SSHProcessorWrapper(processor, connection_wait_time_seconds=connection_wait_time_seconds)
         result._augment()
         return result
+
+    def get_cloudwatch_url(self):
+        return self.ssh_log.get_processing_cloudwatch_url(self.get_processor_latest_job_name())
+
+    def get_processor_latest_job_name(self):
+        return self.processor.latest_job.job_name
+
+    def get_metadata_url(self):
+        return self.ssh_log.get_processing_metadata_url(self.get_processor_latest_job_name())
 
 
 class SSHTransformerWrapper(SSHEnvironmentWrapper):
@@ -337,16 +452,22 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
     def _augment(self):
         super()._augment()
 
-    def get_instance_ids(self, retry=360):
-        job: _TransformJob = self.transformer.latest_transform_job
-        return self.ssm_manager.get_transformer_instance_ids(job.job_name, retry * 10)
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 3600):
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        self.logger.info("Resolving transformer instance IDs through SSM tags")
+        self.logger.info(f"Remote transformer logs are at {self.get_cloudwatch_url()}")
+        self.logger.info(f"Transformer metadata is at {self.get_metadata_url()}")
+        return self.ssm_manager.get_transformer_instance_ids(self.get_transformer_latest_job_name(), timeout_in_sec)
 
     def wait_transform_job(self):
+        self.logger.info("Waiting for transform job to complete")
         job: _TransformJob = self.transformer.latest_transform_job
         job.wait()
+        self.logger.info("Transform job is complete")
 
     @classmethod
-    def create(cls, transformer: sagemaker.transformer.Transformer, model_wrapper: SSHModelWrapper):
+    def create(cls, transformer: sagemaker.transformer.Transformer,
+               model_wrapper: SSHModelWrapper) -> SSHTransformerWrapper:
         if not model_wrapper.augmented:
             raise ValueError(f"Model Wrapper is not yet augmented. Consider constructing object with create().")
         if model_wrapper.model.name != transformer.model_name:
@@ -357,3 +478,12 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
         result = SSHTransformerWrapper(transformer, model_wrapper)
         result._augment()
         return result
+
+    def get_cloudwatch_url(self):
+        return self.ssh_log.get_transform_cloudwatch_url(self.get_transformer_latest_job_name())
+
+    def get_transformer_latest_job_name(self):
+        return self.transformer.latest_transform_job.job_name
+
+    def get_metadata_url(self):
+        return self.ssh_log.get_transform_metadata_url(self.get_transformer_latest_job_name())

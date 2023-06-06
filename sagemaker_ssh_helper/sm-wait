@@ -28,9 +28,9 @@ do
     sleep 1
     SSM_PID=$(pgrep -f amazon-ssm-agent)
     if [[ "$SSM_PID" == "" ]]; then
-      AGENT_INFO="Agent has NOT been started yet."
+      AGENT_INFO="SSM Agent has NOT been started yet."
     else
-      AGENT_INFO="Agent has been already started."
+      AGENT_INFO="SSM Agent has been already started."
     fi
     echo "sm-wait: Still waiting ($loop)... $AGENT_INFO"
 done

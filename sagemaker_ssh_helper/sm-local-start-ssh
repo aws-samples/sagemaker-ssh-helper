@@ -1,13 +1,16 @@
 #!/bin/bash
 
+# Syntax:
+# sm-local-start-ssh <instance_id> <extra_ssh_args>
+
 INSTANCE_ID=$1
 shift
 
+INSTANCE_ID=$(echo "$INSTANCE_ID" | tr '\n' ' ' | grep -o 'mi-.*$' | awk -F' ' '{print $1}')
+
 if [ -z "${INSTANCE_ID}" ]; then
-  echo "INSTANCE_ID not provided"
+  echo "INSTANCE_ID is not provided or incorrect (should be in the form mi-1234567890abcdef0)"
   exit 1
-else
-  echo "INSTANCE_ID -> ${INSTANCE_ID}"
 fi
 
 # Useful for port forwarding and debugging, eg. passing -vvv option

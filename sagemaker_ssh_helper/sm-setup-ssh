@@ -16,19 +16,22 @@ if [[ "$1" == "install-helper-scripts" ]]; then
 fi
 
 set -e
-set -v
 
-flock /tmp/sm-install-lock bash "$0" install-helper-scripts
+flock /tmp/sm-install-lock bash "$0" install-helper-scripts | sed 's/^/[sagemaker-ssh-helper][sm-setup-ssh] /'
 
 # nohup will detach the child process from parent and run it in background
 # flock prevents from starting more than 1 process
 # redirection to /proc/1/fd/1 will write logs to CloudWatch
+# sed will prepend log output with SSH Helper prefix
 if [[ ! -f /tmp/sm-start-ssh-lock ]]; then
   if [[ "$SSH_LOG_TO_STDOUT" == "true" ]]; then
     flock -n /tmp/sm-start-ssh-lock sm-start-ssh &
   else
-    nohup flock -n /tmp/sm-start-ssh-lock sm-start-ssh >/proc/1/fd/1 2>&1 &
+    nohup flock -n /tmp/sm-start-ssh-lock \
+      sm-start-ssh 2>&1 \
+        | sed -u 's/^/[sagemaker-ssh-helper][sm-start-ssh] /' \
+        >/proc/1/fd/1 2>&1 &
   fi
 fi
 
-sm-wait "${SSH_WAIT_TIME_SECONDS:-60}"
+sm-wait "${SSH_WAIT_TIME_SECONDS:-60}" | sed 's/^/[sagemaker-ssh-helper][sm-setup-ssh] /'

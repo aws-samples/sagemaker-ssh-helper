@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Commands:
-# connect <endpoint_name>
+# connect <endpoint_name> [<extra_ssh_args>]
 # stop-waiting
 # run-command <command> <args...>
 
@@ -17,9 +17,13 @@ print(SSHLog().get_endpoint_ssm_instance_ids("$ENDPOINT_NAME", retry=30)[0])
 EOF
   )
 
+  shift
+  shift
+
   sm-local-start-ssh "$INSTANCE_ID" \
       -R localhost:12345:localhost:12345 \
-      -L localhost:12022:localhost:22
+      -L localhost:12022:localhost:22 \
+      $*
 
 elif [[ "$COMMAND" == "stop-waiting" ]]; then
 
@@ -31,7 +35,7 @@ elif [[ "$COMMAND" == "run-command" ]]; then
   ARGS=$*
 
   # shellcheck disable=SC2086
-  ssh -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost \
+  ssh -4 -i ~/.ssh/sagemaker-ssh-gw -p 11022 root@localhost \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     $ARGS
 
