@@ -16,8 +16,15 @@ fi
 # Useful for port forwarding and debugging, eg. passing -vvv option
 EXTRA_SSH_ARGS=$*
 
+read -r -d '' program << EOF
+import logging
+import sagemaker
+logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
+print(sagemaker.Session().default_bucket())
+EOF
+
 if [ -z "${SSH_AUTHORIZED_KEYS_PATH}" ]; then
-  bucket=$(python -c 'import sagemaker; print(sagemaker.Session().default_bucket())')
+  bucket=$(python -c "$program")
   SSH_AUTHORIZED_KEYS_PATH="s3://$bucket/ssh-authorized-keys/"
 fi
 
