@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from datetime import timedelta
 
 import pytest
 from sagemaker.mxnet import MXNet
@@ -12,16 +13,15 @@ from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
 
 
-def test_clean_hpo(request):
+def test_clean_hpo():
     estimator = MXNet(entry_point=os.path.basename('source_dir/training_clean/train_clean.py'),
                       source_dir='source_dir/training_clean/',
                       dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                      role=request.config.getini('sagemaker_role'),
                       py_version='py38',
                       framework_version='1.9',
                       instance_count=1,
                       instance_type='ml.m5.xlarge',
-                      max_run=60 * 30,
+                      max_run=int(timedelta(minutes=15).total_seconds()),
                       container_log_level=logging.INFO)
 
     # Adopted from https://github.com/aws/amazon-sagemaker-examples/blob/main/hyperparameter_tuning/mxnet_mnist/hpo_mxnet_mnist.ipynb
@@ -51,16 +51,15 @@ def test_clean_hpo(request):
     assert best_training_job is not None
 
 
-def test_hpo_ssh(request):
+def test_hpo_ssh():
     estimator = MXNet(entry_point=os.path.basename('source_dir/training/train.py'),
                       source_dir='source_dir/training/',
                       dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                      role=request.config.getini('sagemaker_role'),
                       py_version='py38',
                       framework_version='1.9',
                       instance_count=1,
                       instance_type='ml.m5.xlarge',
-                      max_run=60 * 30,
+                      max_run=int(timedelta(minutes=15).total_seconds()),
                       container_log_level=logging.INFO)
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=60)

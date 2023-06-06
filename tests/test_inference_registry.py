@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 import pytest
 import sagemaker
@@ -10,19 +11,14 @@ from sagemaker.utils import name_from_base
 
 
 @pytest.mark.manual("Not working yet")
-def test_clean_inference_from_registry(request):
-    role = request.config.getini('sagemaker_role')
-
-    # Training
-
+def test_clean_inference_from_registry():
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=role,
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
     estimator.fit()
@@ -42,11 +38,11 @@ def test_clean_inference_from_registry(request):
 
     # Inference
 
-    model_package = sagemaker.model.ModelPackage(role=role, model_package_arn=model_package_arn)
+    model_package = sagemaker.model.ModelPackage(role=model.role, model_package_arn=model_package_arn)
 
     endpoint_name = name_from_base('inference-registry')
 
-    # FIXME: replace with model.deploy to make it work
+    # TODO: replace with model.deploy to make it work
     model_package.deploy(initial_instance_count=1,
                          instance_type='ml.m5.xlarge',
                          endpoint_name=endpoint_name)
@@ -60,4 +56,4 @@ def test_clean_inference_from_registry(request):
     predicted_value = predictor.predict(data=[1])
     assert predicted_value == [43]
 
-    predictor.delete_endpoint()
+    predictor.delete_endpoint(delete_endpoint_config=False)

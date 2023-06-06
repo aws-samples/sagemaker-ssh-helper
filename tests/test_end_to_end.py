@@ -5,6 +5,9 @@ import threading
 import time
 
 import logging
+from datetime import timedelta
+from pathlib import Path
+from typing import Optional
 
 import pytest
 import sagemaker
@@ -22,19 +25,23 @@ from test_util import _create_bucket_if_doesnt_exist
 logger = logging.getLogger('sagemaker-ssh-helper')
 
 
-def test_train_e2e(request):
-    estimator = PyTorch(entry_point='train.py',
-                        source_dir='source_dir/training/',
-                        dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                        base_job_name='ssh-training',
-                        role=request.config.getini('sagemaker_role'),
-                        framework_version='1.9.1',
-                        py_version='py38',
-                        instance_count=1,
-                        instance_type='ml.m5.xlarge',
-                        max_run=60 * 60 * 3,
-                        keep_alive_period_in_seconds=1800,
-                        container_log_level=logging.INFO)
+# noinspection DuplicatedCode,PyCompatibility
+def test_train_e2e():
+    estimator = PyTorch(
+        entry_point=(p := Path('source_dir/training/train.py')).name,
+        source_dir=str(p.parents[0]),
+        dependencies=[SSHEstimatorWrapper.dependency_dir()],  # <--NEW
+        # (alternatively, add sagemaker_ssh_helper into requirements.txt
+        # inside source dir) --
+        base_job_name='train-e2e',
+        framework_version='1.9.1',
+        py_version='py38',
+        instance_count=1,
+        instance_type='ml.m5.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=1800,
+        container_log_level=logging.INFO
+    )
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
 
@@ -47,17 +54,16 @@ def test_train_e2e(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_train_pycharm_debug_e2e(request):
+def test_train_pycharm_debug_e2e():
     estimator = PyTorch(entry_point='train_debug.py',
                         source_dir='source_dir/training_debug/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                        base_job_name='ssh-training',
-                        role=request.config.getini('sagemaker_role'),
+                        base_job_name='train-pycharm-debug-e2e',
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 15,  # 15 minutes
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -76,10 +82,10 @@ def test_train_pycharm_debug_e2e(request):
 
         server_sock.listen(0)
         try:
-            logger.info("Waiting for the connection from remote host")
+            logger.info("pycharm_debug_server_mock: Waiting for the connection from remote host")
             server_sock.accept()
         except socket.timeout:
-            logger.error("Listen socket timeout")
+            logger.error("pycharm_debug_server_mock: Listen socket timeout")
             bucket.put(1)
             return
 
@@ -105,17 +111,16 @@ def test_train_pycharm_debug_e2e(request):
     assert bucket.qsize() == 0
 
 
-def test_train_placeholder(request):
+def test_train_placeholder():
     estimator = PyTorch(entry_point='train_placeholder.py',
                         source_dir='source_dir/training_placeholder/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
                         base_job_name='ssh-training',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -133,31 +138,36 @@ def test_train_placeholder(request):
 
 
 # noinspection DuplicatedCode
-def test_inference_e2e(request):
+def test_inference_e2e():
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
     estimator.fit()
 
-    model = estimator.create_model(entry_point='inference.py',
-                                   source_dir='source_dir/inference/',
-                                   dependencies=[SSHModelWrapper.dependency_dir()])
+    model = estimator.create_model(
+        entry_point='inference_ssh.py',
+        source_dir='source_dir/inference/',
+        dependencies=[SSHModelWrapper.dependency_dir()]  # <--NEW
+        # (alternatively, add sagemaker_ssh_helper into requirements.txt
+        # inside source dir) --
+    )
 
     ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)
 
     endpoint_name = name_from_base('ssh-inference')
 
-    predictor: Predictor = model.deploy(initial_instance_count=1,
-                                        instance_type='ml.m5.xlarge',
-                                        endpoint_name=endpoint_name,
-                                        wait=True)
+    predictor: Predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type='ml.m5.xlarge',
+        endpoint_name=endpoint_name,
+        wait=True
+    )
 
     try:
         ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
@@ -171,49 +181,36 @@ def test_inference_e2e(request):
         assert predicted_value == [43]
 
     finally:
-        predictor.delete_endpoint()
+        predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
 @pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
-def test_inference_e2e_mms(request, instance_type):
+def test_inference_e2e_mms(instance_type):
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',  # Works for: 1.12, 1.11, 1.10 (1.10.2), 1.9 (1.9.1) - py38.
                         py_version='py38',  # Doesn't work for: 1.10.0, 1.9.0 - py38, 1.8, 1.7, 1.6 - py36.
                         instance_count=1,
                         instance_type=instance_type,
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
     estimator.fit()
 
-    model_1 = estimator.create_model(entry_point='inference.py',
+    model_1 = estimator.create_model(entry_point='inference_ssh.py',
                                      source_dir='source_dir/inference/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_1.deploy(initial_instance_count=1,
-                                               instance_type=instance_type,
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
+    _ = model_1.prepare_container_def(instance_type=instance_type)
     repacked_model_data_1 = model_1.repacked_model_data
-    temp_predictor.delete_endpoint()
 
-    model_2 = estimator.create_model(entry_point='inference.py',  # file name should be the same as for model_1
+    model_2 = estimator.create_model(entry_point='inference_ssh.py',  # file name should be the same as for model_1
                                      source_dir='source_dir/inference_model2/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_2.deploy(initial_instance_count=1,
-                                               instance_type=instance_type,
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
+    _ = model_2.prepare_container_def(instance_type=instance_type)
     repacked_model_data_2 = model_2.repacked_model_data
-    temp_predictor.delete_endpoint()
 
     bucket = sagemaker.Session().default_bucket()
     job_name = estimator.latest_training_job.name
@@ -232,12 +229,14 @@ def test_inference_e2e_mms(request, instance_type):
 
     endpoint_name = name_from_base('ssh-inference-mms')
 
-    predictor: Predictor = mdm.deploy(initial_instance_count=1,
-                                      instance_type=instance_type,
-                                      endpoint_name=endpoint_name,
-                                      wait=True)
-
+    predictor: Optional[Predictor] = None
     try:
+        predictor = mdm.deploy(
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name
+        )
+
         # Note: we need a repacked model data here, not an estimator data
         mdm.add_model(model_data_source=repacked_model_data_1, model_data_path='model_1.tar.gz')
         mdm.add_model(model_data_source=repacked_model_data_2, model_data_path='model_2.tar.gz')
@@ -257,56 +256,39 @@ def test_inference_e2e_mms(request, instance_type):
         ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
 
     finally:
-        predictor.delete_endpoint()
+        if predictor:
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
 @pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
-def test_inference_e2e_mms_without_model(request, instance_type):
+def test_inference_e2e_mms_without_model(instance_type):
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type=instance_type,
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
     estimator.fit()
 
-    model_1 = estimator.create_model(entry_point='inference.py',
+    model_1 = estimator.create_model(entry_point='inference_ssh.py',
                                      source_dir='source_dir/inference/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_1.deploy(initial_instance_count=1,
-                                               instance_type=instance_type,
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
+    model_1_description = model_1.prepare_container_def(instance_type='ml.m5.xlarge')
     repacked_model_data_1 = model_1.repacked_model_data
-    temp_predictor.delete_endpoint()
+    container_uri = model_1_description['Image']
+    deploy_env = model_1_description['Environment']
 
-    # But we still don't have access to the deployed container URI from Model object, so still need to use boto3.
-    # Re-fetch container and model data location from Container 1 of the model:
-    model_1_description = model_1.sagemaker_session.describe_model(model_1.name)
-    container_uri = model_1_description['PrimaryContainer']['Image']
-    # Also re-fetch deploy environment:
-    deploy_env = model_1_description['PrimaryContainer']['Environment']
-
-    model_2 = estimator.create_model(entry_point='inference.py',
+    model_2 = estimator.create_model(entry_point='inference_ssh.py',
                                      source_dir='source_dir/inference_model2/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_2.deploy(initial_instance_count=1,
-                                               instance_type=instance_type,
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
+    _ = model_2.prepare_container_def(instance_type='ml.m5.xlarge')
     repacked_model_data_2 = model_2.repacked_model_data
-    temp_predictor.delete_endpoint()
 
     bucket = sagemaker.Session().default_bucket()
     job_name = estimator.latest_training_job.name
@@ -319,6 +301,7 @@ def test_inference_e2e_mms_without_model(request, instance_type):
         model_data_prefix=model_data_prefix,
         role=model_1.role,
         image_uri=container_uri,
+        # entry_point=model_1.entry_point,  # NOTE: entry point ignored
         env=deploy_env,  # will copy 'SAGEMAKER_PROGRAM' env variable with entry point file name
         predictor_cls=PyTorchPredictor
     )
@@ -353,17 +336,16 @@ def test_inference_e2e_mms_without_model(request, instance_type):
         ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
 
     finally:
-        predictor.delete_endpoint()
+        predictor.delete_endpoint(delete_endpoint_config=False)
 
 
-def test_processing_e2e(request):
+def test_processing_e2e():
     spark_processor = PySparkProcessor(
         base_job_name='ssh-spark-processing',
         framework_version="3.0",
-        role=request.config.getini('sagemaker_role'),
         instance_count=1,
         instance_type="ml.m5.xlarge",
-        max_runtime_in_seconds=60 * 60 * 3,
+        max_runtime_in_seconds=int(timedelta(minutes=15).total_seconds())
     )
 
     ssh_wrapper = SSHProcessorWrapper.create(spark_processor, connection_wait_time_seconds=3600)
@@ -380,15 +362,14 @@ def test_processing_e2e(request):
     ssh_wrapper.wait_processing_job()
 
 
-def test_processing_framework_e2e(request):
+def test_processing_framework_e2e():
     torch_processor = PyTorchProcessor(
         base_job_name='ssh-pytorch-processing',
         framework_version='1.9.1',
         py_version='py38',
-        role=request.config.getini('sagemaker_role'),
         instance_count=1,
         instance_type="ml.m5.xlarge",
-        max_runtime_in_seconds=60 * 60 * 3,
+        max_runtime_in_seconds=int(timedelta(minutes=15).total_seconds())
     )
 
     wait_time = 3600
@@ -408,7 +389,7 @@ def test_processing_framework_e2e(request):
     ssh_wrapper.wait_processing_job()
 
 
-def test_train_e2e_with_bucket_override(request):
+def test_train_with_bucket_override():
     import boto3
     account_id = boto3.client('sts').get_caller_identity().get('Account')
     custom_bucket_name = f'sagemaker-custom-bucket-{account_id}'
@@ -420,12 +401,11 @@ def test_train_e2e_with_bucket_override(request):
                         source_dir='source_dir/training/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
                         base_job_name='ssh-training',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.9.1',
                         py_version='py38',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 60 * 3,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
