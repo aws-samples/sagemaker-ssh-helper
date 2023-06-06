@@ -1,11 +1,16 @@
 import logging
 import os
+import subprocess
 import time
+from datetime import timedelta
+from pathlib import Path
+from typing import Optional
 
 import pytest
 import sagemaker
 from sagemaker import Predictor, Model
 from sagemaker.deserializers import CSVDeserializer, JSONDeserializer
+from sagemaker.djl_inference import DJLModel, DJLPredictor
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.serializers import CSVSerializer, JSONSerializer
 from sagemaker.utils import name_from_base
@@ -14,19 +19,18 @@ from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHModelWrapper, S
 import test_util
 
 
-def test_clean_train_huggingface(request):
+def test_clean_train_huggingface():
     logging.info("Starting training")
 
     from sagemaker.huggingface import HuggingFace
     estimator = HuggingFace(entry_point='train_clean.py',
                             source_dir='source_dir/training_clean/',
-                            role=request.config.getini('sagemaker_role'),
                             pytorch_version='1.10',
                             transformers_version='4.17',
                             py_version='py38',
                             instance_count=1,
                             instance_type='ml.g4dn.xlarge',  # HF needs GPU
-                            max_run=60 * 30,
+                            max_run=int(timedelta(minutes=15).total_seconds()),
                             keep_alive_period_in_seconds=1800,
                             container_log_level=logging.INFO)
 
@@ -36,7 +40,7 @@ def test_clean_train_huggingface(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_train_huggingface_ssh(request):
+def test_train_huggingface_ssh():
     logging.info("Starting training")
 
     from sagemaker.huggingface import HuggingFace
@@ -44,13 +48,12 @@ def test_train_huggingface_ssh(request):
                             source_dir='source_dir/training/',
                             dependencies=[SSHEstimatorWrapper.dependency_dir()],
                             base_job_name='ssh-training-hf',
-                            role=request.config.getini('sagemaker_role'),
                             pytorch_version='1.10',
                             transformers_version='4.17',
                             py_version='py38',
                             instance_count=1,
                             instance_type='ml.g4dn.xlarge',  # HF needs GPU
-                            max_run=60 * 30,
+                            max_run=int(timedelta(minutes=15).total_seconds()),
                             keep_alive_period_in_seconds=1800,
                             container_log_level=logging.INFO)
 
@@ -63,18 +66,101 @@ def test_train_huggingface_ssh(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_clean_train_tensorflow(request):
+# noinspection DuplicatedCode
+def test_ssh_inference_hugging_face_pretrained_model():
+    logging.info("Starting training")
+
+    from sagemaker.huggingface import HuggingFace
+    # noinspection PyCompatibility
+    estimator = HuggingFace(
+        entry_point=(p := Path('source_dir/training_clean/train_clean.py')).name,
+        source_dir=str(p.parents[0]),
+        pytorch_version='1.10',
+        transformers_version='4.17',
+        py_version='py38',
+        instance_count=1,
+        instance_type='ml.g4dn.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=1800,
+        container_log_level=logging.INFO
+    )
+
+    estimator.fit()
+    logging.info("Finished training")
+
+    logging.info("Starting repacking model")
+
+    # noinspection PyCompatibility
+    model = estimator.create_model(
+        entry_point=(p := Path('source_dir/inference/inference_hf.py')).name,
+        source_dir=str(p.parents[0])
+    )
+
+    model.prepare_container_def(instance_type='ml.g4dn.xlarge')
+    repacked_model_data = model.repacked_model_data
+
+    logging.info("Finished repacking model")
+
+    logging.info("Starting deploying model")
+
+    from sagemaker.huggingface import HuggingFaceModel
+
+    model = HuggingFaceModel(
+        model_data=repacked_model_data,
+        entry_point=model.entry_point,  # TODO: does it repack the entry point? What if I also use source_dir?
+        role=estimator.role,  # TODO: should take the default
+        transformers_version='4.17.0',
+        pytorch_version='1.10.2',
+        py_version='py38',
+        dependencies=[SSHModelWrapper.dependency_dir()],  # NOTE: model will be repacked again with dependencies
+    )
+
+    ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)
+
+    endpoint_name = name_from_base('ssh-hf-inference')
+
+    predictor: Predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type='ml.g4dn.xlarge',
+        endpoint_name=endpoint_name,
+        wait=True)
+
+    logging.info("Finished deploying model")
+
+    try:
+        logging.info("Testing connection")
+
+        ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
+
+        time.sleep(60)  # Cold start latency to prevent prediction time out
+
+        predictor.serializer = JSONSerializer()
+        predictor.deserializer = JSONDeserializer()
+
+        logging.info("Testing prediction")
+
+        predicted_value = predictor.predict(data=[1])
+        assert predicted_value == [43]
+
+        logging.info("Finished prediction")
+
+    finally:
+        predictor.delete_endpoint(delete_endpoint_config=False)
+
+    logging.info("Finished testing")
+
+
+def test_clean_train_tensorflow():
     logging.info("Starting training")
 
     from sagemaker.tensorflow import TensorFlow
     estimator = TensorFlow(entry_point='train_clean.py',
                            source_dir='source_dir/training_clean/',
-                           role=request.config.getini('sagemaker_role'),
-                           framework_version='2.9.2',
+                           framework_version='2.11',
                            py_version='py39',
                            instance_count=1,
                            instance_type='ml.m5.xlarge',
-                           max_run=60 * 30,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
 
@@ -85,16 +171,16 @@ def test_clean_train_tensorflow(request):
 
 
 # noinspection DuplicatedCode
-def test_clean_inference_tensorflow(request):
+@pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
+def test_clean_inference_tensorflow(instance_type):
     from sagemaker.tensorflow import TensorFlow
     estimator = TensorFlow(entry_point='train_tf_clean.py',
                            source_dir='source_dir/training_clean/',
-                           role=request.config.getini('sagemaker_role'),
-                           framework_version='2.9.2',
+                           framework_version='2.11',
                            py_version='py39',
                            instance_count=1,
-                           instance_type='ml.m5.xlarge',
-                           max_run=60 * 60 * 3,
+                           instance_type=instance_type,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
     estimator.fit()
@@ -106,7 +192,7 @@ def test_clean_inference_tensorflow(request):
     endpoint_name = name_from_base('inference-tf')
 
     predictor: Predictor = model.deploy(initial_instance_count=1,
-                                        instance_type='ml.m5.xlarge',
+                                        instance_type=instance_type,
                                         endpoint_name=endpoint_name)
 
     predictor.serializer = JSONSerializer()
@@ -115,22 +201,20 @@ def test_clean_inference_tensorflow(request):
     predicted_value = predictor.predict(data=[1])
     assert predicted_value == [43]
 
-    predictor.delete_endpoint()
+    predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
-@pytest.mark.manual("TF MME ignores inference.py")
-# TODO: waiting for the fix in https://github.com/aws/deep-learning-containers/pull/2597
-def test_clean_inference_tensorflow_mme(request):
+@pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
+def test_clean_inference_tensorflow_mme(instance_type):
     from sagemaker.tensorflow import TensorFlow
     estimator = TensorFlow(entry_point='train_tf_clean.py',
                            source_dir='source_dir/training_clean/',
-                           role=request.config.getini('sagemaker_role'),
-                           framework_version='2.9.2',
+                           framework_version='2.11',
                            py_version='py39',
                            instance_count=1,
-                           instance_type='ml.m5.xlarge',
-                           max_run=60 * 60 * 3,
+                           instance_type=instance_type,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
     estimator.fit()
@@ -139,37 +223,19 @@ def test_clean_inference_tensorflow_mme(request):
     model_1 = estimator.create_model(entry_point='inference.py',
                                      source_dir='source_dir/inference_tf_clean/')
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_1.deploy(initial_instance_count=1,
-                                               instance_type='ml.m5.xlarge',
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
-
-    # NOTE: for TF model repacked_model_data is not updated
-    # repacked_model_data_1 = model_1.repacked_model_data
-
-    # re-fetch container and model data location from Container 1 of the model
-    model_1_description = model_1.sagemaker_session.describe_model(model_1.name)
-    repacked_model_data_1 = model_1_description['PrimaryContainer']['ModelDataUrl']
-    container_uri = model_1_description['PrimaryContainer']['Image']
-    deploy_env = model_1_description['PrimaryContainer']['Environment']
-
-    temp_predictor.delete_endpoint()
+    model_1_description = model_1.prepare_container_def(instance_type='ml.m5.xlarge')
+    container_uri = model_1_description['Image']
+    deploy_env = model_1_description['Environment']
+    # repacked_model_data_1 = model_1.repacked_model_data  # TODO: doesn't work for TF
+    repacked_model_data_1 = model_1_description['ModelDataUrl']
 
     # Another model with different inference.py
     model_2 = estimator.create_model(entry_point='inference.py',
                                      source_dir='source_dir/inference_tf_clean_model2/')
 
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_2.deploy(initial_instance_count=1,
-                                               instance_type='ml.m5.xlarge',
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
-
-    model_2_description = model_2.sagemaker_session.describe_model(model_2.name)
-    repacked_model_data_2 = model_2_description['PrimaryContainer']['ModelDataUrl']
-    temp_predictor.delete_endpoint()
+    model_2_description = model_2.prepare_container_def(instance_type=instance_type)
+    # repacked_model_data_2 = model_2.repacked_model_data
+    repacked_model_data_2 = model_2_description['ModelDataUrl']
 
     bucket = sagemaker.Session().default_bucket()
     job_name = estimator.latest_training_job.name
@@ -188,12 +254,14 @@ def test_clean_inference_tensorflow_mme(request):
 
     endpoint_name = name_from_base('inference-tf-mms')
 
-    predictor: Predictor = mdm.deploy(initial_instance_count=1,
-                                      instance_type='ml.m5.xlarge',
-                                      endpoint_name=endpoint_name,
-                                      wait=True)
-
+    predictor: Optional[Predictor] = None
     try:
+        predictor = mdm.deploy(
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name
+        )
+
         mdm.add_model(model_data_source=repacked_model_data_1, model_data_path='model_1.tar.gz')
         mdm.add_model(model_data_source=repacked_model_data_2, model_data_path='model_2.tar.gz')
 
@@ -201,28 +269,26 @@ def test_clean_inference_tensorflow_mme(request):
         predictor.deserializer = JSONDeserializer()
 
         predicted_value = predictor.predict(data=[1], target_model='model_1.tar.gz')
-        # Fails here because default handler produces {'error': 'JSON Value: [\n    1\n] Is not object'} .
-        # Our inference.py prepares correct JSON, but ignored in MME.
-        # Compare with 'test_clean_inference_tensorflow()' that works for a single-model endpoint.
         assert predicted_value == [43]
         predicted_value = predictor.predict(data=[1], target_model='model_2.tar.gz')
         assert predicted_value == [20043]
 
     finally:
-        predictor.delete_endpoint()
+        if predictor:
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
 
 # noinspection DuplicatedCode
-def test_ssh_inference_tensorflow(request):
+@pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
+def test_ssh_inference_tensorflow(instance_type):
     from sagemaker.tensorflow import TensorFlow
     estimator = TensorFlow(entry_point='train_tf_clean.py',
                            source_dir='source_dir/training_clean/',
-                           role=request.config.getini('sagemaker_role'),
-                           framework_version='2.9.2',
+                           framework_version='2.11',
                            py_version='py39',
                            instance_count=1,
-                           instance_type='ml.m5.xlarge',
-                           max_run=60 * 60 * 3,
+                           instance_type=instance_type,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
     estimator.fit()
@@ -237,11 +303,14 @@ def test_ssh_inference_tensorflow(request):
 
     endpoint_name = name_from_base('ssh-inference-tf')
 
-    predictor: Predictor = model.deploy(initial_instance_count=1,
-                                        instance_type='ml.m5.xlarge',
-                                        endpoint_name=endpoint_name)
-
+    predictor: Optional[Predictor] = None
     try:
+        predictor = model.deploy(
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name
+        )
+
         ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
@@ -253,62 +322,43 @@ def test_ssh_inference_tensorflow(request):
         assert predicted_value == [43]
 
     finally:
-        predictor.delete_endpoint()
+        if predictor:
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
 
-# noinspection DuplicatedCode
-@pytest.mark.manual("TF MME ignores inference.py")
-# TODO: waiting for the fix in https://github.com/aws/deep-learning-containers/pull/2597
-def test_ssh_inference_tensorflow_mme(request):
+# noinspection DuplicatedCode,PyCompatibility
+@pytest.mark.parametrize("instance_type", ["ml.m5.xlarge"])
+def test_ssh_inference_tensorflow_mme_without_model(instance_type):
     from sagemaker.tensorflow import TensorFlow
-    estimator = TensorFlow(entry_point='train_tf_mme.py',
-                           source_dir='source_dir/training/',
-                           role=request.config.getini('sagemaker_role'),
-                           framework_version='2.9.2',
+    estimator = TensorFlow(entry_point=(p := Path('source_dir/training_clean/train_tf_clean.py')).name,
+                           source_dir=str(p.parents[0]),
+                           framework_version='2.11',
                            py_version='py39',
                            instance_count=1,
-                           instance_type='ml.m5.xlarge',
-                           max_run=60 * 60 * 3,
+                           instance_type=instance_type,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
     estimator.fit()
 
-    model_1 = estimator.create_model(entry_point='inference.py',    # FIXME: MUST be called only 'inference.py'?
+    model_1 = estimator.create_model(entry_point='inference.py',    # TODO: MUST be called only 'inference.py'?
                                      source_dir='source_dir/inference_tf/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    # we need a temp endpoint to produce 'repacked_model_data'
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_1.deploy(initial_instance_count=1,
-                                               instance_type='ml.m5.xlarge',
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
-
-    # NOTE: for TF model repacked_model_data is not updated
-    # repacked_model_data_1 = model_1.repacked_model_data
-
-    # re-fetch container and model data location from Container 1 of the model
-    model_1_description = model_1.sagemaker_session.describe_model(model_1.name)
-    repacked_model_data_1 = model_1_description['PrimaryContainer']['ModelDataUrl']
-    container_uri = model_1_description['PrimaryContainer']['Image']
-    deploy_env = model_1_description['PrimaryContainer']['Environment']
-
-    temp_predictor.delete_endpoint()
+    model_1_description = model_1.prepare_container_def(instance_type=instance_type)
+    container_uri = model_1_description['Image']
+    deploy_env = model_1_description['Environment']
+    # repacked_model_data_1 = model_1.repacked_model_data  # TODO: doesn't work for TF
+    repacked_model_data_1 = model_1_description['ModelDataUrl']
 
     # Another model with different inference.py
-    model_2 = estimator.create_model(entry_point='inference.py',    # FIXME: MUST have the same name as for the model_1?
+    model_2 = estimator.create_model(entry_point='inference.py',    # TODO: MUST have the same name as for the model_1?
                                      source_dir='source_dir/inference_tf_model2/',
                                      dependencies=[SSHModelWrapper.dependency_dir()])
 
-    temp_endpoint_name = name_from_base('temp-inference-mms')
-    temp_predictor: Predictor = model_2.deploy(initial_instance_count=1,
-                                               instance_type='ml.m5.xlarge',
-                                               endpoint_name=temp_endpoint_name,
-                                               wait=True)
-
-    model_2_description = model_2.sagemaker_session.describe_model(model_2.name)
-    repacked_model_data_2 = model_2_description['PrimaryContainer']['ModelDataUrl']
-    temp_predictor.delete_endpoint()
+    model_2_description = model_2.prepare_container_def(instance_type=instance_type)
+    # repacked_model_data_2 = model_2.repacked_model_data
+    repacked_model_data_2 = model_2_description['ModelDataUrl']
 
     bucket = sagemaker.Session().default_bucket()
     job_name = estimator.latest_training_job.name
@@ -329,12 +379,14 @@ def test_ssh_inference_tensorflow_mme(request):
 
     endpoint_name = name_from_base('ssh-inference-tf-mms')
 
-    predictor: Predictor = mdm.deploy(initial_instance_count=1,
-                                      instance_type='ml.m5.xlarge',
-                                      endpoint_name=endpoint_name,
-                                      wait=True)
-
+    predictor: Optional[Predictor] = None
     try:
+        predictor = mdm.deploy(
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name
+        )
+
         mdm.add_model(model_data_source=repacked_model_data_1, model_data_path='model_1.tar.gz')
         mdm.add_model(model_data_source=repacked_model_data_2, model_data_path='model_2.tar.gz')
 
@@ -350,10 +402,11 @@ def test_ssh_inference_tensorflow_mme(request):
         ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
 
     finally:
-        predictor.delete_endpoint()
+        if predictor:
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
 
-def test_train_tensorflow_ssh(request):
+def test_train_tensorflow_ssh():
     logging.info("Starting training")
 
     from sagemaker.tensorflow import TensorFlow
@@ -361,12 +414,11 @@ def test_train_tensorflow_ssh(request):
                            source_dir='source_dir/training/',
                            dependencies=[SSHEstimatorWrapper.dependency_dir()],
                            base_job_name='ssh-training-tf',
-                           role=request.config.getini('sagemaker_role'),
                            py_version='py39',
                            framework_version='2.9.2',
                            instance_count=1,
                            instance_type='ml.m5.xlarge',
-                           max_run=60 * 30,
+                           max_run=int(timedelta(minutes=15).total_seconds()),
                            keep_alive_period_in_seconds=1800,
                            container_log_level=logging.INFO)
 
@@ -379,18 +431,17 @@ def test_train_tensorflow_ssh(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_clean_train_sklearn(request):
+def test_clean_train_sklearn():
     logging.info("Starting training")
 
     from sagemaker.sklearn import SKLearn
     estimator = SKLearn(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         py_version='py3',
                         framework_version='1.0-1',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 30,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -400,7 +451,7 @@ def test_clean_train_sklearn(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_train_sklearn_ssh(request):
+def test_train_sklearn_ssh():
     logging.info("Starting training")
 
     from sagemaker.sklearn import SKLearn
@@ -408,12 +459,11 @@ def test_train_sklearn_ssh(request):
                         source_dir='source_dir/training/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
                         base_job_name='ssh-training-sklearn',
-                        role=request.config.getini('sagemaker_role'),
                         py_version='py3',
                         framework_version='1.0-1',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 30,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -426,17 +476,16 @@ def test_train_sklearn_ssh(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_clean_train_xgboost(request):
+def test_clean_train_xgboost():
     logging.info("Starting training")
 
     from sagemaker.xgboost import XGBoost
     estimator = XGBoost(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
-                        role=request.config.getini('sagemaker_role'),
                         framework_version='1.5-1',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 30,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -446,19 +495,18 @@ def test_clean_train_xgboost(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_train_xgboost_ssh(request):
+def test_train_xgboost_ssh():
     logging.info("Starting training")
 
     from sagemaker.xgboost import XGBoost
     estimator = XGBoost(entry_point='train.py',
                         source_dir='source_dir/training/',
                         dependencies=[SSHEstimatorWrapper.dependency_dir()],
-                        base_job_name='ssh-training-sklearn',
-                        role=request.config.getini('sagemaker_role'),
+                        base_job_name='ssh-training-xgboost',
                         framework_version='1.5-1',
                         instance_count=1,
                         instance_type='ml.m5.xlarge',
-                        max_run=60 * 30,
+                        max_run=int(timedelta(minutes=15).total_seconds()),
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
@@ -471,7 +519,10 @@ def test_train_xgboost_ssh(request):
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-def test_train_estimator_ssh(request):
+def test_train_estimator_ssh_byoc():
+    logging.info("Building BYOC docker image")
+    subprocess.check_call("sm-docker build . --file byoc/Dockerfile --repo byoc-ssh:latest".split(' '))
+
     logging.info("Starting training")
 
     import boto3
@@ -479,13 +530,10 @@ def test_train_estimator_ssh(request):
 
     from sagemaker.estimator import Estimator
 
-    role = request.config.getini('sagemaker_role')
-
     estimator = Estimator(image_uri=f"{account_id}.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh:latest",
-                          role=role,
                           instance_count=1,
                           instance_type='ml.m5.xlarge',
-                          max_run=60 * 30,
+                          max_run=int(timedelta(minutes=15).total_seconds()),
                           keep_alive_period_in_seconds=1800,
                           container_log_level=logging.INFO)
 
@@ -532,10 +580,10 @@ def test_train_estimator_ssh(request):
         assert predicted_value == [['virginica'], ['versicolor']]
 
     finally:
-        predictor.delete_endpoint()
+        predictor.delete_endpoint(delete_endpoint_config=False)
 
 
-def test_train_mxnet_ssh(request):
+def test_train_mxnet_ssh():
     logging.info("Starting training")
 
     from sagemaker.mxnet import MXNet
@@ -543,12 +591,11 @@ def test_train_mxnet_ssh(request):
                       source_dir='source_dir/training/',
                       dependencies=[SSHEstimatorWrapper.dependency_dir()],
                       base_job_name='ssh-training-mxnet',
-                      role=request.config.getini('sagemaker_role'),
                       py_version='py38',
                       framework_version='1.9',
                       instance_count=1,
                       instance_type='ml.m5.xlarge',
-                      max_run=60 * 30,
+                      max_run=int(timedelta(minutes=15).total_seconds()),
                       keep_alive_period_in_seconds=1800,
                       container_log_level=logging.INFO)
 
@@ -559,3 +606,45 @@ def test_train_mxnet_ssh(request):
     logging.info("Finished training")
 
     assert estimator.model_data.find("model.tar.gz") != -1
+
+
+# noinspection PyCompatibility
+@pytest.mark.manual("Not working yet")
+def test_djl_inference_ssh():
+    model = DJLModel(
+        "EleutherAI/gpt-j-6B",  # FIXME: unused. Remove duplicate with inference_djl.py
+        role=sagemaker.Session().sagemaker_config['SageMaker']['ProcessingJob']['RoleArn'],  # TODO: resolve
+        data_type="fp16",       # FIXME: serving.properties uses fp32
+        number_of_partitions=2,     # FIXME: unused? See serving.properties
+        entry_point=(p := Path('source_dir/inference/inference_djl.py')).name,
+        source_dir=str(p.parents[0]),
+        dependencies=[SSHEstimatorWrapper.dependency_dir()],
+        env={
+            'TENSOR_PARALLEL_DEGREE': str(2)
+        },
+        container_log_level=logging.INFO
+    )
+
+    ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)
+
+    endpoint_name = name_from_base('djl-inference-ssh')
+
+    predictor: Optional[DJLPredictor] = None
+    try:
+        predictor = model.deploy(
+            instance_type="ml.g5.12xlarge",
+            endpoint_name=endpoint_name,
+            wait=False)
+        ssh_wrapper.start_ssm_connection_and_continue(12022, 30)
+
+        # FIXME: ValidationException when calling the DescribeEndpoint operation: Could not find endpoint
+        # assert ssh_wrapper.endpoint_is_online()
+
+        result = predictor.predict("Test")
+    finally:
+        if predictor:
+            # FIXME: cannot delete endpoint if it's not InService
+            pass
+            # predictor.delete_endpoint(delete_endpoint_config=False)
+
+    assert result == "42"
