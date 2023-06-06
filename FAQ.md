@@ -153,9 +153,26 @@ You might want (optionally) to configure [AWS PrivateLink for Session Manager en
 ## API Questions
 
 ### I'm using boto3 Python SDK instead of SageMaker Python SDK, how can I use SageMaker SSH Helper?
-This is a tricky question. In short, this use case is not supported by SageMaker SSH Helper.
+This use case is not fully supported by SageMaker SSH Helper.
 However, [you can](https://repost.aws/questions/QU8-U_XgPVRSuLTSXf8eW8fA/can-we-connect-to-the-instance-via-ssh-or-other-means-where-a-triton-sagemaker-endpoint-is-deployed) analyze the source code and re-implement SageMaker SSH Helper behaviour with boto3, e.g., by passing environment variables from your code.
+
 In general, this is not recommended, because the set of environment variables and internal logic is a subject to future changes. These changes won't necessarily appear in the release notes and can break your code.
+
+However, if submitted a job with boto3 in this way and started SSH Helper inside the container, you can use high-level APIs to fetch instance IDs and connect to the job with `sm-local` scripts from your local machine: 
+
+```python
+import logging
+from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
+
+training_job_name = ...
+
+ssh_wrapper = SSHEstimatorWrapper.attach(training_job_name)
+
+instance_ids = ssh_wrapper.get_instance_ids()
+
+logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
+```
 
 
 ### How can I change the SSH authorized keys bucket and location when running `sm-local-ssh-*` commands?
