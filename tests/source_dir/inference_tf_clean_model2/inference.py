@@ -48,7 +48,7 @@ def _process_output(data, context):
 
     if response_content_type == 'application/json':
         d_json = json.loads(d)
-        d[0] = d[0] + 20000  # alter prediction for model 2
+        d_json['predictions'][0] = d_json['predictions'][0] + 20000  # alter prediction for model 2
         d = json.dumps(d_json['predictions'])
 
     prediction = d
