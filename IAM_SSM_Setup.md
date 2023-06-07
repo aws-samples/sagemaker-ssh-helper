@@ -130,6 +130,7 @@ c. Add to the role a new inline policy named `SSHSageMakerServerPolicy` as follo
                 "ec2messages:SendReply",
                 "ssm:CreateActivation",
                 "ssm:ListAssociations",
+                "ssm:ListInstanceAssociations",
                 "ssmmessages:CreateControlChannel",
                 "ssmmessages:CreateDataChannel",
                 "ssmmessages:OpenControlChannel",
@@ -145,7 +146,6 @@ c. Add to the role a new inline policy named `SSHSageMakerServerPolicy` as follo
                 }
             },
             "Action": [
-                "ssm:ListInstanceAssociations",
                 "ssm:UpdateInstanceInformation"
             ],
             "Resource": "arn:aws:ssm:*:<<ACCOUNT_ID>>:managed-instance/mi-*",
