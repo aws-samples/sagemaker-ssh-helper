@@ -176,7 +176,11 @@ class SSHIDE:
         self.logger.info(f"New app status: {status}")
 
         if not status.is_in_service():
-            raise ValueError(f"Failed to create app {app_name}. Status: {status}")
+            raise ValueError(
+                f"Failed to create app {app_name}. Status: '{status}'. "
+                f"Check remote logs at {self.get_cloudwatch_url(app_name)} "
+                f"for more details, if needed."
+            )
 
     def resolve_sagemaker_kernel_image_arn(self, image_name):
         sagemaker_account_id = "470317259841"  # eu-west-1, TODO: check all images
