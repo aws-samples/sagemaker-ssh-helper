@@ -15,70 +15,71 @@ logger = logging.getLogger('sagemaker-ssh-helper:test_ide')
 
 # See https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-images.html .
 
-SSH_TEST_INSTANCES = [
-    # 0
+SSH_TEST_IMAGES = [
+    # 0 - Data Science
     ('test-data-science', 'ssh-test-ds1-ml-m5-large',
      'datascience-1.0', 'ml.m5.large', 'Python 3.7.10'),
-    # 1
+    # 1 - Data Science 2.0
     ('test-data-science', 'ssh-test-ds2-ml-m5-large',
      'sagemaker-data-science-38', 'ml.m5.large', 'Python 3.8.13'),
-    # 2
+    # 2 - Data Science 3.0
     ('test-data-science', 'ssh-test-ds3-ml-m5-large',
      'sagemaker-data-science-310-v1', 'ml.m5.large', 'Python 3.10.6'),
 
-    # 3
+    # 3 - Base Python 2.0
     ('test-base-python', 'ssh-test-bp2-ml-m5-large',
      'sagemaker-base-python-38', 'ml.m5.large', 'Python 3.8.12'),
-    # 4
+    # 4 - Base Python 3.0
     ('test-base-python', 'ssh-test-bp3-ml-m5-large',
      'sagemaker-base-python-310-v1', 'ml.m5.large', 'Python 3.10.8'),
 
-    # 5
+    # 5 - SparkMagic
     ('test-spark', 'ssh-test-magic-ml-m5-large',
      'sagemaker-sparkmagic', 'ml.m5.large', 'Python 3.7.10'),
-    # 6
+    # 6 - SparkAnalytics 1.0
     ('test-spark', 'ssh-test-analytics-ml-m5-large',
      'sagemaker-sparkanalytics-v1', 'ml.m5.large', 'Python 3.8.13'),
-    # 7
+    # 7 - SparkAnalytics 2.0
     ('test-spark', 'ssh-test-analytics2-ml-m5-large',
      'sagemaker-sparkanalytics-310-v1', 'ml.m5.large', 'Python 3.10.6'),
 
-    # 8
+    # 8 - MXNet 1.9 Python 3.8 CPU Optimized
     ('test-mxnet', 'ssh-test-mx19-ml-m5-large',
      'mxnet-1.9-cpu-py38-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', 'Python 3.8.10'),
-    # 9 - TODO: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+    # 9 - MXNet 1.9 Python 3.8 GPU Optimized
+    # TODO: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
     # ('test-mxnet', 'ssh-test-mx19-ml-g4dn-xlarge',
     #  'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3'),
 
-    # 10
+    # 10 - PyTorch 1.12 Python 3.8 CPU Optimized
     ('test-pytorch', 'ssh-test-pt112-ml-m5-large',
      'pytorch-1.12-cpu-py38', 'ml.m5.large', 'Python 3.8.16'),
-    # 11
+    # 11 - PyTorch 1.12 Python 3.8 GPU Optimized
     ('test-pytorch', 'ssh-test-pt112-ml-g4dn-xlarge',
      'pytorch-1.12-gpu-py38', 'ml.g4dn.xlarge', 'Python 3.8.16'),
-    # 12
+    # 12 - PyTorch 1.13 Python 3.9 CPU Optimized
     ('test-pytorch', 'ssh-test-pt113-ml-m5-large',
      'pytorch-1.13-cpu-py39', 'ml.m5.large', 'Python 3.9.16'),
-    # 13
+    # 13 - PyTorch 1.13 Python 3.9 GPU Optimized
     ('test-pytorch', 'ssh-test-pt113-ml-g4dn-xlarge',
      'pytorch-1.13-gpu-py39', 'ml.g4dn.xlarge', 'Python 3.9.16'),
 
-    # 14
+    # 14 - TensorFlow 2.11.0 Python 3.9 CPU Optimized
     ('test-tensorflow', 'ssh-test-tf211-ml-m5-large',
      'tensorflow-2.11.0-cpu-py39-ubuntu20.04-sagemaker-v1.1', 'ml.m5.large', 'Python 3.9.10'),
-    # 15
+    # 15 - TensorFlow 2.11.0 Python 3.9 GPU Optimized
     ('test-tensorflow', 'ssh-test-tf211-ml-g4dn-xlarge',
      'tensorflow-2.11.0-gpu-py39-cu112-ubuntu20.04-sagemaker-v1.1', 'ml.g4dn.xlarge', 'Python 3.9.10'),
-    # 16
+    # 16 - TensorFlow 2.12.0 Python 3.10 CPU Optimized
     ('test-tensorflow', 'ssh-test-tf212-ml-m5-large',
      'tensorflow-2.12.0-cpu-py310-ubuntu20.04-sagemaker-v1', 'ml.m5.large', 'Python 3.10.10'),
-    # 17
+    # 17 - TensorFlow 2.12.0 Python 3.10 GPU Optimized
     ('test-tensorflow', 'ssh-test-tf212-ml-g4dn-xlarge',
      'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1', 'ml.g4dn.xlarge', 'Python 3.10.10'),
 ]
 
 
-@pytest.mark.parametrize('instances', SSH_TEST_INSTANCES)
+@pytest.mark.parametrize('instances', SSH_TEST_IMAGES)
 def test_sagemaker_studio(instances, request):
     user, app_name, image_name, instance_type, expected_version = instances
 
@@ -121,7 +122,7 @@ def test_sagemaker_studio(instances, request):
     ide.delete_kernel_app(app_name, wait=False)
 
 
-@pytest.mark.parametrize('instances', SSH_TEST_INSTANCES)
+@pytest.mark.parametrize('instances', SSH_TEST_IMAGES)
 @pytest.mark.manual
 def test_sagemaker_studio_cleanup(instances, request):
     user, app_name, image_name, instance_type, expected_version = instances
