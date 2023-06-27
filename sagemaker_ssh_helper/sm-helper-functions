@@ -38,7 +38,9 @@ function _is_macos() {
 }
 
 function _install_unzip() {
-  if _is_centos; then
+  if _is_macos; then
+    :  # noop, should be already installed
+  elif _is_centos; then
     sudo yum install -y unzip
   else
     sudo apt-get install -y --no-install-recommends unzip
@@ -131,7 +133,9 @@ function _install_curl_centos() {
 }
 
 function _install_curl() {
-  if _is_centos; then
+  if _is_macos; then
+    :  # noop, should be already installed
+  elif _is_centos; then
     _install_curl_centos
   else
     _install_curl_ubuntu
