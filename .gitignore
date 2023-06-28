@@ -20,3 +20,5 @@ __pycache__
 /tests/htmlcov/
 /tests/prof/
 /djl-serving/
+/src_diff_latest.txt
+/src_diff_main.txt
