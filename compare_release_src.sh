@@ -9,7 +9,9 @@ git clone --depth 1 --branch main \
   /tmp/sagemaker-ssh-helper-main/
 diff -r -x .git -x .DS_Store /tmp/sagemaker-ssh-helper-main ./ >src_diff_main.txt || :
 
-latest="v1.11.0"
+json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
+latest_release_json=$(curl -sS 'https://api.github.com/repos/aws-samples/sagemaker-ssh-helper/releases/latest')
+latest=$(echo "$latest_release_json" | grep "tag_name" | sed -e "$json_value_regexp")
 
 rm -rf "/tmp/sagemaker-ssh-helper-$latest/" || :
 
