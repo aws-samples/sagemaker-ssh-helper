@@ -48,7 +48,7 @@ EOF
     
     export DEBIAN_FRONTEND=noninteractive
 
-    apt-get -qq update
+    apt-get -qq update || echo 'sm-ssh-ide: WARNING - issues with retrieving new lists of packages'
     apt-get -qq -y install apt-utils
     
     [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1

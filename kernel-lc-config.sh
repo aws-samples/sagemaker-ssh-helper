@@ -28,7 +28,7 @@ pip install -q sagemaker-ssh-helper
 #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
 #cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
 
-apt-get -y update
+apt-get -y update || echo 'kernel-lc-config.sh: WARNING - issues with retrieving new lists of packages'
 apt-get -y install procps
 ps xfaeww
 
