@@ -2,6 +2,7 @@ from aws_cdk import Stack, Duration
 import aws_cdk.aws_events as events
 import aws_cdk.aws_events_targets as targets
 from aws_cdk.aws_iam import Role, PolicyDocument, PolicyStatement, Effect, ServicePrincipal
+from aws_cdk.aws_sns import Topic
 from constructs import Construct
 
 import aws_cdk.aws_lambda as lambda_
@@ -13,6 +14,7 @@ class LowGPULambdaStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         sns_notification_topic_arn = self.node.try_get_context("sns_notification_topic_arn")
+        sns_topic = Topic.from_topic_arn(self, "SNSNotificationTopic", sns_notification_topic_arn)
 
         role = Role(
             self, "LowGPULambdaRole",
@@ -32,7 +34,7 @@ class LowGPULambdaStack(Stack):
                     PolicyStatement(
                         effect=Effect.ALLOW,
                         actions=["sns:Publish"],
-                        resources=[sns_notification_topic_arn]
+                        resources=[sns_topic.topic_arn]
                     )
                 ])})
 
