@@ -19,7 +19,7 @@ from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
 
 from sagemaker_ssh_helper.aws import AWS
-from sagemaker_ssh_helper.detached_sagemaker import DetachedEstimator
+from sagemaker_ssh_helper.detached_sagemaker import DetachedEstimator, DetachedProcessor
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
@@ -207,6 +207,13 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         training_job.wait()
         self.logger.info("Training job is complete")
 
+    def wait_training_job_with_status(self) -> str:
+        self.wait_training_job()
+        description = self.sagemaker_session.describe_training_job(self.training_job_name())
+        result = description["TrainingJobStatus"]
+        self.logger.info(f"Training job status is '{result}'")
+        return result
+
     def stop_training_job(self):
         self.logger.info("Stopping training job")
         training_job = self._latest_training_job()
@@ -230,18 +237,32 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         return result
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session: Session = None):
+    def attach(cls, training_job_name, sagemaker_session: Session = None) -> SSHEstimatorWrapper:
         estimator = DetachedEstimator.attach(training_job_name, sagemaker_session or Session())
         return SSHEstimatorWrapper(estimator)
 
     def get_cloudwatch_url(self):
-        return self.ssh_log.get_training_cloudwatch_url(self.latest_training_job_name())
+        return self.ssh_log.get_training_cloudwatch_url(self.training_job_name())
 
     def get_metadata_url(self):
-        return self.ssh_log.get_training_metadata_url(self.latest_training_job_name())
+        return self.ssh_log.get_training_metadata_url(self.training_job_name())
 
-    def latest_training_job_name(self):
+    def training_job_name(self):
         return self._latest_training_job().name
+
+    def is_job_in_progress(self):
+        # TODO: extract API to the base class for all job-based resources?
+        describe_output = self._latest_training_job().describe()
+        return describe_output['TrainingJobStatus'] == 'InProgress'
+
+    def rule_job_summary(self):
+        return self._latest_training_job().rule_job_summary()
+
+    @classmethod
+    def attach_arn(cls, training_job_arn, sagemaker_session: Session = None) -> SSHEstimatorWrapper:
+        if ':training-job/' not in training_job_arn:
+            raise ValueError(f"Not a training job ARN: {training_job_arn}")
+        return cls.attach(training_job_arn.split('/')[1], sagemaker_session)
 
 
 class SSHModelWrapper(SSHEnvironmentWrapper):
@@ -441,6 +462,11 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
 
     def get_metadata_url(self):
         return self.ssh_log.get_processing_metadata_url(self.get_processor_latest_job_name())
+
+    @classmethod
+    def attach(cls, processing_job_name, sagemaker_session: Session = None) -> SSHProcessorWrapper:
+        processor = DetachedProcessor.attach(processing_job_name, sagemaker_session or Session())
+        return SSHProcessorWrapper(processor)
 
 
 class SSHTransformerWrapper(SSHEnvironmentWrapper):

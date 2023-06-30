@@ -49,3 +49,16 @@ def is_last_session_timeout(time_delta: timedelta):
             print(f"[sagemaker-ssh-helper] Sessions timeout!")
 
     return timeout
+
+
+def is_profiler_issues_found():
+    from wrapper import SSHEstimatorWrapper
+    training_job_arn = os.environ.get("TRAINING_JOB_ARN")
+    if not training_job_arn:
+        raise ValueError("Not running inside a training job")
+    wrapper = SSHEstimatorWrapper.attach_arn(training_job_arn)
+    rule_configs_summary = wrapper.rule_job_summary()
+    for rule_config in rule_configs_summary:
+        if rule_config['RuleEvaluationStatus'] == 'IssuesFound':
+            return True
+    return False

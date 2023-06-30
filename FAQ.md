@@ -158,7 +158,7 @@ However, [you can](https://repost.aws/questions/QU8-U_XgPVRSuLTSXf8eW8fA/can-we-
 
 In general, this is not recommended, because the set of environment variables and internal logic is a subject to future changes. These changes won't necessarily appear in the release notes and can break your code.
 
-However, if submitted a job with boto3 in this way and started SSH Helper inside the container, you can use high-level APIs to fetch instance IDs and connect to the job with `sm-local` scripts from your local machine: 
+However, if submitted a job with boto3 in this way and started SSH Helper inside the container, you can use high-level APIs to fetch instance IDs and connect to the job with `sm-local` scripts from your local machine:
 
 ```python
 import logging
@@ -171,7 +171,7 @@ ssh_wrapper = SSHEstimatorWrapper.attach(training_job_name)
 instance_ids = ssh_wrapper.get_instance_ids()
 
 logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
+logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
 ```
 
 

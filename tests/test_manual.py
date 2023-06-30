@@ -1,6 +1,8 @@
 import logging
 import os
+from datetime import datetime, timedelta
 
+import boto3
 import pytest
 import sagemaker
 from sagemaker import Predictor
@@ -8,9 +10,11 @@ from sagemaker.djl_inference import DJLPredictor
 from sagemaker.pytorch import PyTorch, PyTorchProcessor
 from sagemaker.utils import name_from_base
 
+from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHProcessorWrapper, SSHModelWrapper
 
 
+# noinspection DuplicatedCode
 @pytest.mark.manual
 def test_train_placeholder_manual():
     bucket = sagemaker.Session().default_bucket()
@@ -37,10 +41,10 @@ def test_train_placeholder_manual():
 
     estimator.fit(wait=False)
 
-    instance_ids = ssh_wrapper.get_instance_ids(60)  # <--NEW--
+    instance_ids = ssh_wrapper.get_instance_ids(timeout_in_sec=600)  # <--NEW--
 
     logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
+    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
 
     ssh_wrapper.wait_training_job()
 
@@ -120,3 +124,14 @@ def test_subprocess():
     import subprocess
     subprocess.check_call("uname -a".split(' '))
     logging.info("OK")
+
+
+@pytest.mark.manual
+def test_cloudwatch_metrics_sns(request):
+    sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
+    topic_name = sns_notification_topic_arn.split(':')[-1]
+
+    log = SSHLog()
+    metrics_count = log.count_sns_notifications(topic_name, timedelta(minutes=15))
+
+    assert metrics_count > 0

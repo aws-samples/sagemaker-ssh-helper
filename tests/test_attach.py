@@ -36,7 +36,7 @@ def test_attach_estimator():
     instance_ids = ssh_wrapper.get_instance_ids()
 
     logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
+    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
 
     ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
 
@@ -55,6 +55,6 @@ def test_cannot_fit_detached_estimator():
 def test_can_fetch_job_name_from_detached_estimator():
     ssh_wrapper = SSHEstimatorWrapper.attach('training-job-name', Session())
 
-    job_name = ssh_wrapper.latest_training_job_name()
+    job_name = ssh_wrapper.training_job_name()
 
     assert job_name == 'training-job-name'

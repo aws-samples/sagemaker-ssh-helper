@@ -199,3 +199,31 @@ class SSHLog:
         return f"https://{self.aws_console.get_console_domain()}/" \
                f"sagemaker/home?region={self.region_name}#" \
                f"/studio/{domain}/user/{user}"
+
+    def count_sns_notifications(self, topic_name: str, period: timedelta):
+        cloudwatch_resource = boto3.resource('cloudwatch', region_name=self.region_name)
+        cloudwatch_metrics = cloudwatch_resource.metrics.filter(
+            Namespace='AWS/SNS',
+            MetricName='NumberOfNotificationsDelivered',
+            Dimensions=[{'Name': 'TopicName', 'Value': topic_name}]
+        )
+
+        start_time = datetime.utcnow() - period
+        end_time = datetime.utcnow()
+
+        statistics = None
+        for metric in cloudwatch_metrics:
+            metric.load()
+            statistics = metric.get_statistics(
+                Dimensions=[{'Name': 'TopicName', 'Value': topic_name}],
+                StartTime=start_time,
+                EndTime=end_time,
+                Period=60,
+                Statistics=['Sum']
+            )
+            logging.debug(metric)
+            logging.debug(statistics)
+
+        if not statistics:
+            return 0
+        return len(statistics['Datapoints'])

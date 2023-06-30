@@ -1,3 +1,5 @@
+import logging
+import subprocess
 from datetime import timedelta
 
 import boto3
@@ -68,3 +70,9 @@ def test_caller_script():
     from sagemaker_ssh_helper.env import get_caller_script_name
     assert get_caller_script_name() == 'test_environment.py'
     assert get_caller_script_name(2) == 'python.py'
+
+
+def test_aws_config():
+    output = subprocess.check_output("aws configure list".split(" ")).decode("latin1")
+    logging.info(f"AWS config:\n{output}")
+    logging.info(sagemaker.Session().default_bucket())

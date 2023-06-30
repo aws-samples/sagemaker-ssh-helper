@@ -9,6 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Optional
 
+import boto3
 import pytest
 import sagemaker
 from sagemaker import Predictor
@@ -19,6 +20,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.spark import PySparkProcessor
 from sagemaker.utils import name_from_base
 
+from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHModelWrapper, SSHMultiModelWrapper, SSHProcessorWrapper
 from test_util import _create_bucket_if_doesnt_exist
 
@@ -135,6 +137,57 @@ def test_train_placeholder():
     proxy.disconnect()
 
     ssh_wrapper.stop_training_job()
+
+
+# noinspection DuplicatedCode
+def test_debugger_stop_gpu(request):
+    sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
+
+    from sagemaker.debugger import ProfilerRule, rule_configs, ProfilerConfig
+
+    profiler_config = ProfilerConfig(
+        system_monitor_interval_millis=100,  # grab metrics 10 times per second
+    )
+    rules = [
+        ProfilerRule.sagemaker(rule_configs.LowGPUUtilization(
+            scan_interval_us=60 * 1000 * 1000,  # scan every minute
+            patience=2,  # skip the first 2 minutes
+            threshold_p95=50,  # GPU should be at least 50% utilized, 95% of the time
+            threshold_p5=0,  # skip detecting accidental drops
+            window=1200,  # take the last 1200 readings, i.e., the last 2 minutes
+        )),
+    ]
+
+    estimator = PyTorch(
+        entry_point=os.path.basename('source_dir/training_placeholder/train_placeholder.py'),
+        source_dir='source_dir/training_placeholder/',
+        dependencies=[SSHEstimatorWrapper.dependency_dir()],
+        base_job_name='ssh-training-low-gpu',
+        framework_version='1.9.1',
+        py_version='py38',
+        instance_count=1,
+        instance_type='ml.g4dn.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=int(timedelta(minutes=30).total_seconds()),
+        container_log_level=logging.INFO,
+        profiler_config=profiler_config,
+        rules=rules
+    )
+
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=0)
+
+    estimator.fit(wait=False)
+
+    status = ssh_wrapper.wait_training_job_with_status()
+    assert status == 'Complete', 'The job should not be stopped by max_run limit'
+
+    from sagemaker_ssh_helper.cdk.low_gpu import low_gpu_lambda
+    f"""
+    The notification will be triggered by {low_gpu_lambda.handler}.
+    """
+    topic_name = sns_notification_topic_arn.split(':')[-1]
+    metrics_count = SSHLog().count_sns_notifications(topic_name, timedelta(minutes=15))
+    assert metrics_count > 0, 'SNS notification had to be triggered by Low GPU Lambda'
 
 
 # noinspection DuplicatedCode
@@ -390,7 +443,6 @@ def test_processing_framework_e2e():
 
 
 def test_train_with_bucket_override():
-    import boto3
     account_id = boto3.client('sts').get_caller_identity().get('Account')
     custom_bucket_name = f'sagemaker-custom-bucket-{account_id}'
 

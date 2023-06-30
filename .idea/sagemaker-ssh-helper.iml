@@ -20,6 +20,9 @@
       <excludeFolder url="file://$MODULE_DIR$/.idea/dataSources" />
       <excludeFolder url="file://$MODULE_DIR$/tests/htmlcov" />
       <excludeFolder url="file://$MODULE_DIR$/tests/prof" />
+      <excludeFolder url="file://$MODULE_DIR$/djl-serving/engines/python/setup/build" />
+      <excludeFolder url="file://$MODULE_DIR$/djl-serving/engines/python/setup/djl_python.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/venv-lambda" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.8 (sagemaker-ssh-helper-dev)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

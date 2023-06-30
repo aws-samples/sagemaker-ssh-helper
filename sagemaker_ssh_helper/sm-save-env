@@ -8,3 +8,8 @@ export START_SSH=false
 env | grep -E -v "^(HOME=|USER=|MAIL=|LC_ALL=|LS_COLORS=|LANG=|HOSTNAME=|PWD=|TERM=|SHLVL=|LANGUAGE=|_=)" \
   > /etc/environment
 cat /etc/environment
+
+# FIXME: needs quoting of spaces, newlines and other special characters like other quotes
+# E.g., 'apt-get install stress' doesn't work correctly:
+# /usr/sbin/update-info-dir: 13: /etc/environment: cannot open 419: No such file
+# NVIDIA_REQUIRE_CUDA=cuda>=11.1 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=450,driver<451

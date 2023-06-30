@@ -108,7 +108,7 @@ estimator.fit(wait=False)
 instance_ids = ssh_wrapper.get_instance_ids()  # <--NEW--
 
 logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.latest_training_job_name()}")
+logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
 ```
 
 *Note:* `connection_wait_time_seconds` is the amount of time the SSH helper will wait inside SageMaker before it continues normal execution. It's useful for training jobs, when you want to connect before training starts.
@@ -756,3 +756,16 @@ You will see the noVNC welcome screen.
 5. Press "Connect" and enter your password (default is `123456`).
 
 Congratulations! You now have successfully logged into the remote desktop environment running inside a SageMaker Studio kernel gateway.
+
+*Tip:* If you have issues with copy-pasting through system clipboard, use the temp file, e.g. `clip.txt`, and open it in VNC session and SageMaker Studio file browser at the same time.
+
+*Pro Tip:* To set the resolution that matches your browser window size, make a page screenshot (in Firefox - right-click on an empty area -> Take Screenshot -> Save visible), then inspect the resolution of the image, e.g. 1920x970. Then add and switch resolution inside the VNC session:
+```shell
+$ cvt 1920 970 60
+# 1920x970 59.93 Hz (CVT) hsync: 60.35 kHz; pclk: 154.50 MHz
+Modeline "1920x970_60.00"  154.50  1920 2040 2240 2560  970 973 983 1007 -hsync +vsync
+$ xrandr --newmode "1920x970_60.00"  154.50  1920 2040 2240 2560  970 973 983 1007 -hsync +vsync
+$ xrandr --addmode VNC-0 1920x970_60.00
+$ xrandr -s 1920x970_60.00
+```
+
