@@ -60,6 +60,15 @@ class IamSsmStackTests(Stack):
                               PolicyStatement(
                                   effect=Effect.ALLOW,
                                   actions=[
+                                      "cloudwatch:ListMetrics",
+                                      "cloudwatch:GetMetricStatistics"
+
+                                  ],
+                                  resources=["*"],
+                              ),
+                              PolicyStatement(
+                                  effect=Effect.ALLOW,
+                                  actions=[
                                       "sagemaker:CreateTrainingJob",
                                       "sagemaker:CreateProcessingJob",
                                       "sagemaker:CreateModel",
