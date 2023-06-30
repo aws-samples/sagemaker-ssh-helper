@@ -48,7 +48,7 @@ class LowGPULambdaStack(Stack):
             handler="sagemaker_ssh_helper.cdk.low_gpu.low_gpu_lambda.handler",
             role=role,
             environment={
-                "SNS_NOTIFICATION_TOPIC_ARN": sns_notification_topic_arn
+                "SNS_NOTIFICATION_TOPIC_ARN": sns_topic.topic_arn
 
             },
             timeout=Duration.seconds(60),
