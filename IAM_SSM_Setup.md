@@ -65,6 +65,7 @@ AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
 
 *Note:* If you will run the jobs from SageMaker Studio instead of your local machine, specify `USER_ROLE_ARN` the same as `SAGEMAKER_ROLE_ARN`.
 
+To understand more what CDK bootstrapping does, see [the documentation](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
 
 ### Manual setup
 

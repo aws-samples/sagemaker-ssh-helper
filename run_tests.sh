@@ -35,8 +35,9 @@ npm install -g aws-cdk
 cdk --version
 USER_ROLE=$GITLAB_ROLE_ARN
 REGION=eu-west-1
-# Bootstrapping requires Administrator privileges:
-# cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" --require-approval never
+# See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
+cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+  --require-approval never
 APP="python -m sagemaker_ssh_helper.cdk.tests_app"
 AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack-Tests \
     -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE \
@@ -53,7 +54,8 @@ AWS_REGION=$REGION cdk -a "$APP" deploy Low-GPU-Lambda-Stack \
     -c sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
     --require-approval never
 REGION=eu-west-2
-# cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" --require-approval never
+cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+  --require-approval never
 APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
 AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
     --require-approval never
