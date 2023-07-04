@@ -179,11 +179,11 @@ def test_debugger_stop_gpu(request):
     estimator.fit(wait=False)
 
     status = ssh_wrapper.wait_training_job_with_status()
-    assert status == 'Complete', 'The job should not be stopped by max_run limit'
+    assert status == 'Completed', 'The job should not be stopped by max_run limit'
 
     from sagemaker_ssh_helper.cdk.low_gpu import low_gpu_lambda
     f"""
-    The notification will be triggered by {low_gpu_lambda.handler}.
+    The notification had to be triggered by {low_gpu_lambda.handler}.
     """
     topic_name = sns_notification_topic_arn.split(':')[-1]
     metrics_count = SSHLog().count_sns_notifications(topic_name, timedelta(minutes=15))

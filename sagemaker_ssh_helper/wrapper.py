@@ -163,7 +163,7 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds,
                          estimator.sagemaker_session, local_user_id, log_to_stdout)
 
-        if estimator.instance_groups is not None:
+        if hasattr(estimator, 'instance_groups') and estimator.instance_groups is not None:
             # TODO: add support for heterogeneous clusters
             self.logger.warning("Heterogeneous clusters are not yet supported, SSH Helper will start only on one node")
             self.ssh_instance_count = 1

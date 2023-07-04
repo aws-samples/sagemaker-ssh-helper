@@ -13,7 +13,9 @@ class DetachedEstimator(sagemaker.estimator.EstimatorBase):
     """
 
     def __init__(self, training_job_name: str, sagemaker_session: Session):
-        super().__init__(sagemaker_session=sagemaker_session, instance_count=0, role=FICTITIOUS_IAM_ROLE)
+        super().__init__(sagemaker_session=sagemaker_session,
+                         instance_count=0, instance_type='ml.m5.xlarge',
+                         role=FICTITIOUS_IAM_ROLE)
         self._current_job_name = training_job_name
         self.latest_training_job = _TrainingJob(sagemaker_session, self._current_job_name)
 
