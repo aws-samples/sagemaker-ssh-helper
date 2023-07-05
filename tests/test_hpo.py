@@ -98,9 +98,6 @@ def test_hpo_ssh():
     instance_ids = SSMManager().get_training_instance_ids(training_job_name, 300)
     assert len(instance_ids) == 1
 
-    instance_ids = SSHLog().get_training_ssm_instance_ids(training_job_name, 300)
-    assert len(instance_ids) == 1
-
     tuner.wait()
 
     best_training_job = tuner.best_training_job()

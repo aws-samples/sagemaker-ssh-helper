@@ -45,12 +45,14 @@ class SSHLog:
         return ip_addresses
 
     def get_training_ssm_instance_ids(self, training_job_name, retry=0, expected_count=1):
+        SSHLog.logger.warning("SSMManager#get_training_instance_ids() is faster and more stable")
         SSHLog.logger.info(f"Querying SSM instance IDs for training job {training_job_name}, "
                            f"expected instance count = {expected_count}")
         return self.get_ssm_instance_ids('/aws/sagemaker/TrainingJobs', training_job_name, retry,
                                          expected_count=expected_count)
 
     def get_processing_ssm_instance_ids(self, processing_job_name, retry=0):
+        SSHLog.logger.warning("SSMManager#get_processing_instance_ids() is faster and more stable")
         SSHLog.logger.info(f"Querying SSM instance IDs for processing job {processing_job_name}")
         return self.get_ssm_instance_ids('/aws/sagemaker/ProcessingJobs', processing_job_name, retry)
 
@@ -59,10 +61,12 @@ class SSHLog:
         return self.get_ssm_instance_ids(f'/aws/sagemaker/Endpoints/{endpoint_name}', "AllTraffic/", retry)
 
     def get_transformer_ssm_instance_ids(self, transform_job_name, retry=0):
+        SSHLog.logger.warning("SSMManager#get_transformer_instance_ids() is faster and more stable")
         SSHLog.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/TransformJobs', transform_job_name, retry)
 
     def get_studio_kgw_ssm_instance_ids(self, kgw_name, retry=0):
+        SSHLog.logger.warning("SSMManager#get_studio_kgw_instance_ids() is faster and more stable")
         SSHLog.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}", retry)
 
