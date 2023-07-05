@@ -7,7 +7,7 @@ mkdir -p src_diff/
 cat > /tmp/diff_exclude.txt << EOF
 .git
 .DS_Store
-src_diff/*
+src_diff
 EOF
 
 json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
