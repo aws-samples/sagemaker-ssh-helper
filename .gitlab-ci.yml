@@ -18,8 +18,7 @@ run_tests:
         coverage_format: cobertura
         path: tests/coverage.xml
     paths:
-      - src_diff_main.txt
-      - src_diff_latest.txt
+      - src_diff/
       - pip_freeze_before.txt
       - pip_freeze_after.txt
       - pip_freeze_diff.txt
