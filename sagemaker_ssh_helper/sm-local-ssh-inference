@@ -27,7 +27,7 @@ EOF
 
 elif [[ "$COMMAND" == "stop-waiting" ]]; then
 
-  $0 run-command pkill sm-wait
+  $0 run-command sm-wait stop
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 

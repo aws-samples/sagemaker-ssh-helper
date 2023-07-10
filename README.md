@@ -547,9 +547,9 @@ You can use the following CLI command from your local machine to stop the waitin
 sm-local-ssh-training stop-waiting
 ```
 
-Alternatively, if logged to the remote container already, run the `pkill` command from its shell (under `root`):
+Alternatively, if logged to the remote container already, run the `sm-wait stop` command from its shell (under `root`):
 ```text
-pkill sm-wait
+sm-wait stop
 ```
 
 11. After you stop the waiting loop, your code will continue running and will connect to your PyCharm Debug Server.
