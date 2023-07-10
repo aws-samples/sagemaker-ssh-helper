@@ -73,7 +73,6 @@ setuptools.setup(
              'sagemaker_ssh_helper/sm-local-ssh-inference',
              'sagemaker_ssh_helper/sm-local-ssh-processing',
              'sagemaker_ssh_helper/sm-local-configure',
-             'sagemaker_ssh_helper/sm-start-ssh',
              'sagemaker_ssh_helper/sm-ssh-ide',
              'sagemaker_ssh_helper/sm-save-env',
              'sagemaker_ssh_helper/sm-init-ssm',

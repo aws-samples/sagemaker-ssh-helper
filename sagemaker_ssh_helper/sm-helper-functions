@@ -20,13 +20,16 @@ function _install_helper_scripts() {
   _silent_install sm-helper-functions
   _silent_install sm-connect-ssh-proxy +x
   _silent_install sm-wait +x
-  _silent_install sm-start-ssh +x
   _silent_install sm-save-env +x
   _silent_install sm-init-ssm +x
   _silent_install sm-ssh-ide +x
   _silent_install sm-local-start-ssh +x
   _silent_install sm-local-ssh-ide +x
   _silent_install sm-local-ssh-training +x
+  _silent_install sm-local-ssh-inference +x
+  _silent_install sm-local-ssh-processing +x
+  _silent_install sm-local-ssh-transform +x
+  _silent_install sm-local-ssh-notebook +x
 }
 
 function _is_centos() {
