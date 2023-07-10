@@ -18,15 +18,14 @@ LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE"
 
 set -e
 
-hostname
-cat /opt/ml/metadata/resource-metadata.json
-
 pip uninstall -y -q awscli
 pip install -q sagemaker-ssh-helper
 
 # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
 #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
 #cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
+
+sm-ssh-ide get-metadata
 
 apt-get -y update || echo 'kernel-lc-config.sh: WARNING - issues with retrieving new lists of packages'
 apt-get -y install procps
@@ -41,11 +40,14 @@ export JUPYTER_PATH="$SYSTEM_PYTHON_PREFIX/share/jupyter/"
 env
 
 sm-ssh-ide configure
+#sm-ssh-ide configure --ssh-only
 
 sm-ssh-ide set-jb-license-server "$JB_LICENSE_SERVER_HOST"
 sm-ssh-ide set-vnc-password "$VNC_PASSWORD"
 
-sm-ssh-ide init-ssm "$LOCAL_USER_ID"
+sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"
+
+sm-ssh-ide init-ssm
 
 sm-ssh-ide stop
 sm-ssh-ide start

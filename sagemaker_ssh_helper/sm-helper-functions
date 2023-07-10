@@ -160,3 +160,34 @@ function _install_sudo() {
     apt-get install -y --no-install-recommends sudo
   fi
 }
+
+# shellcheck disable=SC2001
+function _print_sm_app_name() {
+  sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
+  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"ResourceName":\"\([^"]*\)\".*$/\1/'
+}
+
+# shellcheck disable=SC2001
+function _print_sm_domain_id() {
+  sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
+  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"DomainId":\"\([^"]*\)\".*$/\1/'
+}
+
+# shellcheck disable=SC2001
+function _print_sm_user_profile_name() {
+  sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
+  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"UserProfileName":\"\([^"]*\)\".*$/\1/'
+}
+
+function _print_sm_studio_python() {
+  SM_STUDIO_PYTHON=$(/opt/.sagemakerinternal/conda/bin/python -c \
+      "from jupyter_client.kernelspec import KernelSpecManager; \
+      print(KernelSpecManager().get_all_specs()['python3']['spec']['argv'][0])")
+  echo -n $SM_STUDIO_PYTHON
+}
+
+function _print_sm_studio_python_prefix() {
+  SM_STUDIO_PYTHON=$(_print_sm_studio_python)
+  SM_STUDIO_PYTHON_PREFIX=$("$SM_STUDIO_PYTHON" -c "from __future__ import print_function;import sys; print(sys.prefix)")
+  echo -n $SM_STUDIO_PYTHON_PREFIX
+}
