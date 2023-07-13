@@ -4,12 +4,31 @@
 
 set -e
 
-export START_SSH=false
-env | grep -E -v "^(HOME=|USER=|MAIL=|LC_ALL=|LS_COLORS=|LANG=|HOSTNAME=|PWD=|TERM=|SHLVL=|LANGUAGE=|_=)" \
-  > /etc/environment
-cat /etc/environment
+if [[ "$1" == "print-vars" ]]; then
+  # Wrap all vars into single quotes, wrap single quotes into double quotes
+  # Also works for multi-line variables
+  # A=test -> A='test'
+  # B='test' -> B=''"'"'test'"'"''
+  # C="test" -> C='"test"'
+  # D=te  -> D='te
+  # st       st'
+  shift
+  for arg in "$@"; do
+    key=$(echo "$arg" | perl -0777 -pe 's/^([^=]*)=?.*$/\1/s')
+    value=$(echo "$arg" | perl -0777 -pe 's/^[^=]*=?(.*)$/\1/s' | perl -0777 -pe s/\'/\'\"\'\"\'/gs)
 
-# FIXME: needs quoting of spaces, newlines and other special characters like other quotes
-# E.g., 'apt-get install stress' doesn't work correctly:
-# /usr/sbin/update-info-dir: 13: /etc/environment: cannot open 419: No such file
-# NVIDIA_REQUIRE_CUDA=cuda>=11.1 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=450,driver<451
+    if [[ $key =~ ^(BASH_FUNC_.*|HOME|USER|MAIL|LC_ALL|LS_COLORS|LANG|HOSTNAME|PWD|TERM|SHLVL|LANGUAGE|_)$ ]]; then
+      :  # skip vars that can cause problems
+    else
+      echo "$key='$value'"
+    fi
+
+  done
+  exit 0
+fi
+
+export START_SSH=false
+env -0 | xargs -0 sm-save-env print-vars > /etc/environment
+
+echo "sm-save-env: Dumping environment"
+cat /etc/environment
