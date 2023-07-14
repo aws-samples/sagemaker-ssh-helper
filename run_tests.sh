@@ -19,8 +19,8 @@ pip freeze --all | tee pip_freeze_after_test.txt
 ( diff pip_freeze_before.txt pip_freeze_after.txt || : ) | tee pip_freeze_diff.txt
 ( diff pip_freeze_after.txt pip_freeze_after_test.txt || : ) | tee pip_freeze_diff_test.txt
 # Scanning sources
-bandit -r ./sagemaker_ssh_helper/ ./tests/ *.py --skip B603,B404,B101 2>&1 | tee bandit.txt
-flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ *.py | tee flake8.txt
+bandit -r ./sagemaker_ssh_helper/ ./tests/ ./*.py --skip B603,B404,B101 2>&1 | tee bandit.txt
+flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ ./*.py | tee flake8.txt
 # Configure local env
 id
 apt-get update
@@ -40,11 +40,11 @@ cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
   --require-approval never
 APP="python -m sagemaker_ssh_helper.cdk.tests_app"
 AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack-Tests \
-    -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE \
+    -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
     --require-approval never
 APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
 AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
-    -c sagemaker_role=$SAGEMAKER_ROLE -c user_role=$USER_ROLE \
+    -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
     --require-approval never
 APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
 AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
@@ -82,11 +82,12 @@ export AWS_SESSION_TOKEN=${sts[2]}
 # Run tests
 echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
 cd tests
+# shellcheck disable=SC2086
 coverage run -m pytest \
     --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml \
     -m 'not manual' \
-    -o sagemaker_studio_domain=$SAGEMAKER_STUDIO_DOMAIN \
-    -o sns_notification_topic_arn=$SNS_NOTIFICATION_TOPIC_ARN \
+    -o sagemaker_studio_domain="$SAGEMAKER_STUDIO_DOMAIN" \
+    -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
     $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
 coverage report
 coverage xml
