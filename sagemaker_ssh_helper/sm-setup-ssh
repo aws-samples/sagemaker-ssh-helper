@@ -5,42 +5,38 @@
 # from 'requirements.txt' and 'bootstrap_on_start' parameter was passed to the wrapper, or manually
 # from training / processing / inference script, e. g. with subprocess.check_call()
 
+set -e
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions
+
 # This script can be called simultaneously multiple times in a distributed training or inference job
 # To avoid race conditions, we install helper scripts under an exclusive lock
 if [[ "$1" == "install-helper-scripts" ]]; then
-  dir=$(dirname "$0")
-  source "$dir"/sm-helper-functions
-
   _install_helper_scripts
   exit 0
 fi
 
-set -e
-
-if [[ "$1" == "start-ssh" ]]; then
-  dir=$(dirname "$0")
-  source "$dir"/sm-helper-functions
-
-  # Log IP addresses of the container (useful only in training in combination with VPC + VPN)
-  echo "SSH Helper Log IP: $(hostname -I)"
+if [[ "$1" == "configure" ]]; then
+  # Everything that requires root and Internet goes to 'configure'
+  if [[ -f /opt/sagemaker-ssh-helper/.ssh-configured ]]; then
+      echo "Already configured. Remove /opt/sagemaker-ssh-helper/.ssh-configured to force reconfiguration."
+      exit 0
+  fi
 
   chmod 1777 /tmp
   mkdir -p ~/.ssh
+  [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1
 
-  # Install SSH (if using MPI, already installed)
+  echo "Installing SSH server and auxiliary tools"
   if _is_centos; then
-    yum install -y openssh-server
+    yum install -y openssh-server net-tools procps less jq vim rsync perl
   else
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get install -y --no-install-recommends openssh-server
+    apt-get -qq update || echo 'sm-ssh-ide: WARNING - issues with retrieving new lists of packages'
+    apt-get -qq -y install apt-utils
+    apt-get -qq -y install ssh net-tools procps less jq vim rsync
   fi
-
-  # Save and dump SageMaker environment for SSH sessions
-  sm-save-env
-
-  # Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
-  ps wwwe -p 1 | tail -1
 
   sed -i -e 's~^ClientAliveInterval~#ClientAliveInterval~' /etc/ssh/sshd_config
   echo "ClientAliveInterval 15" >> /etc/ssh/sshd_config
@@ -51,12 +47,58 @@ if [[ "$1" == "start-ssh" ]]; then
   sed -i -e 's~^AuthorizedKeysFile~#AuthorizedKeysFile~' /etc/ssh/sshd_config
   echo "AuthorizedKeysFile /etc/ssh/authorized_keys" >> /etc/ssh/sshd_config
 
+  if _is_centos; then
+    [[ -f /etc/ssh/ssh_host_rsa_key ]] || (echo "Generating new SSH keys" && ssh-keygen -A)
+  fi
+
+  _install_sudo
+  _install_unzip
+  _install_curl
+  _install_aws_cli
+  _install_ssm_agent
+  _install_jq
+
+  cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
+{
+    "Profile":{
+        "ShareCreds" : true,
+        "ShareProfile" : "ssm",
+        "ForceUpdateCreds" : false,
+        "KeyAutoRotateDays": 0
+    }
+}
+EOF
+
+  cp /etc/amazon/ssm/seelog.xml.template /etc/amazon/ssm/seelog.xml
+
+  # See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-ssm-user-permissions.html
+  echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users
+
+  mkdir -p /opt/sagemaker-ssh-helper/
+  touch /opt/sagemaker-ssh-helper/.ssh-configured
+  exit 0
+fi
+
+if [[ "$1" == "start-ssh" ]]; then
+  dir=$(dirname "$0")
+  source "$dir"/sm-helper-functions
+
+  sm-setup-ssh configure
+
+  # Log IP addresses of the container (useful only in training in combination with VPC + VPN)
+  echo "SSH Helper Log IP: $(hostname -I)"
+
+  # Save and dump SageMaker environment for SSH sessions
+  sm-save-env
+
+  # Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
+  ps wwwe -p 1 | tail -1
+
   # Start SSH server
   if _is_centos; then
     # NOTE: systemctl will not work in CentOS SageMaker container (e.g. Spark processing) because lack of
     # privileges to access DBUS, so we run sshd manually. This command doesn't work:
     # # service sshd start || (echo "ERROR: Failed to start sshd service" && exit 255)
-    [[ -f /etc/ssh/ssh_host_rsa_key ]] || (echo "Generating new SSH keys" && ssh-keygen -A)
     /usr/sbin/sshd
   else
     service ssh start || (echo "ERROR: Failed to start ssh service" && exit 255)
@@ -72,7 +114,7 @@ if [[ "$1" == "start-ssh" ]]; then
 fi
 
 flock /tmp/sm-install-lock bash "$0" install-helper-scripts \
-  | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh] /'
+  | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh][install-helper-scripts] /'
 
 # nohup will detach the child process from parent and run it in background
 # flock prevents from starting more than 1 process
@@ -84,10 +126,10 @@ if [[ ! -f /tmp/sm-start-ssh-lock ]]; then
   else
     nohup flock -n /tmp/sm-start-ssh-lock \
       bash "$0" start-ssh 2>&1 \
-        | sed -u 's/^/[sagemaker-ssh-helper][sm-start-ssh] /' \
+        | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh][start-ssh] /' \
         >/proc/1/fd/1 2>&1 &
   fi
 fi
 
 sm-wait "${SSH_WAIT_TIME_SECONDS:-60}" \
-  | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh] /'
+  | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh][sm-wait] /'

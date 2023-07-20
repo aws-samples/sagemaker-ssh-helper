@@ -91,6 +91,14 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:CreateApp",
                                       "sagemaker:DeleteApp",
                                       "sagemaker:DescribeApp",
+                                      "sagemaker:CreateImage",
+                                      "sagemaker:DescribeImage",
+                                      "sagemaker:DeleteImage",
+                                      "sagemaker:CreateImageVersion",
+                                      "sagemaker:DescribeImageVersion",
+                                      "sagemaker:CreateAppImageConfig",
+                                      "sagemaker:DeleteAppImageConfig",
+                                      "sagemaker:UpdateDomain",
                                   ],
                                   resources=["*"]
                               ),
@@ -128,7 +136,10 @@ class IamSsmStackTests(Stack):
                                       "ecr:UploadLayerPart",
                                   ],
                                   resources=[
-                                      f"arn:{Aws.PARTITION}:ecr:{Aws.REGION}:{Aws.ACCOUNT_ID}:repository/byoc-ssh"]
+                                      f"arn:{Aws.PARTITION}:ecr:{Aws.REGION}:{Aws.ACCOUNT_ID}:repository/byoc-ssh",
+                                      f"arn:{Aws.PARTITION}:ecr:{Aws.REGION}:{Aws.ACCOUNT_ID}:repository/byoc-ssh-no-internet",
+                                      f"arn:{Aws.PARTITION}:ecr:{Aws.REGION}:{Aws.ACCOUNT_ID}:repository/smstudio-custom-ssh",
+                                  ]
                               ),
                               PolicyStatement(
                                   effect=Effect.ALLOW,

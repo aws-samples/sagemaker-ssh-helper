@@ -23,13 +23,7 @@ function _install_helper_scripts() {
   _silent_install sm-save-env +x
   _silent_install sm-init-ssm +x
   _silent_install sm-ssh-ide +x
-  _silent_install sm-local-start-ssh +x
-  _silent_install sm-local-ssh-ide +x
-  _silent_install sm-local-ssh-training +x
-  _silent_install sm-local-ssh-inference +x
-  _silent_install sm-local-ssh-processing +x
-  _silent_install sm-local-ssh-transform +x
-  _silent_install sm-local-ssh-notebook +x
+  _silent_install sm-setup-ssh +x
 }
 
 function _is_centos() {
@@ -183,11 +177,5 @@ function _print_sm_studio_python() {
   SM_STUDIO_PYTHON=$(/opt/.sagemakerinternal/conda/bin/python -c \
       "from jupyter_client.kernelspec import KernelSpecManager; \
       print(KernelSpecManager().get_all_specs()['python3']['spec']['argv'][0])")
-  echo -n $SM_STUDIO_PYTHON
-}
-
-function _print_sm_studio_python_prefix() {
-  SM_STUDIO_PYTHON=$(_print_sm_studio_python)
-  SM_STUDIO_PYTHON_PREFIX=$("$SM_STUDIO_PYTHON" -c "from __future__ import print_function;import sys; print(sys.prefix)")
-  echo -n $SM_STUDIO_PYTHON_PREFIX
+  echo -n "$SM_STUDIO_PYTHON"
 }

@@ -162,3 +162,59 @@ def test_called_process_error_with_output():
         got_error = True
         assert output == "ssh: connect to host localhost port 10022: Connection refused"
     assert got_error
+
+
+def test_studio_internet_free_mode(request):
+    """
+    See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html
+    """
+    logging.info("Building BYO SageMaker Studio image for Internet-free mode")
+    subprocess.check_call(
+        "sm-docker build . --file tests/byoi_studio/Dockerfile.internet_free --repo smstudio-custom-ssh:custom"
+        .split(' '),
+        cwd="../"
+    )
+
+    logging.info("Creating SageMaker Studio kernel gateway app")
+
+    ide = SSHIDE(request.config.getini('sagemaker_studio_vpc_only_domain'), 'internet-free-user')
+
+    image = ide.create_and_attach_image(
+        'custom-image-ssh',
+        'smstudio-custom-ssh:custom',
+        request.config.getini('sagemaker_role'),
+        app_image_config_name='custom-image-config-ssh',
+        kernel_specs=[
+            {
+                "Name": "python3",  # SHOULD match the output of `jupyter-kernelspec list` during the container build
+                "DisplayName": "Python 3 - with SageMaker SSH Helper"
+            }
+        ],
+        file_system_config={
+            "MountPath": "/root",
+            "DefaultUid": 0,
+            "DefaultGid": 0
+        }
+    )
+
+    assert image.arn is not None
+    assert image.version_arn is not None
+
+    ide.delete_app("byoi-studio-app", 'KernelGateway', wait=True)
+
+    ide.create_ssh_kernel_app(
+        "byoi-studio-app",
+        'custom-image-ssh',
+        "ml.m5.large",
+        recreate=True
+    )
+
+    time.sleep(60)
+
+    studio_ids = ide.get_kernel_instance_ids("byoi-studio-app", timeout_in_sec=300)
+    studio_id = studio_ids[0]
+
+    with SSMProxy(10022) as ssm_proxy:
+        ssm_proxy.connect_to_ssm_instance(studio_id)
+
+    ide.delete_kernel_app("byoi-studio-app", wait=False)

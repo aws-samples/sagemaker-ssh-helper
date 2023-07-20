@@ -36,11 +36,6 @@ extras = {
         "pydevd-pycharm~=222.4459.20",
         "scikit-learn"
     ],
-
-    # Fix installation on Apple M1 (see https://github.com/scipy/scipy/issues/13102):
-    # conda install scipy
-    # conda install sentencepiece
-    # conda install grpcio
     "dev-macos": [
         "tensorflow-macos==2.9.2",
         "numpy==1.22.4"
@@ -65,7 +60,6 @@ setuptools.setup(
              'sagemaker_ssh_helper/sm-connect-ssh-proxy',
              'sagemaker_ssh_helper/sm-wait',
              'sagemaker_ssh_helper/sm-local-start-ssh',
-             'sagemaker_ssh_helper/sm-local-install-force',
              'sagemaker_ssh_helper/sm-local-ssh-ide',
              'sagemaker_ssh_helper/sm-local-ssh-notebook',
              'sagemaker_ssh_helper/sm-local-ssh-training',

@@ -39,7 +39,7 @@ def test_distributed_training_with_default_instance_count():
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
 
     estimator.fit(wait=False)
-    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
+    mi_ids = ssh_wrapper.get_instance_ids(timeout_in_sec=600)
     ssh_wrapper.stop_training_job()
     assert len(mi_ids) == default_ssh_instance_count
 
@@ -63,7 +63,7 @@ def test_distributed_training_with_changed_instance_count(ssh_instance_count):
                                              ssh_instance_count=ssh_instance_count)
 
     estimator.fit(wait=False)
-    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
+    mi_ids = ssh_wrapper.get_instance_ids(timeout_in_sec=600)
     ssh_wrapper.stop_training_job()
     assert len(mi_ids) == ssh_instance_count
 
@@ -91,6 +91,6 @@ def test_distributed_training_mpi_single_node():
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
 
     estimator.fit(wait=False)
-    mi_ids = ssh_wrapper.get_instance_ids(retry=60)
+    mi_ids = ssh_wrapper.get_instance_ids(timeout_in_sec=600)
     ssh_wrapper.stop_training_job()
     assert len(mi_ids) == 1

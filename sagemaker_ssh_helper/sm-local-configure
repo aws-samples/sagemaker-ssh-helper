@@ -10,9 +10,10 @@ cat /etc/issue || :
 cat /etc/os-release || :
 
 # Smoke test - Python version
-python --version
+python3 --version
 
-# Install AWS CLI
+echo "sm-local-configure: Installing tools. The 'sudo' commands can ask for your password."
+
 _install_unzip
 _install_curl
 _install_aws_cli

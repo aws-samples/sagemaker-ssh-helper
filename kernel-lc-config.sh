@@ -18,31 +18,31 @@ LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE"
 
 set -e
 
-pip uninstall -y -q awscli
-pip install -q sagemaker-ssh-helper
+if [ -f /opt/sagemaker-ssh-helper/.ssh-ide-configured ]; then
+    echo 'kernel-lc-config.sh: INFO - SageMaker SSH Helper is already installed, remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to reinstall'
+else
+  pip uninstall -y -q awscli
+  pip install -q sagemaker-ssh-helper
 
-# Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
-#git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
-#cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
+  # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
+  #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
+  #cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
+fi
 
 sm-ssh-ide get-metadata
 
-apt-get -y update || echo 'kernel-lc-config.sh: WARNING - issues with retrieving new lists of packages'
-apt-get -y install procps
-ps xfaeww
-
 which python
-which pip
 
 SYSTEM_PYTHON_PREFIX=$(python -c "from __future__ import print_function;import sys; print(sys.prefix)")
 export JUPYTER_PATH="$SYSTEM_PYTHON_PREFIX/share/jupyter/"
 
-env
-
+# If already configured in the container, it will not take any effect:
 sm-ssh-ide configure
 #sm-ssh-ide configure --ssh-only
 
 sm-ssh-ide set-jb-license-server "$JB_LICENSE_SERVER_HOST"
+
+# If configured with --ssh-only flag, will not take any effect:
 sm-ssh-ide set-vnc-password "$VNC_PASSWORD"
 
 sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"

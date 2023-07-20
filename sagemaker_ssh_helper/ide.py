@@ -2,7 +2,7 @@ import logging
 import time
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.manager import SSMManager
@@ -36,12 +36,19 @@ class IDEAppStatus:
         return f"{self.status}"
 
 
+class Image:
+    def __init__(self, arn, version_arn) -> None:
+        super().__init__()
+        self.arn = arn
+        self.version_arn = version_arn
+
+
 class SSHIDE:
     logger = logging.getLogger('sagemaker-ssh-helper:SSHIDE')
 
-    def __init__(self, domain: str, user: str, region_name: str = None):
+    def __init__(self, domain_id: str, user: str, region_name: str = None):
         self.user = user
-        self.domain = domain
+        self.domain_id = domain_id
         self.current_region = region_name or boto3.session.Session().region_name
         self.client = boto3.client('sagemaker', region_name=self.current_region)
         self.ssh_log = SSHLog(region_name=self.current_region)
@@ -98,7 +105,7 @@ class SSHIDE:
         response = None
         try:
             response = self.client.describe_app(
-                DomainId=self.domain,
+                DomainId=self.domain_id,
                 AppType='KernelGateway',
                 UserProfileName=self.user,
                 AppName=app_name,
@@ -126,7 +133,7 @@ class SSHIDE:
 
         try:
             _ = self.client.delete_app(
-                DomainId=self.domain,
+                DomainId=self.domain_id,
                 AppType=app_type,
                 UserProfileName=self.user,
                 AppName=app_name,
@@ -150,7 +157,9 @@ class SSHIDE:
         if wait and not status.is_deleted():
             raise ValueError(f"Failed to delete app {app_name}. Status: {status}")
 
-    def create_app(self, app_name, app_type, instance_type, image_arn, lifecycle_arn: str = None):
+    def create_app(self, app_name, app_type, instance_type, image_arn,
+                   lifecycle_arn: str = None,
+                   image_version_arn: str = None):
         self.logger.info(f"Creating {app_type} app {app_name} on {instance_type} "
                          f"with {image_arn} and lifecycle {lifecycle_arn}")
         resource_spec = {
@@ -161,7 +170,7 @@ class SSHIDE:
             resource_spec['LifecycleConfigArn'] = lifecycle_arn
 
         _ = self.client.create_app(
-            DomainId=self.domain,
+            DomainId=self.domain_id,
             AppType=app_type,
             AppName=app_name,
             UserProfileName=self.user,
@@ -195,11 +204,102 @@ class SSHIDE:
 
     def log_urls(self, app_name):
         self.logger.info(f"Remote logs are at {self.get_cloudwatch_url(app_name)}")
-        if self.domain and self.user:
+        if self.domain_id and self.user:
             self.logger.info(f"Remote apps metadata is at {self.get_user_metadata_url()}")
 
     def get_cloudwatch_url(self, app_name):
-        return self.ssh_log.get_ide_cloudwatch_url(self.domain, self.user, app_name)
+        return self.ssh_log.get_ide_cloudwatch_url(self.domain_id, self.user, app_name)
 
     def get_user_metadata_url(self):
-        return self.ssh_log.get_ide_metadata_url(self.domain, self.user)
+        return self.ssh_log.get_ide_metadata_url(self.domain_id, self.user)
+
+    def create_and_attach_image(self, image_name, ecr_image_name,
+                                role_arn,
+                                app_image_config_name,
+                                kernel_specs, file_system_config) -> Image:
+        try:
+            self.client.delete_image(ImageName=image_name)
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == 'ResourceNotFound':
+                pass  # doesn't exist, it's OK
+            else:
+                raise
+        try:
+            self.wait_for_image_deletion(image_name)
+        except WaiterError as e:
+            pass  # probably, OK
+
+        sagemaker_image_dict = self.client.create_image(
+            ImageName=image_name,
+            RoleArn=role_arn
+        )
+        image_arn = sagemaker_image_dict['ImageArn']
+        self.logger.info(f"Creating SageMaker image with ARN: {image_arn}")
+
+        self.wait_for_image_creation(image_name)
+
+        account_id = boto3.client('sts').get_caller_identity().get('Account')
+        sagemaker_image_version_dict = self.client.create_image_version(
+            BaseImage=f"{account_id}.dkr.ecr.{self.current_region}.amazonaws.com/{ecr_image_name}",
+            ImageName=image_name,
+            JobType='NOTEBOOK_KERNEL'
+        )
+        image_version_arn = sagemaker_image_version_dict['ImageVersionArn']
+        image_version = int(image_version_arn[image_version_arn.rfind('/') + 1:])
+        self.logger.info(f"Creating SageMaker image version # {image_version} with ARN: {image_version_arn}")
+
+        self.wait_for_image_version_creation(image_name)
+
+        self.client.delete_app_image_config(AppImageConfigName=app_image_config_name)
+
+        sagemaker_image_config_dict = self.client.create_app_image_config(
+            AppImageConfigName=app_image_config_name,
+            KernelGatewayImageConfig={
+                'KernelSpecs': kernel_specs,
+                'FileSystemConfig': file_system_config
+            }
+        )
+        image_config_arn = sagemaker_image_config_dict['AppImageConfigArn']
+        self.logger.info(f"Created SageMaker image config with ARN: {image_config_arn}")
+
+        self.client.update_domain(
+            DomainId=self.domain_id,
+            DefaultUserSettings={
+                'KernelGatewayAppSettings': {
+                    'CustomImages': [
+                        {
+                            'ImageName': image_name,
+                            'ImageVersionNumber': image_version,
+                            'AppImageConfigName': app_image_config_name
+                        }
+                    ]
+                }
+            }
+        )
+
+        return Image(image_arn, image_version_arn)
+
+    def wait_for_image_creation(self, image_name):
+        self.logger.info(f"Waiting for SageMaker image creation: {image_name}")
+        waiter = self.client.get_waiter('image_created')
+        waiter.wait(
+            ImageName=image_name
+        )
+        self.logger.info(f"Image created: {image_name}")
+
+    def wait_for_image_version_creation(self, image_name):
+        self.logger.info(f"Waiting for the latest version creation of SageMaker image: {image_name}")
+        waiter = self.client.get_waiter('image_version_created')
+        waiter.wait(
+            ImageName=image_name
+        )
+        self.logger.info(f"Image version created for image: {image_name}")
+
+    def wait_for_image_deletion(self, image_name):
+        self.logger.info(f"Waiting for SageMaker image deletion: {image_name}")
+        waiter = self.client.get_waiter('image_deleted')
+        waiter.wait(
+            ImageName=image_name
+        )
+        self.logger.info(f"Image deleted: {image_name}")

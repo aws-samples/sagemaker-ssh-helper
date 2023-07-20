@@ -7,35 +7,12 @@
 # Requires environment variable SSH_SSM_ROLE to be passed as an argument
 # The role for SSM is not a full IAM ARN, but only the last part of it such as 'service-role/SageMakerRole'
 
+set -e
+
 dir=$(dirname "$0")
 source "$dir"/sm-helper-functions
 
-_install_helper_scripts
-
-set -e
-
-_install_sudo
-_install_unzip
-_install_curl
-_install_aws_cli
-_install_ssm_agent
-
-cat >/etc/amazon/ssm/amazon-ssm-agent.json <<EOF
-{
-    "Profile":{
-        "ShareCreds" : true,
-        "ShareProfile" : "ssm",
-        "ForceUpdateCreds" : false,
-        "KeyAutoRotateDays": 0
-    }
-}
-EOF
-
-cp /etc/amazon/ssm/seelog.xml.template /etc/amazon/ssm/seelog.xml
-
 CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
-
-_install_jq
 
 SSH_CREATOR=$(aws sts get-caller-identity | jq --raw-output '.UserId')
 SSH_TIMESTAMP=$(date +%s)
@@ -77,6 +54,3 @@ acode=$(echo $response | jq --raw-output '.ActivationCode')
 aid=$(echo $response | jq --raw-output '.ActivationId')
 
 echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
-
-# See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-ssm-user-permissions.html
-echo "ssm-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ssm-agent-users

@@ -87,7 +87,7 @@ def test_hpo_ssh():
 
     with pytest.raises(AssertionError):
         # Shouldn't be able to get instance ids without calling estimator.fit() first
-        _ = ssh_wrapper.get_instance_ids(retry=0)
+        _ = ssh_wrapper.get_instance_ids(timeout_in_sec=0)
 
     time.sleep(15)  # allow training jobs to start
 

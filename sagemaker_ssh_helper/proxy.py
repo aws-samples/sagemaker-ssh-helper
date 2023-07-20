@@ -79,24 +79,12 @@ class SSMProxy(ABC):
 
     def terminate_waiting_loop(self):
         self.logger.info("Terminating the remote waiting loop / sleep process")
-        retval = self.run_command("pkill -f sm-wait")
-
-        if retval == 1:
-            for i in range(0, 3):
-                times_left = 3 - i
-                times = "times" if times_left > 1 else "time"
-                self.logger.warning(f"No sm-wait processes were found. Trying {times_left} more {times}.")
-                time.sleep(15)
-                proc_list = self.run_command_with_output("ps -fC sm-wait")
-                self.logger.info(f"List of sm-wait-processes: {proc_list}")
-                retval = self.run_command("pkill -f sm-wait")
-                if retval != 1:
-                    break
-
+        retval = self.run_command("sm-wait stop")
         if retval != 0:
+            proc_list = self.run_command_with_output("sm-wait list")
+            self.logger.info(f"List of sm-wait-processes: {proc_list}")
             raise ValueError(
-                f"Return value is not zero: {retval}. Do you need to you increase "
-                f"'connection_wait_time' parameter?"
+                f"Return value for `sm-wait stop` is not zero: {retval}. Check remote logs for more details."
             )
         self.logger.info("Successfully terminated the waiting loop")
 

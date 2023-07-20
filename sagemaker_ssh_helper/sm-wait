@@ -11,25 +11,21 @@ if [[ "$SLEEP" == "stop" ]]; then
     echo "sm-wait: Stopping all waiting processes." \
       | tee /proc/1/fd/1
     touch /tmp/sm-wait-stopped
-    sleep 5  # wait for new processes to respawn
-    pkill sm-wait
-    exit
+    exit 0
 fi
 
+if [[ "$SLEEP" == "list" ]]; then
+    ps -fC sm-wait
+    exit 0
+fi
 
 if [[ "$SLEEP" == 0 ]]; then
-    exit
+    exit 0
 fi
-
-if [[ -f /tmp/sm-wait-stopped ]]; then
-  echo "sm-wait: Exiting, because sm-wait was already stopped."
-  exit
-fi
-
 
 terminate() {
-    echo "sm-wait: Gracefully terminated." 
-    exit
+    echo "sm-wait: Terminated."
+    exit 2
 }
 
 trap terminate SIGTERM
@@ -41,6 +37,11 @@ echo "sm-wait: Waiting for $SLEEP seconds to let you prepare you connection. "\
 
 for loop in $(seq 1 1 "$SLEEP") 
 do
+    if [[ -f /tmp/sm-wait-stopped ]]; then
+      sleep 2  # let `sm-wait stop` exit successfully before we stop the container
+      echo "sm-wait: Successfully stopped. Remove /tmp/sm-wait-stopped to start again."
+      exit 0
+    fi
     sleep 1
     SSM_PID=$(pgrep -f amazon-ssm-agent)
     if [[ "$SSM_PID" == "" ]]; then

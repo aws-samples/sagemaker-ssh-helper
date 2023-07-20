@@ -1,0 +1,46 @@
+FROM public.ecr.aws/amazonlinux/amazonlinux:2
+
+# Based on the Sample Dockerfile:
+# https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi-specs.html
+
+# Run in the project root directory:
+# pip install sagemaker-studio-image-build
+# sm-docker build . --file tests/byoi_studio/Dockerfile.internet_free --repo smstudio-custom-ssh:custom
+
+RUN \
+    yum install --assumeyes python3 shadow-utils && \
+    yum clean all && \
+    python3 -m pip install ipykernel && \
+    python3 -m ipykernel install
+
+# Install SageMaker SSH Helper for the Internet-free setup
+ARG SAGEMAKER_SSH_HELPER_DIR="/opt/sagemaker-ssh-helper"
+RUN mkdir -p $SAGEMAKER_SSH_HELPER_DIR
+
+# See tests/test_ide.py::test_studio_internet_free_mode
+
+# Log the kernel specs
+# The kernel name needs to match SageMaker Image config
+RUN jupyter-kernelspec list
+
+RUN pip3 uninstall -y -q awscli
+
+# Install official release (for users):
+#RUN \
+#    pip3 install --no-cache-dir sagemaker-ssh-helper
+
+# Install dev release from source (for developers):
+COPY ./ $SAGEMAKER_SSH_HELPER_DIR/src/
+RUN \
+    pip3 --no-cache-dir install wheel && \
+    pip3 --no-cache-dir install $SAGEMAKER_SSH_HELPER_DIR/src/
+
+# Pre-configure the container with packages, which should be installed from Internet
+# Consider adding `--ssh-only` flag and commenting the first RUN command, if you don't plan to connect
+# to the VNC server or to the Jupyter notebook
+#RUN \
+#    sm-ssh-ide configure && \
+#    pip3 --no-cache-dir install notebook && \
+#    yum install --assumeyes xterm
+
+RUN sm-ssh-ide configure --ssh-only

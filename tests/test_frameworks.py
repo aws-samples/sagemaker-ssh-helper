@@ -435,15 +435,17 @@ def test_clean_train_sklearn():
     logging.info("Starting training")
 
     from sagemaker.sklearn import SKLearn
-    estimator = SKLearn(entry_point='train_clean.py',
-                        source_dir='source_dir/training_clean/',
-                        py_version='py3',
-                        framework_version='1.0-1',
-                        instance_count=1,
-                        instance_type='ml.m5.xlarge',
-                        max_run=int(timedelta(minutes=15).total_seconds()),
-                        keep_alive_period_in_seconds=1800,
-                        container_log_level=logging.INFO)
+    estimator = SKLearn(
+        entry_point=(p := Path('source_dir/training_clean/train_clean.py')).name,
+        source_dir=str(p.parents[0]),
+        py_version='py3',
+        framework_version='1.0-1',
+        instance_count=1,
+        instance_type='ml.m5.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=1800,
+        container_log_level=logging.INFO
+    )
 
     estimator.fit()
     logging.info("Finished training")
@@ -519,23 +521,31 @@ def test_train_xgboost_ssh():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
+# noinspection DuplicatedCode
 def test_train_estimator_ssh_byoc():
     logging.info("Building BYOC docker image")
-    subprocess.check_call("sm-docker build . --file byoc/Dockerfile --repo byoc-ssh:latest".split(' '))
+    subprocess.check_call(
+        "sm-docker build . --file tests/byoc/Dockerfile --repo byoc-ssh:latest".split(' '),
+        cwd="../"
+    )
 
     logging.info("Starting training")
 
     import boto3
-    account_id = boto3.client('sts').get_caller_identity().get('Account')
+    region = boto3.session.Session().region_name
+    logging.info(f"Using region to fetch account ID from STS: {region}")
+    account_id = boto3.client('sts', region_name=region).get_caller_identity().get('Account')
 
     from sagemaker.estimator import Estimator
 
-    estimator = Estimator(image_uri=f"{account_id}.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh:latest",
-                          instance_count=1,
-                          instance_type='ml.m5.xlarge',
-                          max_run=int(timedelta(minutes=15).total_seconds()),
-                          keep_alive_period_in_seconds=1800,
-                          container_log_level=logging.INFO)
+    estimator = Estimator(
+        image_uri=f"{account_id}.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh:latest",
+        instance_count=1,
+        instance_type='ml.m5.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=1800,
+        container_log_level=logging.INFO
+    )
 
     sagemaker_session = sagemaker.Session()
     training_input = sagemaker_session.upload_data(path='byoc/train_data',
@@ -581,6 +591,50 @@ def test_train_estimator_ssh_byoc():
 
     finally:
         predictor.delete_endpoint(delete_endpoint_config=False)
+
+
+# noinspection DuplicatedCode
+def test_train_internet_free_ssh(request):
+    logging.info("Building BYOC docker image for Internet-free mode")
+    subprocess.check_call(
+        "sm-docker build . --file tests/byoc/Dockerfile.internet_free --repo byoc-ssh-no-internet:latest".split(' '),
+        cwd="../"
+    )
+
+    logging.info("Starting training")
+    import boto3
+    region = boto3.session.Session().region_name
+    logging.info(f"Using region to fetch account ID from STS: {region}")
+    account_id = boto3.client('sts', region_name=region).get_caller_identity().get('Account')
+
+    from sagemaker.estimator import Estimator
+
+    vpc_only_subnet = request.config.getini('vpc_only_subnet')
+    vpc_only_security_group = request.config.getini('vpc_only_security_group')
+
+    estimator = Estimator(
+        image_uri=f"{account_id}.dkr.ecr.eu-west-1.amazonaws.com/byoc-ssh-no-internet:latest",
+        instance_count=1,
+        instance_type='ml.m5.xlarge',
+        max_run=int(timedelta(minutes=15).total_seconds()),
+        keep_alive_period_in_seconds=1800,
+        container_log_level=logging.INFO,
+        subnets=[vpc_only_subnet],
+        security_group_ids=[vpc_only_security_group]
+    )
+
+    sagemaker_session = sagemaker.Session()
+    training_input = sagemaker_session.upload_data(path='byoc/train_data',
+                                                   bucket=sagemaker_session.default_bucket(),
+                                                   key_prefix='byoc/train_data')
+
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+    estimator.fit({'training': training_input}, wait=False)
+    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.wait_training_job()
+    logging.info("Finished training")
+
+    assert estimator.model_data.find("model.tar.gz") != -1
 
 
 def test_train_mxnet_ssh():

@@ -2,9 +2,9 @@
 
 # Run in the project root directory:
 # pip install sagemaker-studio-image-build
-# sm-docker build . --file tests/byoc/Dockerfile --repo byoc-ssh:latest
+# sm-docker build . --file tests/byoc/Dockerfile.internet_free --repo byoc-ssh-no-internet:latest
 
-# See tests/test_frameworks.py::test_train_estimator_ssh_byoc
+# See tests/test_frameworks.py::test_train_internet_free_ssh
 
 # See https://aws.amazon.com/blogs/machine-learning/using-the-amazon-sagemaker-studio-image-build-cli-to-build-container-images-from-your-studio-notebooks/ .
 # Also see https://medium.com/@pandey.vikesh/why-bring-your-own-container-to-amazon-sagemaker-and-how-to-do-it-right-bc158fe41ed1 .
@@ -38,6 +38,8 @@ RUN \
     pip3 --no-cache-dir install wheel && \
     pip3 --no-cache-dir install $SAGEMAKER_SSH_HELPER_DIR/src/
 
+# Pre-configure the container with packages, which should be installed from Internet
+RUN sm-setup-ssh configure
 
 ENV PYTHONUNBUFFERED=TRUE
 ENV PYTHONDONTWRITEBYTECODE=TRUE
