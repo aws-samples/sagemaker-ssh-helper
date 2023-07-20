@@ -15,6 +15,8 @@ We often see a lot of questions that surface repeatedly. This repository is an a
   * [How to troubleshoot jobs that are failing with the exception or error?](#how-to-troubleshoot-jobs-that-are-failing-with-the-exception-or-error)
   * [I see folders like Desktop, Documents, Downloads, Pictures in SageMaker Studio, is it fine?](#i-see-folders-like-desktop-documents-downloads-pictures-in-sagemaker-studio-is-it-fine)
   * [I'm running SageMaker in a VPC. Do I need to make extra configuration?](#im-running-sagemaker-in-a-vpc-do-i-need-to-make-extra-configuration)
+  * [When debugging a training job with SageMaker SSH Helper and train_placeholder.py, I want to automatically stop the job when there are no users connected and there's no GPU utilization. How to do that?](#when-debugging-a-training-job-with-sagemaker-ssh-helper-and-training-placeholder-i-want-to-automatically-stop-the-job-when-there-are-no-users-connected-and-theres-no-gpu-utilization-how-to-do-that)
+  * [I want to send users the SMS or email notification when the placeholder training job has issues with low GPU utilization. How to do that?](#i-want-to-send-users-the-sms-or-email-notification-when-the-placeholder-training-job-has-issues-with-low-gpu-utilization-how-to-do-that)
 * [API Questions](#api-questions)
   * [I'm using boto3 Python SDK instead of SageMaker Python SDK, how can I use SageMaker SSH Helper?](#im-using-boto3-python-sdk-instead-of-sagemaker-python-sdk-how-can-i-use-sagemaker-ssh-helper)
   * [How can I change the SSH authorized keys bucket and location when running sm-local-ssh-* commands?](#how-can-i-change-the-ssh-authorized-keys-bucket-and-location-when-running-sm-local-ssh--commands)
@@ -149,6 +151,97 @@ Yes, it's fine. They don't contain any of your local data. These are the freshly
 ### I'm running SageMaker in a VPC. Do I need to make extra configuration?
 You might want (optionally) to configure [AWS PrivateLink for Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html). But be aware that SageMaker SSH Helper needs Internet access to download and install extra packages inside SageMaker, such as AWS CLI and Sessions Manager Agent. To make it work, you will need a NAT gateway.
 
+### When debugging a training job with SageMaker SSH Helper and training placeholder, I want to automatically stop the job when there are no users connected and there's no GPU utilization. How to do that?
+
+To stop the job when no users connected, consider using `sagemaker_ssh_helper.is_last_session_timeout(timedelta)` method, as already described in the section [Remote code execution](README.md#remote-code-execution-with-pycharm-vscode-over-ssh). The method will count active SSM sessions, and time out when there are no sessions left. 
+
+To stop the job when there's no GPU utilization, consider using SageMaker Profiler and [LowGPUUtilization rule](https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html#low-gpu-utilization), in combination with `sagemaker_ssh_helper.is_profiler_issues_found()` method.
+
+Your `train_placeholder.py` script then may look like as below. It will stop and the job will complete, if the container is left unattended and profiler found issues like low GPU utilization:
+
+```python
+import time
+import os
+from datetime import timedelta
+
+from sagemaker_ssh_helper import setup_and_start_ssh, is_last_session_timeout, is_profiler_issues_found
+
+setup_and_start_ssh()
+
+os.environ["AWS_DEFAULT_REGION"] = os.environ.get("AWS_REGION", "")  # for boto3
+
+while True:
+    time.sleep(10)
+    if is_last_session_timeout(timedelta(minutes=5)) and is_profiler_issues_found():
+        break
+```
+
+To execute this script with SageMaker Profiler, pass extra configuration parameters to the job:
+
+```python
+import os
+from datetime import timedelta
+
+from sagemaker.pytorch import PyTorch
+from sagemaker.debugger import ProfilerRule, rule_configs, ProfilerConfig
+
+from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
+
+
+profiler_config = ProfilerConfig(
+    system_monitor_interval_millis=100,  # grab metrics 10 times per second
+)
+rules = [
+    ProfilerRule.sagemaker(rule_configs.LowGPUUtilization(
+        scan_interval_us=60 * 1000 * 1000,  # scan every minute
+        patience=2,  # skip the first 2 minutes
+        threshold_p95=50,  # GPU should be at least 50% utilized, 95% of the time
+        threshold_p5=0,  # skip detecting accidental drops
+        window=1200,  # take the last 1200 readings, i.e., the last 2 minutes
+    )),
+]
+
+estimator = PyTorch(
+    entry_point='train_placeholder.py',
+    source_dir='source_dir/training_placeholder/',
+    dependencies=[SSHEstimatorWrapper.dependency_dir()],
+    base_job_name='ssh-training-low-gpu',
+    framework_version='1.9.1',
+    py_version='py38',
+    instance_count=1,
+    instance_type='ml.g4dn.xlarge',
+    max_run=int(timedelta(minutes=15).total_seconds()),
+    profiler_config=profiler_config,
+    rules=rules
+)
+
+ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=0)
+
+estimator.fit(wait=False)
+
+status = ssh_wrapper.wait_training_job_with_status()
+```
+
+*Tip:* To avoid unnecessary disruption of users' work, consider sending them notification emails instead of stopping their jobs automatically. See [the related notification question](FAQ.md#i-want-to-send-users-the-sms-or-email-notification-when-the-placeholder-training-job-has-issues-with-low-gpu-utilization-how-to-do-that).
+
+
+### I want to send users the SMS or email notification when the placeholder training job has issues with low GPU utilization. How to do that?
+
+First, you need to detect the low GPU utilization [with SageMaker Profiler](FAQ.md#when-debugging-a-training-job-with-sagemaker-ssh-helper-and-training-placeholder-i-want-to-automatically-stop-the-job-when-there-are-no-users-connected-and-theres-no-gpu-utilization-how-to-do-that).
+
+When the SageMaker Profiler job, which is a SageMaker Processing job running the SageMaker Debugger container, finds issues with a Training job, it stops. 
+
+So the trick here is to listen for the [Amazon EventBridge events](https://docs.aws.amazon.com/sagemaker/latest/dg/automating-sagemaker-with-eventbridge.html) when a SageMaker Processing job changes the status. Then to check if it's the completed SageMaker Debugger job, and if yes, check the profiler issues of the related training job. In case there are issues found, send the notification to the [Amazon SNS](https://aws.amazon.com/sns/) topic.
+
+See the [CDK code to deploy the Lambda and the EventBridge rule](https://github.com/aws-samples/sagemaker-ssh-helper/tree/main/sagemaker_ssh_helper/cdk/low_gpu) for more details.
+
+To deploy the stack into your environment with CDK, run these commands: 
+
+```bash
+APP="python -m sagemaker_ssh_helper.cdk.low_gpu_lambda_app"
+AWS_REGION=$REGION cdk -a "$APP" deploy Low-GPU-Lambda-Stack \
+    -c sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" 
+```
 
 ## API Questions
 
