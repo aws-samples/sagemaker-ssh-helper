@@ -25,7 +25,7 @@
       <excludeFolder url="file://$MODULE_DIR$/venv-lambda" />
       <excludeFolder url="file://$MODULE_DIR$/src_diff" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.8 (sagemaker-ssh-helper-dev)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (sagemaker-ssh-helper-dev)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">
