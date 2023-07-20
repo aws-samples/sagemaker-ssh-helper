@@ -33,7 +33,6 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get install -y nodejs
 npm install -g aws-cdk
 cdk --version
-USER_ROLE=$GITLAB_ROLE_ARN
 REGION=eu-west-1
 # See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
 cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
@@ -61,7 +60,6 @@ AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
     --require-approval never
 unset REGION
 unset APP
-unset USER_ROLE
 # Set bucket versioning to detect model repacking / dependencies overrides
 aws s3api put-bucket-versioning \
     --bucket "$(AWS_DEFAULT_REGION=eu-west-1 bash tests/get_sagemaker_bucket.sh)" \
@@ -75,7 +73,7 @@ export AWS_DEFAULT_REGION=eu-west-1
 aws configure list
 # Assume CI/CD role
 # shellcheck disable=SC2207
-sts=( $(source tests/assume-sagemaker-role.sh) )
+sts=( $(source tests/assume-user-role.sh) )
 export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
@@ -87,6 +85,10 @@ coverage run -m pytest \
     --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml \
     -m 'not manual' \
     -o sagemaker_studio_domain="$SAGEMAKER_STUDIO_DOMAIN" \
+    -o sagemaker_studio_vpc_only_domain="$SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN" \
+    -o vpc_only_subnet="$VPC_ONLY_SUBNET" \
+    -o vpc_only_security_group="$VPC_ONLY_SECURITY_GROUP" \
+    -o sagemaker_role="$SAGEMAKER_ROLE" \
     -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
     $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
 coverage report

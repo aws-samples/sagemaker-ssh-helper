@@ -8,4 +8,4 @@ print(sagemaker.Session().default_bucket())
 EOF
 
 SAGEMAKER_BUCKET=$(python -c "$program")
-echo -n $SAGEMAKER_BUCKET
+echo -n "$SAGEMAKER_BUCKET"

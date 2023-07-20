@@ -12,22 +12,31 @@ SageMaker SSH helper uses Test Driven Development (TDD) methodology to implement
 
 Before implementing new features, check [TODO](TODO) list and [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues). The contributors are either working already on these features or planning to implement them in the future.
 
-To start development, install the library on your local machine:
+To start development, install the library on your local machine (for macOS, you may also add `dev-macos` to the extras):
 ```shell
-pip install '.[test,dev,cdk]'
+pip install '.[cdk,test,dev]'
 ```
 
 Configure SageMaker execution role through [defaults](https://sagemaker.readthedocs.io/en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk) config.
 
-Make sure all tests are working:
+Make sure all tests are working (you need to manually create resources that are passed through environment):
 ```shell
-cd tests
-coverage run -m pytest -m 'not manual' \
-  -o kernel_gateway_name=<<YOUR_KERNEL_GATEWAY_NAME>>
-```
-*Tip:* You can pass your parameters either in command line or set it in `tests/pytest.ini`.
+export ACCOUNT_ID = ...
+export AWS_ACCESS_KEY_ID = ...
+export AWS_SECRET_ACCESS_KEY = ...
+export PYTEST_EXTRA_ARGS = ...
+export SAGEMAKER_ROLE = ...
+export SAGEMAKER_STUDIO_DOMAIN = ...
+export SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN = ...
+export SNS_NOTIFICATION_TOPIC_ARN = ...
+export USER_ROLE = ...
+export VPC_ONLY_SECURITY_GROUP = ...
+export VPC_ONLY_SUBNET = ...
 
-Write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
+bash run_tests.sh
+```
+
+Now write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
 
 ### Code formatting
 
