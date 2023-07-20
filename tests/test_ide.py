@@ -216,5 +216,10 @@ def test_studio_internet_free_mode(request):
 
     with SSMProxy(10022) as ssm_proxy:
         ssm_proxy.connect_to_ssm_instance(studio_id)
+        services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
+        services_running = services_running.decode('latin1')
+
+    assert "127.0.0.1:8889" in services_running
+    assert "127.0.0.1:5901" in services_running
 
     ide.delete_kernel_app("byoi-studio-app", wait=False)
