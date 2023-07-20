@@ -47,27 +47,43 @@ any additional configuration.
 
 To be able to connect from your local machine with SSH and start port forwarding with 
 the scripts like `sm-local-ssh-ide` and `sm-local-ssh-training`, please consider that 
-you need Bash interpreter to execute them. They don't work in PowerShell.
+you need Bash interpreter and Python to execute them. They don't work in PowerShell.
 
 We recommend obtaining Bash by installing [Git for Windows](https://gitforwindows.org/) distribution.
+This method works well with both Windows running on a local machine and Windows running inside an [Amazon WorkSpaces](https://aws.amazon.com/workspaces/) environment.
+
+If Python is not yet installed in your system, you can download it from [the official website](https://www.python.org/downloads/windows/).
+
 The next steps are:
 
-1. Run "Git Bash" application as Administrator.
+1. Make sure you have installed [AWS CLI v2 for Windows](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and configured AWS profiles and the AWS Region in ~/.aws/config or through environment variables.
 
-2. Find the path where pip has installed your library and 
-execute `sm-local-install-force` once:
+2. Install the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-windows.html) for Windows.
+
+3. Run the "Git Bash" application.
+
+4. Create a virtual environment for SageMaker SSH Helper:
 
 ```shell
-$ cd ~/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0/LocalCache/local-packages/Python310/site-packages/sagemaker_ssh_helper
-$ ./sm-local-install-force
+$ mkdir -p ~/sagemaker-ssh-helper-venv
+$ python -m venv ~/sagemaker-ssh-helper-venv
 ```
 
-3. Now you may close Git Bash and start again as a normal user.
-4. Don't forget to repeat steps 1-4 after you install a new version of SageMaker SSH Helper.
+5. Activate the SageMaker SSH Helper venv:
 
-The scripts like `sm-local-ssh-ide` and `sm-local-ssh-training` will now work from the 
-Git Bash session under a regular user, and you may continue to work in your local IDE 
-on Windows as usual.
+```shell
+$ source ~/sagemaker-ssh-helper-venv/Scripts/activate
+```
+
+6. Install SageMaker SSH Helper:
+
+```shell
+$ pip install sagemaker-ssh-helper
+```
+
+Now you can use the scripts like `sm-local-ssh-ide` and `sm-local-ssh-training`.
+
+If you close Git Bash and start a new session, don't forget to repeat the step 5 to re-activate the SSH Helper venv.
 
 ### Are SageMaker notebook instances supported?
 
@@ -149,7 +165,18 @@ A variation of this solution is to create a wrapper script, which executes your 
 Yes, it's fine. They don't contain any of your local data. These are the freshly created folders by the VNC server and XFC4 remote desktop environment. You will see them if you connect to SageMaker Studio with VNC client after running `sm-local-ssh-ide` command, as described [in the IDE integration section of the documentation](README.md#a-namestudioalocal-ide-integration-with-sagemaker-studio-over-ssh-for-pycharm--vscode).
 
 ### I'm running SageMaker in a VPC. Do I need to make extra configuration?
-You might want (optionally) to configure [AWS PrivateLink for Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html). But be aware that SageMaker SSH Helper needs Internet access to download and install extra packages inside SageMaker, such as AWS CLI and Sessions Manager Agent. To make it work, you will need a NAT gateway.
+
+Yes. By default, SageMaker SSH Helper requires access to Internet to download and install extra packages inside SageMaker, such as AWS CLI and Sessions Manager Agent.
+If you're running SageMaker inside a VPC with private subnets, you will need a NAT gateway to access Internet.
+
+Alternatively, you can run SageMaker SSH Helper in the VPC without Internet access, but you will need to build [your custom containers](https://medium.com/@pandey.vikesh/why-bring-your-own-container-to-amazon-sagemaker-and-how-to-do-it-right-bc158fe41ed1) for jobs and [for SageMaker Studio](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html).
+During the container build, execute `sm-setup-ssh configure` and `sm-ssh-ide configure` commands respectively, to cache and pre-install all dependencies.
+
+See the examples of such containers [byoc/Dockerfile.internet_free](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/byoc/Dockerfile.internet_free) and [byoi_studio/Dockerfile.internet_free](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/byoi_studio/Dockerfile.internet_free) in the tests.
+
+You will also need to configure AWS PrivateLink for [Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html) and for [STS endpoints](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_sts_vpce.html).
+
+*Note:* If you are using the [Network Isolation](https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html) mode, i.e., set the `enable_network_isolation` parameter of the `Estimator` to `True`, you won't be able to connect to your containers, because they will have no access to the Amazon Systems Manager.
 
 ### When debugging a training job with SageMaker SSH Helper and training placeholder, I want to automatically stop the job when there are no users connected and there's no GPU utilization. How to do that?
 
@@ -261,10 +288,10 @@ training_job_name = ...
 
 ssh_wrapper = SSHEstimatorWrapper.attach(training_job_name)
 
-instance_ids = ssh_wrapper.get_instance_ids()
-
-logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
 logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
+
+instance_ids = ssh_wrapper.get_instance_ids()
+logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
 ```
 
 
@@ -285,6 +312,8 @@ In this case, make sure that SageMaker SSH Helper is installed in your `Dockerfi
 ```dockerfile
 RUN pip --no-cache-dir install sagemaker-ssh-helper  # <--NEW--
 ```
+
+See the sample code for the container [Dockerfile](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/byoc/Dockerfile) in the tests.
 
 **Important:** Make sure that the version installed into the container matches the version of the library on your local machine.
 
