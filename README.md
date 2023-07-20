@@ -105,10 +105,11 @@ ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds
 
 estimator.fit(wait=False)
 
+logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
+
 instance_ids = ssh_wrapper.get_instance_ids()  # <--NEW--
 
 logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
 ```
 
 *Note:* `connection_wait_time_seconds` is the amount of time the SSH helper will wait inside SageMaker before it continues normal execution. It's useful for training jobs, when you want to connect before training starts.
@@ -145,7 +146,7 @@ and will appear in the job's CloudWatch log like this:
 Successfully registered the instance with AWS SSM using Managed instance-id: mi-1234567890abcdef0
 ``` 
 
-To fetch the instance IDs in an automated way, call the Python method of `ssh_wrapper`, 
+To fetch the instance IDs in an automated way, call the Python method `ssh_wrapper.get_instance_ids()`, 
 as mentioned in the previous step:
 
 ```python
@@ -155,9 +156,8 @@ estimator.fit(wait=False)
 instance_ids = ssh_wrapper.get_instance_ids()
 ```
 
-This method accepts the optional parameter `retry` with the number of retry attempts (default is 60). 
-It will retry to get instance IDs until they appear in the CloudWatch logs or number of attempts reached.
-The pause between attempts is fixed to 10 seconds, hence by default it will wait not more than 10 minutes.
+The method `get_instance_ids()` accepts the optional parameter `timeout_in_sec` (default is 600, i.e., 10 minutes). 
+If timeout is not 0, it will retry attempts to get instance IDs every 10 seconds.
 
 With the instance id at hand, you will be able to connect to the training container using the command line or the AWS web console:  
 
@@ -182,6 +182,10 @@ B. Connecting using the AWS Web Console:
   2. Select the node, then Node actions > Start terminal session.
 
 Once connected to the container, you would want to switch to the root user with `sudo su -` command.
+
+C. Connecting with SSH and port forwarding:
+
+This method uses `sm-local-ssh-training connect` command and described in more details in the section [Forwarding TCP ports over SSH tunnel](README.md#port-forwarding).
 
 #### <a name="cli-commands"></a>Tip: Useful CLI commands
 
@@ -259,7 +263,7 @@ Similar to training jobs, you can fetch the instance ids for connecting to the e
 `ssh_wrapper.get_instance_ids()`.
 
 
-2. Add the following lines at the top of your `inference.py` script:
+2. Add the following lines at the top of your `inference_ssh.py` script:
 
 ```python
 import os
@@ -458,7 +462,7 @@ sm-local-start-ssh "$INSTANCE_ID" \
 
 You can pass `-L` parameters for forwarding remote container port to local machine (e.g., `8787` for [Dask dashboard](https://docs.dask.org/en/stable/dashboard.html) or `8501` for [Streamlit apps](https://docs.streamlit.io/library/get-started)) or `-R` for forwarding local port to remote container. Read more about these options in the [SSH manual](https://man.openbsd.org/ssh).
 
-This low-level script takes the managed instance ID as a parameter. The next sections describe how to use the higher-level APIs that take the SageMaker resource name as a parameter and resolve it into the instance ID automatically (a.k.a. `sm-local-ssh-*` scripts):
+This low-level script takes the managed instance ID as a parameter. Next sections describe how to use the higher-level APIs that take the SageMaker resource name as a parameter and resolve it into the instance ID automatically (a.k.a. `sm-local-ssh-*` scripts):
 
 * `sm-local-ssh-training`
 * `sm-local-ssh-processing`
@@ -493,7 +497,7 @@ pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToSe
 6. Start the Debug Server in PyCharm
 7. Submit your code to SageMaker with SSH Helper as described in previous sections.
 Make sure you allow enough time for manually setting up the connection
-(do not set `connection_wait_time_seconds` to 0, recommended minimum value is 600, i.e. 10 minutes).
+(do not set `connection_wait_time_seconds` to `0`, recommended minimum value is `600`, i.e. 10 minutes).
 Don't worry to set it to higher values, e.g. to 30 min, because you will be able to terminate the waiting loop 
 once you connect.
 
@@ -592,11 +596,11 @@ while not is_last_session_timeout(timedelta(minutes=30)):
     time.sleep(10)
 ```
 
-The method `is_last_session_timeout()` will help to prevent unused resources and the job will end if there's were no SSM or SSH sessions for the specified period of time.
+The method `is_last_session_timeout()` will help to prevent unused resources and the job will end if there's no SSM or SSH sessions for the specified period of time. It will count active SSM sessions, and time out when there are no sessions left. 
 
-Keep in mind that SSM sessions will [terminate automatically due to user inactivity](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-preferences-timeout.html), but SSH sessions will keep running until either a user terminates them or network timeout occurs (e.g., when local machine hibernates).
+*Note:* Keep in mind that SSM sessions will [terminate automatically due to user inactivity](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-preferences-timeout.html), but SSH sessions will keep running until either a user terminates them manually or network timeout occurs (e.g., the user closes the laptop lid or disconnects from Wi-Fi). If the user leaves the local machine unattended and connected to Internet, SSM sessions started by `aws ssm start-session` command will time out, but SSH-over-SSM sessions started with `sm-local-ssh-training connect` will stay open.
 
-Consider also sending e-mail notifications for users of the long-running jobs, so the users don't forget to shut down unused resources.
+Consider sending e-mail notifications for users of the long-running jobs, so the users don't forget to shut down unused resources. See [the related question in FAQ](FAQ.md#i-want-to-send-users-the-sms-or-email-notification-when-the-placeholder-training-job-has-issues-with-low-gpu-utilization-how-to-do-that) for more details.
 
 Make also sure that you're aware of [SageMaker Managed Warm Pools](https://docs.aws.amazon.com/sagemaker/latest/dg/train-warm-pools.html) 
 feature, which is also helpful in the scenario when you need to rerun your code multiple times.
@@ -609,20 +613,22 @@ feature, which is also helpful in the scenario when you need to rerun your code 
 [![Download Demo (.mov)](https://user-images.githubusercontent.com/87804596/205895890-e5e87f8b-1ca6-4ce6-bac1-5cb6e6f61dde.png)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
 [Download Demo (.mov)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
 
-Follow the next steps for your local IDE integration with SageMaker Studio:
+Follow the next steps for your local IDE integration with SageMaker Studio.
 
-1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it.
+1. On the local machine, install the library: 
+
+```
+pip install sagemaker-ssh-helper
+```
+
+2. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
 
 *Tip:* Alternatively, instead of using `SageMaker_SSH_IDE.ipynb`, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
 (you may need to ask your administrator to do this).
 Once configured, from the Launcher choose the environment, puck up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
 
-2. On the local machine, install the library: 
-
-```
-pip install sagemaker-ssh-helper
-```
+> Note that the `main` branch of this repo can contain changes that are not compatible with the version of `sagemaker-ssh-helper` that you installed from pip. To ensure the stable performance, check the version with `pip freeze | grep sagemaker-ssh-helper` and take the notebook and the lifecycle script from [the corresponding tag](https://github.com/aws-samples/sagemaker-ssh-helper/tags).  
 
 3. Make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Run the following command to perform the installation:
 
