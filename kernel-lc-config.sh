@@ -21,8 +21,8 @@ set -e
 if [ -f /opt/sagemaker-ssh-helper/.ssh-ide-configured ]; then
     echo 'kernel-lc-config.sh: INFO - SageMaker SSH Helper is already installed, remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to reinstall'
 else
-  pip uninstall -y -q awscli
-  pip install -q sagemaker-ssh-helper
+  pip3 uninstall -y -q awscli
+  pip3 install -q sagemaker-ssh-helper
 
   # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
   #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
@@ -31,9 +31,10 @@ fi
 
 sm-ssh-ide get-metadata
 
-which python
+which python3
 
-SYSTEM_PYTHON_PREFIX=$(python -c "from __future__ import print_function;import sys; print(sys.prefix)")
+# We assume that the kernels are is installed into the sys prefix, e.g. with ipykernel install --sys-prefix command
+SYSTEM_PYTHON_PREFIX=$(python3 -c "from __future__ import print_function;import sys; print(sys.prefix)")
 export JUPYTER_PATH="$SYSTEM_PYTHON_PREFIX/share/jupyter/"
 
 # If already configured in the container, it will not take any effect:

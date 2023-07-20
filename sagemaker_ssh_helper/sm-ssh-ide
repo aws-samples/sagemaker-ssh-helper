@@ -69,8 +69,8 @@ elif [[ "$1" == "get-metadata" ]]; then
   echo "User profile name: $(_print_sm_user_profile_name)"
   echo "Domain: $(_print_sm_domain_id)"
   echo ""
-  echo "Connect from local machine: sm-local-ssh-ide connect $(_print_sm_app_name)"
-  echo "Connect from local machine (SSH only): sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
+  echo "Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect $(_print_sm_app_name)"
+  echo "SSH only: sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
 
 elif [[ "$1" == "set-jb-license-server" ]]; then
 

@@ -11,7 +11,7 @@ RUN \
     yum install --assumeyes python3 shadow-utils && \
     yum clean all && \
     python3 -m pip install ipykernel && \
-    python3 -m ipykernel install
+    python3 -m ipykernel install --sys-prefix
 
 # Install SageMaker SSH Helper for the Internet-free setup
 ARG SAGEMAKER_SSH_HELPER_DIR="/opt/sagemaker-ssh-helper"
@@ -38,9 +38,9 @@ RUN \
 # Pre-configure the container with packages, which should be installed from Internet
 # Consider adding `--ssh-only` flag and commenting the first RUN command, if you don't plan to connect
 # to the VNC server or to the Jupyter notebook
-#RUN \
-#    sm-ssh-ide configure && \
-#    pip3 --no-cache-dir install notebook && \
-#    yum install --assumeyes xterm
+RUN \
+    sm-ssh-ide configure && \
+    pip3 --no-cache-dir install notebook && \
+    yum install --assumeyes xterm
 
-RUN sm-ssh-ide configure --ssh-only
+#RUN sm-ssh-ide configure --ssh-only

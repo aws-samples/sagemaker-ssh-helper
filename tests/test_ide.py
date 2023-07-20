@@ -87,7 +87,7 @@ def test_sagemaker_studio(instances, request):
 
     ide.create_ssh_kernel_app(
         app_name,
-        image_name=image_name,
+        image_name_or_arn=image_name,
         instance_type=instance_type,
         ssh_lifecycle_config='sagemaker-ssh-helper-dev',
         recreate=True
@@ -204,7 +204,7 @@ def test_studio_internet_free_mode(request):
 
     ide.create_ssh_kernel_app(
         "byoi-studio-app",
-        'custom-image-ssh',
+        image.arn,
         "ml.m5.large",
         recreate=True
     )

@@ -54,7 +54,7 @@ class SSHIDE:
         self.ssh_log = SSHLog(region_name=self.current_region)
 
     def create_ssh_kernel_app(self, app_name: str,
-                              image_name='sagemaker-datascience-38',
+                              image_name_or_arn='sagemaker-datascience-38',
                               instance_type='ml.m5.xlarge',
                               ssh_lifecycle_config='sagemaker-ssh-helper',
                               recreate=False):
@@ -67,7 +67,7 @@ class SSHIDE:
           e.g., sagemaker-base-python-310 in the doc is sagemaker-base-python-310-v1 in the CreateApp API .
 
         :param app_name:
-        :param image_name: [name] from the images doc above
+        :param image_name_or_arn: [name] from the images doc above or the full ARN
         :param instance_type:
         :param ssh_lifecycle_config:
         :param recreate:
@@ -90,8 +90,12 @@ class SSHIDE:
 
         # Here status is None or 'Deleted' or 'Failed'. Safe to create
 
+        if image_name_or_arn.startswith('arn:'):
+            image_arn = image_name_or_arn
+        else:
+            image_arn = self.resolve_sagemaker_kernel_image_arn(image_name_or_arn)
+
         account_id = boto3.client('sts').get_caller_identity().get('Account')
-        image_arn = self.resolve_sagemaker_kernel_image_arn(image_name)
         lifecycle_arn = f"arn:aws:sagemaker:{self.current_region}:{account_id}:" \
                         f"studio-lifecycle-config/{ssh_lifecycle_config}"
 
