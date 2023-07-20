@@ -178,6 +178,7 @@ elif [[ "$1" == "start" ]]; then
         # Note: you should have access to Internet or have notebook module pre-installed in the container
         echo "sm-ssh-ide: Installing Jupyter notebook"
         "$SM_STUDIO_PYTHON" -m pip install -q notebook
+        "$SM_STUDIO_PYTHON" -m pip install -q --force-reinstall traitlets
       )
 
       echo "sm-ssh-ide: Starting Jupyter notebook server"
@@ -187,7 +188,7 @@ elif [[ "$1" == "start" ]]; then
 
       sleep 2
 
-       tail /tmp/jupyter-notebook.log
+      tail /tmp/jupyter-notebook.log
 
     else
       echo "sm-ssh-ide: Skipping VNC and Jupyter start"
