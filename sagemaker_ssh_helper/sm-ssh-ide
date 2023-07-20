@@ -177,8 +177,9 @@ elif [[ "$1" == "start" ]]; then
       "$SM_STUDIO_PYTHON" -m jupyter notebook --version >/dev/null 2>&1 || (
         # Note: you should have access to Internet or have notebook module pre-installed in the container
         echo "sm-ssh-ide: Installing Jupyter notebook"
-        "$SM_STUDIO_PYTHON" -m pip install -q notebook
-        "$SM_STUDIO_PYTHON" -m pip install -q --force-reinstall traitlets
+        "$SM_STUDIO_PYTHON" -m pip install notebook
+        # Note: reinstall of some libraries is needed for compatibility with SageMaker Studio:
+        "$SM_STUDIO_PYTHON" -m pip install ---force-reinstall traitlets tornado
       )
 
       echo "sm-ssh-ide: Starting Jupyter notebook server"
