@@ -16,16 +16,16 @@ def setup_and_start_ssh():
     node_rank = sagemaker_ssh_helper.env.sm_get_node_rank()
     start_ssh = os.environ.get("START_SSH", "false")
 
-    print(f"[sagemaker-ssh-helper] SSH Helper startup params: start_ssh={start_ssh}, "
+    print(f"[sagemaker-ssh-helper] SageMaker SSH Helper startup params: start_ssh={start_ssh}, "
           f"ssh_instance_count={ssh_instance_count}, node_rank={node_rank}")
 
     script = sagemaker_ssh_helper.env.get_caller_script_name(2)
     if start_ssh == "true" and node_rank < ssh_instance_count:
         print(f"[sagemaker-ssh-helper] Starting SSH Helper setup from {script}")
-        absolute_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sm-setup-ssh")
-        subprocess.check_call(["bash", absolute_path])  # nosec B607  # absolute path is calculated
+        sm_setup_ssh_absolute_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sm-setup-ssh")
+        subprocess.check_call(["bash", sm_setup_ssh_absolute_path])  # nosec B607  # absolute path is calculated
     else:
-        print(f"[sagemaker-ssh-helper] Skipping SSH Helper setup from {script}")
+        print(f"[sagemaker-ssh-helper] Skipping SageMaker SSH Helper setup from {script}")
 
 
 def is_last_session_timeout(time_delta: timedelta):
