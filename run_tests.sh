@@ -29,40 +29,40 @@ sm-local-configure
 source tests/generate_sagemaker_config.sh
 
 if [ "$SKIP_CDK" == "true" ]; then
-    echo "Skipping CDK changes"
+  echo "Skipping CDK changes"
 else
-    echo "Applying CDK changes"
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get install -y nodejs
-    npm install -g aws-cdk
-    cdk --version
-    REGION=eu-west-1
-    # See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
-    cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+  echo "Applying CDK changes"
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get install -y nodejs
+  npm install -g aws-cdk
+  cdk --version
+  REGION=eu-west-1
+  # See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
+  cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+    --require-approval never
+  APP="python -m sagemaker_ssh_helper.cdk.tests_app"
+  AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack-Tests \
+      -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
       --require-approval never
-    APP="python -m sagemaker_ssh_helper.cdk.tests_app"
-    AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack-Tests \
-        -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
-        --require-approval never
-    APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
-    AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
-        -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
-        --require-approval never
-    APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
-    AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
-        --require-approval never
-    APP="python -m sagemaker_ssh_helper.cdk.low_gpu_lambda_app"
-    AWS_REGION=$REGION cdk -a "$APP" deploy Low-GPU-Lambda-Stack \
-        -c sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
-        --require-approval never
-    REGION=eu-west-2
-    cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+  APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
+  AWS_REGION=$REGION cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
+      -c sagemaker_role="$SAGEMAKER_ROLE" -c user_role="$USER_ROLE" \
       --require-approval never
-    APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
-    AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
-        --require-approval never
-    unset REGION
+  APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
+  AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
+      --require-approval never
+  APP="python -m sagemaker_ssh_helper.cdk.low_gpu_lambda_app"
+  AWS_REGION=$REGION cdk -a "$APP" deploy Low-GPU-Lambda-Stack \
+      -c sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
+      --require-approval never
+  REGION=eu-west-2
+  cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
+    --require-approval never
+  APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
+  AWS_REGION=$REGION cdk -a "$APP" deploy SSM-Advanced-Tier-Stack \
+      --require-approval never
+  unset REGION
 fi
 
 # Set bucket versioning to detect model repacking / dependencies overrides
@@ -87,15 +87,14 @@ echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
 cd tests
 # shellcheck disable=SC2086
 coverage run -m pytest \
-    --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml \
-    -m 'not manual' \
-    -o sagemaker_studio_domain="$SAGEMAKER_STUDIO_DOMAIN" \
-    -o sagemaker_studio_vpc_only_domain="$SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN" \
-    -o vpc_only_subnet="$VPC_ONLY_SUBNET" \
-    -o vpc_only_security_group="$VPC_ONLY_SECURITY_GROUP" \
-    -o sagemaker_role="$SAGEMAKER_ROLE" \
-    -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
-    $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
+  --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml \
+  -o sagemaker_studio_domain="$SAGEMAKER_STUDIO_DOMAIN" \
+  -o sagemaker_studio_vpc_only_domain="$SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN" \
+  -o vpc_only_subnet="$VPC_ONLY_SUBNET" \
+  -o vpc_only_security_group="$VPC_ONLY_SECURITY_GROUP" \
+  -o sagemaker_role="$SAGEMAKER_ROLE" \
+  -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
+  $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
 coverage report
 coverage xml
 coverage html --show-contexts
