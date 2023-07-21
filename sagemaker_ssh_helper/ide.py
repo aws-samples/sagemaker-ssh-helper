@@ -162,8 +162,7 @@ class SSHIDE:
             raise ValueError(f"Failed to delete app {app_name}. Status: {status}")
 
     def create_app(self, app_name, app_type, instance_type, image_arn,
-                   lifecycle_arn: str = None,
-                   image_version_arn: str = None):
+                   lifecycle_arn: str = None):
         self.logger.info(f"Creating {app_type} app {app_name} on {instance_type} "
                          f"with {image_arn} and lifecycle {lifecycle_arn}")
         resource_spec = {
@@ -231,7 +230,7 @@ class SSHIDE:
                 raise
         try:
             self.wait_for_image_deletion(image_name)
-        except WaiterError as e:
+        except WaiterError:
             pass  # probably, OK
 
         sagemaker_image_dict = self.client.create_image(
