@@ -47,6 +47,7 @@ do
     if [[ "$SSM_PID" == "" ]]; then
       AGENT_INFO="SSM Agent has NOT been started yet."
     else
+      # TODO: show /var/log/amazon/ssm/*.log in case there are errors
       AGENT_INFO="SSM Agent has been already started."
     fi
 
