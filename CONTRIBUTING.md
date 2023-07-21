@@ -10,7 +10,7 @@ information to effectively respond to your bug report or contribution.
 
 SageMaker SSH helper uses Test Driven Development (TDD) methodology to implement its features.
 
-Before implementing new features, check [TODO](TODO) list and [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues). The contributors are either working already on these features or planning to implement them in the future.
+Before implementing new features, check existing [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues). The contributors are either working already on these features or planning to implement them in the future.
 
 To start development, install the library on your local machine (for macOS, you may also add `dev-macos` to the extras):
 ```shell
