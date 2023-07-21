@@ -453,7 +453,7 @@ def test_clean_train_sklearn():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.skip("Temp issues with the dependencies in the container")
+@pytest.mark.manual("Temp issues with the dependencies in the container")
 def test_train_sklearn_ssh():
     logging.info("Starting training")
 
@@ -498,7 +498,7 @@ def test_clean_train_xgboost():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.skip("Temp issues with the dependencies in the container")
+@pytest.mark.manual("Temp issues with the dependencies in the container")
 def test_train_xgboost_ssh():
     logging.info("Starting training")
 
