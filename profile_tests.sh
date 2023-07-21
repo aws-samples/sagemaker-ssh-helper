@@ -15,7 +15,7 @@ apt-get install -y graphviz
 export AWS_REGION=eu-west-1
 export AWS_DEFAULT_REGION=eu-west-1
 # shellcheck disable=SC2207
-sts=( $(source tests/assume-sagemaker-role.sh) )
+sts=( $(source tests/assume-user-role.sh) )
 export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
