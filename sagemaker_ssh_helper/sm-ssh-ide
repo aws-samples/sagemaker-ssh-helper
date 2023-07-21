@@ -63,6 +63,8 @@ EOF
 
     touch /opt/sagemaker-ssh-helper/.ssh-ide-configured
 
+    echo "sm-ssh-ide: Configuration complete."
+
 elif [[ "$1" == "get-metadata" ]]; then
 
   echo "App name: $(_print_sm_app_name)"
