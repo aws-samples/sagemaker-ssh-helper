@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import time
 
@@ -123,7 +124,7 @@ def test_sagemaker_studio(instances, request):
 
 
 @pytest.mark.parametrize('instances', SSH_TEST_IMAGES)
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_sagemaker_studio_cleanup(instances, request):
     user, app_name, image_name, instance_type, expected_version = instances
 

@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import timedelta
 
 import pytest
@@ -10,7 +11,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import name_from_base
 
 
-@pytest.mark.manual("Not working yet")
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", "Not working yet")
 def test_clean_inference_from_registry():
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',

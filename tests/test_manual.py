@@ -1,8 +1,7 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import boto3
 import pytest
 import sagemaker
 from sagemaker import Predictor
@@ -15,7 +14,7 @@ from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHProcessorWrappe
 
 
 # noinspection DuplicatedCode
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_train_placeholder_manual():
     bucket = sagemaker.Session().default_bucket()
     checkpoints_prefix = f"s3://{bucket}/checkpoints/"
@@ -49,7 +48,7 @@ def test_train_placeholder_manual():
     ssh_wrapper.wait_training_job()
 
 
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_processing_framework_manual():
     torch_processor = PyTorchProcessor(
         base_job_name='ssh-pytorch-processing-manual',
@@ -79,7 +78,7 @@ def test_processing_framework_manual():
     ssh_wrapper.wait_processing_job()
 
 
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_inference_manual():
     estimator = PyTorch.attach("pytorch-training-2023-02-21-23-58-16-252")
 
@@ -103,7 +102,7 @@ def test_inference_manual():
     ssh_wrapper.wait_for_endpoint()
 
 
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_djl_inference():
     predictor = DJLPredictor("djl-inference-ssh-2023-05-15-16-26-57-895")
     data = {
@@ -119,14 +118,14 @@ def test_djl_inference():
     assert result == "42"
 
 
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false")
 def test_subprocess():
     import subprocess
     subprocess.check_call("uname -a".split(' '))
     logging.info("OK")
 
 
-@pytest.mark.manual
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", reason="Manual test")
 def test_cloudwatch_metrics_sns(request):
     sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
     topic_name = sns_notification_topic_arn.split(':')[-1]

@@ -453,7 +453,8 @@ def test_clean_train_sklearn():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.manual("Temp issues with the dependencies in the container")
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    "Temp issues with the dependencies in the container")
 def test_train_sklearn_ssh():
     logging.info("Starting training")
 
@@ -498,7 +499,7 @@ def test_clean_train_xgboost():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.manual("Temp issues with the dependencies in the container")
+@pytest.mark.skipif("Temp issues with the dependencies in the container")
 def test_train_xgboost_ssh():
     logging.info("Starting training")
 
@@ -665,7 +666,7 @@ def test_train_mxnet_ssh():
 
 
 # noinspection PyCompatibility
-@pytest.mark.manual("Not working yet")
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", "Not working yet")
 def test_djl_inference_ssh():
     model = DJLModel(
         "EleutherAI/gpt-j-6B",  # FIXME: unused. Remove duplicate with inference_djl.py

@@ -95,7 +95,6 @@ coverage run -m pytest \
   -o sagemaker_role="$SAGEMAKER_ROLE" \
   -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
   $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
-coverage report
 coverage xml
 coverage html --show-contexts
 cd -

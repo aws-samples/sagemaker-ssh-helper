@@ -104,7 +104,7 @@ def test_wrapper_infers_ssm_role_simple():
     assert wrapper.ssm_iam_role == 'SageMakerRole'
 
 
-@pytest.mark.manual("Not yet working")
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", "Not yet working")
 def test_model_wrapper_infers_ssm_role_with_defaults():
     from sagemaker.huggingface import HuggingFaceModel
     model = HuggingFaceModel(
