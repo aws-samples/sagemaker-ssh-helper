@@ -1,8 +1,0 @@
-* GitHub Issues - https://github.com/aws-samples/sagemaker-ssh-helper/issues .
-
-* Make switching instances in SageMaker Studio and PyCharm more smooth (list all available instances,
-  put/get configuration with SSM instead of manual copy).
-
-* Re-upload code to the remote instance with API for submitting training jobs from SageMaker Studio.
-
-* New scenario - run Jupyter inside training job for debugging (similar to SageMaker Studio container).
