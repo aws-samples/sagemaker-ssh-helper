@@ -125,7 +125,8 @@ def test_subprocess():
     logging.info("OK")
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", reason="Manual test")
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
 def test_cloudwatch_metrics_sns(request):
     sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
     topic_name = sns_notification_topic_arn.split(':')[-1]

@@ -11,7 +11,9 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import name_from_base
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false", "Not working yet")
+# noinspection DuplicatedCode
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Not working yet")
 def test_clean_inference_from_registry():
     estimator = PyTorch(entry_point='train_clean.py',
                         source_dir='source_dir/training_clean/',
