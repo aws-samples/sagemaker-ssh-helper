@@ -237,4 +237,4 @@ a. Attach the inline policy named `SSHSageMakerClientPolicy`. Replace `<<ACCOUNT
 
 For more details about these policies, see the question "[How SageMaker SSH Helper protects users from impersonating each other?](FAQ.md#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other)" in FAQ.
 
-*Note:* If you will run the jobs from SageMaker Studio instead of your local machine, attach both `SSHSageMakerServerPolicy` and `SSHSageMakerClientPolicy` to the SageMaker execution role.
+*Note:* If you want to run and debug the SageMaker jobs from SageMaker Studio, and not from your local IDE, attach both `SSHSageMakerServerPolicy` and `SSHSageMakerClientPolicy` to the SageMaker execution role.
