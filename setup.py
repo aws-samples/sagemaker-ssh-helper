@@ -24,6 +24,7 @@ extras = {
         "constructs>=10.0.0,<11.0.0",
         "sagemaker-studio-image-build",
         "sagemaker-training",
+        "selenium"
     ],
     "dev": [
         "sagemaker-pytorch-training",

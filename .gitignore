@@ -21,3 +21,4 @@ __pycache__
 /tests/prof/
 /djl-serving/
 /src_diff/
+/tests/geckodriver.log

@@ -4,10 +4,19 @@ import subprocess
 import time
 
 import pytest
+from selenium.webdriver.support.wait import WebDriverWait
 
 from sagemaker_ssh_helper.ide import SSHIDE
 from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
+
+from selenium import webdriver
+
+from selenium.webdriver.common.by import By
+
+import boto3
+
+from selenium.webdriver.support import expected_conditions as EC
 
 logger = logging.getLogger('sagemaker-ssh-helper:test_ide')
 
@@ -225,3 +234,81 @@ def test_studio_internet_free_mode(request):
     assert "127.0.0.1:5901" in services_running
 
     ide.delete_kernel_app("byoi-studio-app", wait=False)
+
+
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
+def test_studio_notebook_in_firefox(request):
+    ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+
+    # Get SageMaker Studio Presigned URL with API
+    sagemaker_client = boto3.client('sagemaker')
+    studio_pre_signed_url_response = sagemaker_client.create_presigned_domain_url(
+        DomainId=ide.domain_id,
+        UserProfileName=ide.user,
+    )
+    studio_pre_signed_url = studio_pre_signed_url_response['AuthorizedUrl']
+    logging.info(f"Studio pre-signed URL: {studio_pre_signed_url}")
+
+    logging.info("Launching Firefox")
+    browser = webdriver.Firefox()
+
+    logging.info("Launching SageMaker Studio")
+    browser.get(studio_pre_signed_url)
+
+    logging.info("Checking for SageMaker Studio in Firefox")
+    assert "JupyterLab" in browser.title
+
+    logging.info("Waiting for SageMaker Studio to launch")
+    kernel_menu_xpath = "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' " \
+                        "and text()='Kernel']"
+    WebDriverWait(browser, 30).until(
+        EC.presence_of_element_located((By.XPATH, kernel_menu_xpath))
+    )
+    time.sleep(15)  # wait until obscurity of the menu item is gone and UI is fully loaded
+    kernel_menu_item = browser.find_element(By.XPATH, kernel_menu_xpath)
+    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
+    kernel_menu_item.click()
+
+    logging.info("Restarting kernel and running all cells")
+    restart_menu_xpath = "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' " \
+                         "and text()='Restart Kernel and Run All Cells…']"
+    restart_menu_item = browser.find_element(By.XPATH, restart_menu_xpath)
+    logging.info(f"Found SageMaker Studio restart kernel menu item: {restart_menu_item}")
+    restart_menu_item.click()
+
+    # TODO: check if kernel has been already started, also check that it's a correct kernel and instance type
+    # <button type="button" class="bp3-button bp3-minimal jp-Toolbar-kernelName jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title="Switch kernel"><span class="bp3-button-text"><span class="jp-ToolbarButtonComponent-label">No Kernel</span></span></button>
+    # <button type="button" class="bp3-button bp3-minimal jp-Toolbar-kernelName jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title=""><span class="bp3-button-text"><span class="jp-ToolbarButtonComponent-label" style="display: none;">Python 3 (Data Science 2.0)</span></span><span class="css-1jyspix newButtonTarget"><span class="css-1vcsdgo">Data Science 2.0</span><span class="css-pyakce">|</span><span>Python 3</span><span class="css-pyakce">|</span><span>2 vCPU +  4 GiB</span></span></button>
+
+    # TODO: check banner if kernel is still starting, wait until banner disappears, then click restart
+    # <div class="css-a7sx0c-bannerContainer sagemaker-starting-banner" id="sagemaker-notebook-banner"><div class="css-1qyc1pu-kernelStartingBannerContainer"><div><div class="css-6wrpfe-bannerSpinDiv"></div></div><div><p class="css-g9mx5z-bannerPromptSpanTitle">Starting notebook kernel...</p></div></div></div>
+
+    restart_button_xpath = "//div[@class='jp-Dialog-buttonLabel' " \
+                           "and text()='Restart']"
+    restart_button = browser.find_element(By.XPATH, restart_button_xpath)
+    logging.info(f"Found SageMaker Studio restart button: {restart_button}")
+    restart_button.click()
+
+    time.sleep(120)  # Give time to restart
+
+    studio_ids = ide.get_kernel_instance_ids("sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036",
+                                             timeout_in_sec=300)
+    studio_id = studio_ids[0]
+
+    with SSMProxy(10022) as ssm_proxy:
+        ssm_proxy.connect_to_ssm_instance(studio_id)
+        services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
+        services_running = services_running.decode('latin1')
+
+    assert "127.0.0.1:8889" in services_running
+    assert "127.0.0.1:5901" in services_running
+
+    # TODO: assert the services were restarted by the test, e.g., by checking the SSM timestamp
+    # TODO: check if the second restart also successful
+
+    # TODO: restart image (clean-up for the next run)
+    # <button type="button" class="bp3-button bp3-minimal jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title="Shut down">...</button>    """
+
+    logging.info("Closing Firefox")
+    browser.close()
