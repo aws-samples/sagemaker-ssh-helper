@@ -5,15 +5,21 @@ from pathlib import Path
 
 import mock
 
+from sagemaker_training import params as training_parameters
+
 import test_util
 
-os.environ["SAGEMAKER_BASE_DIR"] = os.path.join(os.path.dirname(__file__), "opt_ml")
-from sagemaker_training import environment as training_environment, params as training_parameters
 
-from sagemaker_training.cli.train import main as train_main
-
-
+@mock.patch.dict(
+    os.environ, {
+        "SAGEMAKER_BASE_DIR": os.path.join(os.path.dirname(__file__), "opt_ml"),
+        training_parameters.USER_PROGRAM_ENV: Path('source_dir/training_clean/train_clean.py').name
+    }
+)
 def test_local_training():
+    from sagemaker_training import environment as training_environment
+    from sagemaker_training.cli.train import main as train_main
+
     logging.info("Starting training")
 
     f"""
@@ -24,10 +30,6 @@ def test_local_training():
 
     test_util._clean_training_opt_ml_dir()
     distutils.dir_util.copy_tree("./source_dir/training_clean/", "./opt_ml/code/")
-
-    os.environ = {
-        training_parameters.USER_PROGRAM_ENV: Path('source_dir/training_clean/train_clean.py').name,
-    }
 
     try:
         # Note: it will start the subprocess, so we don't have the code coverage
