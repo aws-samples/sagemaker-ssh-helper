@@ -20,10 +20,7 @@ Other scenarios include but not limited to connecting to a remote Jupyter Notebo
 Also see our [Frequently Asked Questions](FAQ.md), especially if you're using Windows on your local machine.
 
 ## How it works
-SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed 
-by creating an SSM session between your client machine and the SageMaker container. Then you can SSH into SageMaker by creating an SSH connection 
-on top of the SSM session, that allows opening a Linux shell, and/or configuring bidirectional SSH port forwarding to 
-enable applications like remote development/debugging/desktop, and others.
+SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed by creating an SSM session between your client machine and the SageMaker container. Then you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM session, that allows opening a Linux shell, and/or configuring bidirectional SSH port forwarding to enable applications like remote development/debugging/desktop, and others.
 
 ![Screenshot](images/layers.png)
 

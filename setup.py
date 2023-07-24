@@ -49,10 +49,11 @@ setuptools.setup(
     description="A helper library to connect into Amazon SageMaker with AWS Systems Manager and SSH (Secure Shell)",
     long_description="SageMaker SSH Helper is a library that helps you to securely connect to Amazon SageMaker's "
                      "training jobs, processing jobs, realtime inference endpoints, and SageMaker Studio notebook "
-                     "containers for fast interactive experimentation, remote debugging, and advanced troubleshooting."
+                     "containers for fast interactive experimentation, remote debugging, and advanced troubleshooting, "
+                     "also known as \"SSH into SageMaker\"."
                      "\n\n"
-                     "For the full description see [README.md]"
-                     "(https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/README.md).",
+                     "For the documentation, see the repo [https://github.com/aws-samples/sagemaker-ssh-helper/]"
+                     "(https://github.com/aws-samples/sagemaker-ssh-helper/).",
     long_description_content_type='text/markdown',
     url='https://github.com/aws-samples/sagemaker-ssh-helper',
     packages=setuptools.find_packages(),
