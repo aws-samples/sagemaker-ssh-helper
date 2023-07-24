@@ -607,6 +607,7 @@ feature, which is also helpful in the scenario when you need to rerun your code 
 
 *Pro Tip:* Note that you can debug your code line by line in this scenario, too! See [the tutorial in PyCharm documentation](https://www.jetbrains.com/help/pycharm/debugging-your-first-python-application.html#debug). Some users might prefer this option instead of using Debug Server as a simpler alternative.
 
+It is also interesting to compare this section instructions with the AWS blog post [Run your TensorFlow job on Amazon SageMaker with a PyCharm IDE](https://aws.amazon.com/blogs/machine-learning/run-your-tensorflow-job-on-amazon-sagemaker-with-a-pycharm-ide/). In contrast to using SageMaker SSH Helper, the blog instructions do not demonstrate the remote debugging capabilities, but suggest to use the [SageMaker local mode](https://github.com/aws-samples/amazon-sagemaker-local-mode) instead. As with Managed Warm Pools, SageMaker local mode helps to test your code faster, but it consumes local resources and still doesn't provide the line by line debugging capability.
 
 ## <a name="studio"></a>Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode
 
