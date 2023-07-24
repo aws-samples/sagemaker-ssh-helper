@@ -25,8 +25,8 @@ def test_local_training():
     f"""
     Compare with https://github.com/aws/amazon-sagemaker-examples/tree/main/advanced_functionality/scikit_bring_your_own/container/local_test .
     """
-    assert training_environment.SAGEMAKER_BASE_PATH == "/opt/ml"
-    assert training_environment.base_dir.endswith("/opt_ml")
+    assert training_environment.SAGEMAKER_BASE_PATH == "/opt/ml", "default path  should be /opt/ml"
+    assert training_environment.base_dir.endswith("/opt_ml"), "override path should end with /opt_ml"
 
     test_util._clean_training_opt_ml_dir()
     distutils.dir_util.copy_tree("./source_dir/training_clean/", "./opt_ml/code/")
@@ -44,7 +44,7 @@ def test_local_training():
     logging.info("Finished training")
 
 
-@mock.patch.dict(os.environ, {"SM_MODEL_DIR": "./opt_ml/model"})
+@mock.patch.dict(os.environ, {"SM_MODEL_DIR": os.path.join(os.path.dirname(__file__), "opt_ml/model")})
 def test_local_training_with_coverage():
     # import will start training
     from source_dir.training_clean import train_clean
