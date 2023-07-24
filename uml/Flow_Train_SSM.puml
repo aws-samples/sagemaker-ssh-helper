@@ -1,0 +1,142 @@
+See https://pdf.plantuml.net/PlantUML_Language_Reference_Guide_en.pdf
+
+@startuml
+actor Developer as dev
+participant "SageMaker SSH Helper \n library (local)" as sm_ssh_helper_local
+participant "Amazon SageMaker" as sagemaker
+participant "VPC \n private or managed" as vpc
+participant "SageMaker SSH Helper \n library (remote)" as sm_ssh_helper_remote
+participant "SSH server" as ssh
+participant "SSM agent" as ssm_agent
+participant "AWS Systems Manager \n (SSM)" as ssm
+participant "IAM" as iam
+
+dev -> sm_ssh_helper_local: Get library dir
+
+note right of dev
+.../sagemaker_ssh_helper/
+end note
+
+return
+
+
+note left of dev
+estimator:
+    source_dir/
+    train.py
+
+    .../sagemaker_ssh_helper/
+end note
+
+dev -> sm_ssh_helper_local: Create wrapper \n around estimator
+activate sm_ssh_helper_local
+sm_ssh_helper_local -> sm_ssh_helper_local: Modify estimator \n metadata
+return
+deactivate sm_ssh_helper_local
+
+dev -> sagemaker: Create training job \n (fit estimator)
+note left of dev
+sourcedir.tar.gz
+end note
+
+sagemaker -> vpc: Start containers
+note left vpc
+docker run train
+end note
+
+activate vpc
+
+vpc -> vpc: Start training
+note left vpc
+train.py
+end note
+activate vpc
+
+vpc -> sm_ssh_helper_remote: Setup and start SSH
+note left sm_ssh_helper_remote
+sm-setup-ssh
+end note
+activate vpc
+
+activate sm_ssh_helper_remote
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Configure and \n install libs
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Save environment \n for remote shell
+note left sm_ssh_helper_remote
+sm-save-env
+end note
+
+sm_ssh_helper_remote -> ssh: Start SSH server
+activate ssh
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Initialize SSM
+activate sm_ssh_helper_remote
+note left sm_ssh_helper_remote
+sm-init-ssm
+end note
+sm_ssh_helper_remote -> ssm: Create activation
+sm_ssh_helper_remote -> ssm_agent: Register
+ssm_agent -> ssm:
+note right ssm_agent
+mi-01234567890abcdef
+end note
+ssm --> ssm_agent:
+deactivate sm_ssh_helper_remote
+
+sm_ssh_helper_remote -> ssm_agent: Start SSM agent
+activate ssm_agent
+ssm_agent -> ssm: Go online
+
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Start waiting \n loop
+activate sm_ssh_helper_remote
+note left sm_ssh_helper_remote
+sm-wait
+end note
+
+dev -> sm_ssh_helper_local: Get instance IDs
+sm_ssh_helper_local -> ssm: List and filter instances
+sm_ssh_helper_local -> sm_ssh_helper_local: Repeat until successful \n or timeout
+sm_ssh_helper_local --> dev
+note right dev
+mi-01234567890abcdef, ...
+end note
+
+dev -> ssm: Start SSM session
+note right dev
+aws ssm start-session --target mi-01234567890abcdef
+end note
+
+ssm -> iam: Check StartSession \n permissions
+ssm -> ssm_agent: Start terminal \n session
+ssm_agent -> ssm_agent: Start shell
+ssm_agent --> dev:
+dev -> vpc: Run commands inside a container \n (before training)
+
+dev -> vpc: Stop waiting
+note right vpc
+sm-wait stop
+end note
+deactivate sm_ssh_helper_remote
+
+vpc -> vpc: Training begins
+deactivate vpc
+
+deactivate sm_ssh_helper_remote
+
+dev -> vpc: Run commands inside a container \n (during training)
+
+...Training is in progress...
+dev -> vpc: Stop training or wait until finished
+
+deactivate ssh
+
+deactivate ssh
+deactivate ssm_agent
+deactivate vpc
+
+vpc --> sagemaker: Job is finished
+deactivate vpc
+deactivate sm_ssh_helper_local
+
+@enduml

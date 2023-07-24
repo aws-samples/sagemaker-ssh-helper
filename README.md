@@ -8,28 +8,27 @@ SageMaker SSH Helper is an "army-knife" library that helps you to securely conne
 realtime inference endpoints, and SageMaker Studio notebook containers for fast interactive experimentation, 
 remote debugging, and advanced troubleshooting.
 
-The three most common scenarios for the library, also known as "SSH into SageMaker", are:
+Three most common asks that motivated to create the library, sometimes referred as "SSH into SageMaker", are:
 1. A terminal session into a container running in SageMaker to diagnose a stuck training job, use CLI commands 
 like nvidia-smi, or iteratively fix and re-execute your training script within seconds. 
 2. Remote debugging of a code running in SageMaker from your local favorite IDE like 
 PyCharm Professional Edition or Visual Studio Code.
 3. Port forwarding to access diagnostic tools running inside SageMaker, e.g., Dask dashboard, TensorBoard or Spark Web UI.
 
-Other scenarios include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, or start a VNC session to SageMaker Studio to run GUI apps.  
-
-Also see our [Frequently Asked Questions](FAQ.md), especially if you're using Windows on your local machine.
+Other asks include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, or start a VNC session to SageMaker Studio to run GUI apps.  
 
 ## How it works
-SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed by creating an SSM session between your client machine and the SageMaker container. Then you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM session, that allows opening a Linux shell, and/or configuring bidirectional SSH port forwarding to enable applications like remote development/debugging/desktop, and others.
+SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed by creating an SSM session between your client machine and the SageMaker container. Then you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM session, that allows opening a Linux shell and configuring bidirectional SSH port forwarding to run applications like remote development, debugging, desktop GUI, and others.
 
-![Screenshot](images/layers.png)
+![Screenshot](images/high-level-architecture.png)
 
-See detailed architecture diagrams of the complete flow of participating components 
-in [Training Diagram](Flows.md), and [IDE integration with SageMaker Studio diagram](Flows_IDE.md).
+Once you become familiar with the library, check the [Flow Diagrams](Flows_Diagrams.md) of the common use cases. 
+
+Also make sure you looked at our [Frequently Asked Questions](FAQ.md).
 
 ## Getting started
 
-To get started, your AWS system administrator must set up needed IAM and SSM configuration in your AWS account as shown 
+To get started, your AWS system administrator must configure IAM and SSM in your AWS account as shown 
 in [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
 
 > **Note**: This solution is a sample AWS content. You should not use this content in your production accounts, in a production 
