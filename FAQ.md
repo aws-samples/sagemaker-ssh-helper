@@ -107,7 +107,8 @@ Note that unlike `sm-local-ssh-ide`, `sm-local-ssh-notebook` doesn't support VNC
 ### How do you start the SSM session without knowing EC2 instance or container ID?
 
 Indeed, when you run a SageMaker job, there are no EC2 instances or generic containers visible in AWS console, because the instances and containers are managed by the SageMaker service.
-The trick that SageMaker SSH Helper is using is [the hybrid activations](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-managedinstances.html), with SageMaker containers effectively becoming managed instances when SSM agent starts, akin to on-premises instances. The managed instances have an ID that starts with 'mi-' prefix and once they connect to the Systems Manager, you're able to see them in AWS Console in Systems Manager -> Node Manager -> Fleet Manager section.
+The trick that SageMaker SSH Helper is using is [the hybrid activations](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-managedinstances.html) in AWS Systems Manager (SSM), with SageMaker containers effectively becoming managed instances when SSM agent starts, akin to on-premises instances. The managed instances have an ID that starts with `mi-` prefix and once they connect to the Systems Manager, you're able to see them in AWS Console in Systems Manager -> Node Manager -> Fleet Manager section.
+You need to turn on the [Advanced Tier](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-managedinstances-advanced.html) in Systems Manager to be able to connect with the Session Manager and hence with the SSH Helper to these instances.
 
 
 ### For training, should I use Warm Pools or SageMaker SSH Helper?
