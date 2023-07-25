@@ -22,7 +22,7 @@ SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register
 
 ![Screenshot](images/high-level-architecture.png)
 
-Once you become familiar with the library, check the [Flow Diagrams](Flows_Diagrams.md) of the common use cases. 
+Once you become familiar with the library, check the [Flow Diagrams](Flow_Diagrams.md) of the common use cases. 
 
 Also make sure you looked at our [Frequently Asked Questions](FAQ.md).
 
