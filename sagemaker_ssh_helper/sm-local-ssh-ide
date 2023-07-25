@@ -49,6 +49,8 @@ EOF
     shift
     shift
     shift
+    # TODO: don't create the tunnel for SSH-only option
+    # TODO: adopt unique host name like user.mi-123.studio and user.latest.studio to be used directly in IDE
     sm-local-start-ssh "$INSTANCE_ID" \
         -L localhost:10022:localhost:22 \
         $*
