@@ -1,6 +1,10 @@
 See https://pdf.plantuml.net/PlantUML_Language_Reference_Guide_en.pdf
 
 @startuml
+skinparam ActorBackgroundColor #88F5B1
+skinparam ParticipantBackgroundColor #A3C7F1
+skinparam NoteBackgroundColor #FBD8BF
+
 actor Developer as dev
 participant "SageMaker SSH Helper \n library (local)" as sm_ssh_helper_local
 participant "Amazon SageMaker Studio" as sagemaker_studio
