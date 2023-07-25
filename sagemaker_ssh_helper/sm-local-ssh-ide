@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Commands:
-# connect <kernel_gateway_name> [--ssh-only] [--domain <domain-id>] [--user <profile-name>] [<extra_ssh_args>]
+# connect <kernel_gateway_name> [--ssh-only] [<extra_ssh_args>]
 # run-command <command> <args...>
 # TODO: create <kernel_gateway_name> [--recreate] --domain <domain> --user <profile-name> --image datascience-1.0 --instance ml.t3.medium
 # TODO: list (all apps from all users and domains marked with '*' if can connect with SSH and with '!' if user don't match)

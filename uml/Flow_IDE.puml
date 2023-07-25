@@ -3,7 +3,7 @@ See https://pdf.plantuml.net/PlantUML_Language_Reference_Guide_en.pdf
 @startuml
 actor Developer as dev
 participant "SageMaker SSH Helper \n library (local)" as sm_ssh_helper_local
-participant "Amazon SageMaker" as sagemaker
+participant "Amazon SageMaker Studio" as sagemaker_studio
 participant "VPC \n private or managed" as vpc
 participant "SageMaker SSH Helper \n library (remote)" as sm_ssh_helper_remote
 participant "SSH server" as ssh
@@ -11,76 +11,76 @@ participant "SSM agent" as ssm_agent
 participant "AWS Systems Manager \n (SSM)" as ssm
 participant "IAM" as iam
 
-dev -> sm_ssh_helper_local: Get library dir
-
-note right of dev
-.../sagemaker_ssh_helper/
-end note
-
-return
-
-
+dev -> sagemaker_studio: Create kernel gateway app
 note left of dev
-estimator:
-    source_dir/
-    train.py
-
-    .../sagemaker_ssh_helper/
+Ex.:
+Data Science 2.0
 end note
 
-dev -> sm_ssh_helper_local: Create wrapper \n around estimator
-activate sm_ssh_helper_local
-sm_ssh_helper_local -> sm_ssh_helper_local: Modify estimator \n metadata
-return
-deactivate sm_ssh_helper_local
-
-dev -> sagemaker: Create training job \n (fit estimator)
-note left of dev
-sourcedir.tar.gz
-end note
-sagemaker --> dev:
-note right of dev
-Job name: ssh-training-example-2023-07-25-03-18-04-490
-end note
-
-sagemaker -> vpc: Start containers
-note left vpc
-docker run train
-end note
-
+sagemaker_studio -> vpc: Start containers
 activate vpc
-
-vpc -> vpc: Start training
+vpc -> vpc: Start kernel gateway
 note left vpc
-train.py
+jupyter kernelgateway
 end note
 activate vpc
 
-vpc -> sm_ssh_helper_remote: Setup and start SSH
-note left sm_ssh_helper_remote
-sm-setup-ssh
+
+dev -> vpc: Run life-cycle configuration
+note left of dev
+kernel-lc-config.sh
 end note
+
+dev -> vpc: Alternatively, run IDE notebook
+note left of dev
+SageMaker_SSH_IDE.ipynb
+end note
+
+
+vpc -> sm_ssh_helper_remote: Setup IDE
 activate vpc
 
 activate sm_ssh_helper_remote
 
-sm_ssh_helper_remote -> sm_ssh_helper_remote: Configure and \n install libs
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Print connect metadata
+
 note left sm_ssh_helper_remote
-sm-setup-ssh
+sm-ssh-ide
+get-metadata
+end note
+
+sm_ssh_helper_remote --> dev:
+
+note right dev
+App name: sagemaker-data-science-ml-m5-large-1234567890abcdef0
+User profile name: terry-whitlock
+Domain: d-egm0dexample
+end note
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Configure and \n install IDE libs
+note left sm_ssh_helper_remote
+sm-ssh-ide
 configure
 end note
 
-sm_ssh_helper_remote -> sm_ssh_helper_remote: Save environment \n for remote shell
-note left sm_ssh_helper_remote
-sm-save-env
-end note
 
-sm_ssh_helper_remote -> ssh: Start SSH server
-activate ssh
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Configure and \n install SSH libs
+activate sm_ssh_helper_remote
+note right sm_ssh_helper_remote
+sm-setup-ssh
+configure
+end note
+deactivate sm_ssh_helper_remote
+
 
 sm_ssh_helper_remote -> sm_ssh_helper_remote: Initialize SSM
 activate sm_ssh_helper_remote
 note left sm_ssh_helper_remote
+sm-ssh-ide
+init-ssm
+end note
+
+note right sm_ssh_helper_remote
 sm-init-ssm
 end note
 sm_ssh_helper_remote -> ssm: Create activation
@@ -92,19 +92,38 @@ end note
 ssm --> ssm_agent:
 deactivate sm_ssh_helper_remote
 
+note left sm_ssh_helper_remote
+sm-ssh-ide
+start
+end note
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Save environment \n for remote shell
+note right sm_ssh_helper_remote
+sm-save-env
+end note
+
+sm_ssh_helper_remote -> ssh: Start SSH server
+activate ssh
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Start VNC and \n Jupyter server
+
+
 sm_ssh_helper_remote -> ssm_agent: Start SSM agent
+note left sm_ssh_helper_remote
+sm-ssh-ide
+ssm-agent
+end note
 activate ssm_agent
 ssm_agent -> ssm: Go online
 
 
-sm_ssh_helper_remote -> sm_ssh_helper_remote: Start waiting \n loop
-activate sm_ssh_helper_remote
-note left sm_ssh_helper_remote
-sm-wait
+note right dev
+sm-local-ssh-ide set-domain d-egm0dexample
+sm-local-ssh-ide set-user terry-whitlock
 end note
 
 note right dev
-sm-local-ssh-training connect ssh-training-example-2023-07-25-03-18-04-490
+sm-local-ssh-ide connect sagemaker-data-science-ml-m5-large-1234567890abcdef0
 end note
 dev -> sm_ssh_helper_local: Connect
 sm_ssh_helper_local -> sm_ssh_helper_local: Get instance IDs
@@ -135,41 +154,50 @@ ssm_agent --> sm_ssh_helper_local:
 sm_ssh_helper_local -> ssm_agent: Start SSH port forwarding \n over SSM proxy tunnel
 ssm_agent -> ssh: Start SSH proxy \n tunnel session
 activate ssh
+
+
+dev -> dev: Connect from IDE
+activate dev
 note right dev
-ssh sagemaker-training
+ssh sagemaker-studio
 end note
 dev -> ssh: Connect with SSH through forwarded SSH port
 ssh --> dev:
 
-dev -> vpc: Run commands inside a container \n (before training)
+dev -> vpc: Run and debug code remotely with IDE
+deactivate dev
 
-note right dev
-sm-local-ssh-training stop-waiting
+dev -> vpc: Open Jupyter \n in browser
+dev -> vpc: Connect with \n VNC client
+
+...Development is in progress...
+
+dev -> sm_ssh_helper_remote: Interrupt notebook kernel and stop services
+
+note left sm_ssh_helper_remote
+sm-ssh-ide
+stop
 end note
 
-dev -> vpc: Stop waiting
-note right vpc
-sm-wait stop
-end note
-deactivate sm_ssh_helper_remote
-
-vpc -> vpc: Training begins
-deactivate vpc
-
-deactivate sm_ssh_helper_remote
-
-dev -> vpc: Run commands inside a container \n (during training)
-
-...Training is in progress...
-dev -> vpc: Stop training or wait until finished
-
-deactivate ssh
-
-deactivate ssh
+sm_ssh_helper_remote -> ssm_agent: Stop SSM agent
 deactivate ssm_agent
+
+sm_ssh_helper_remote -> ssh: Stop SSH server
+deactivate ssh
+
+deactivate ssh
+
+sm_ssh_helper_remote -> sm_ssh_helper_remote: Stop VNC and \n Jupyter server
+
+deactivate vpc
+deactivate sm_ssh_helper_remote
+
+dev -> vpc: Stop app
+
+
+
 deactivate vpc
 
-vpc --> sagemaker: Job is finished
 deactivate vpc
 deactivate sm_ssh_helper_local
 
