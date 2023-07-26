@@ -497,7 +497,7 @@ Make sure you allow enough time for manually setting up the connection
 Don't worry to set it to higher values, e.g. to 30 min, because you will be able to terminate the waiting loop 
 once you connect.
 
-8. Start the port forwarding script once SSH helper connects to SSM and starts waiting inside the training job:
+8. On your local machine, once the SSH helper connects to SSM and starts waiting inside the training job, start the port forwarding script :
 ```shell
 sm-local-ssh-training connect <<training_job_name>>
 ```
@@ -512,7 +512,7 @@ to allow you easily connect with SSH from command line.
 
 Feel free to use the scripts as templates. Clone and customize them, if you want to change the ports.
 
-9. Add the following configuration to `~/.ssh/config`:
+9. On your local machine, add the following configuration to `~/.ssh/config`:
 
 ```text
 Host sagemaker-training
@@ -524,7 +524,7 @@ Host sagemaker-training
 
 *Note:* The SSH key specified as `IdentityFile` is automatically generated on your local machine every time when you run `sm-local-ssh-training` command from the step 8.
 
-While the `sm-local-ssh-training` script is running, you *may* connect with SSH to the specified local port (but it's not needed for PyCharm Debugger to work):
+While the `sm-local-ssh-training` script is running, you *may* connect with SSH to the specified local port (but it's not needed for PyCharm Debugger to work). Run on your local machine: 
 
 ```shell
 ssh sagemaker-training
