@@ -675,7 +675,7 @@ ssh sagemaker-studio
 
  * [Instructions for SSH in PyCharm](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter)
 
-In PyCharm, use `11022` as the port and `root` as the user.
+In PyCharm, use `10022` as the port and `root` as the user.
 
 ![](images/pycharm_studio.png)
 
