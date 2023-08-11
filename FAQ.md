@@ -26,6 +26,7 @@ We often see a lot of questions that surface repeatedly. This repository is an a
   * [How to start a job with SageMaker SSH Helper in an AWS Region different from my default one?](#how-to-start-a-job-with-sagemaker-ssh-helper-in-an-aws-region-different-from-my-default-one)
   * [How to configure an AWS CLI profile to work with SageMaker SSH Helper?](#how-to-configure-an-aws-cli-profile-to-work-with-sagemaker-ssh-helper)
   * [How do I automate my pipeline with SageMaker SSH Helper end-to-end?](#how-do-i-automate-my-pipeline-with-sagemaker-ssh-helper-end-to-end)
+  * [How do I securely forward my local private SSH keys from local machine to the remote host with SSH Agent?](#how-do-i-securely-forward-my-local-private-ssh-keys-from-local-machine-to-the-remote-host-with-ssh-agent)
 * [Troubleshooting](#troubleshooting)
   * [Something doesn't work for me, what should I do?](#something-doesnt-work-for-me-what-should-i-do)
   * [I’m getting an API throttling error in the logs](#im-getting-an-api-throttling-error-in-the-logs)
@@ -491,6 +492,30 @@ There's `get_instance_ids()` method already mentioned in the documentation. Unde
 
 Also check the method `start_ssm_connection_and_continue()` from the [SSHEnvironmentWrapper class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/wrapper.py) - it automates creating the SSH tunnel, running remote commands and stopping the waiting loop as well as graceful disconnect. Underlying implementation is in the [SSMProxy class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/proxy.py).
 
+### How do I securely forward my local private SSH keys from local machine to the remote host with SSH Agent?
+
+Use SSH Agent and add `-A` option when connecting to the remote with `sm-local-ssh-*` scripts.
+
+Run on your local machine:
+
+```bash
+% ssh-add
+Identity added: /Users/janedoe/.ssh/id_ecdsa
+Certificate added: /Users/janedoe/.ssh/id_ecdsa-cert.pub 
+```
+
+Now SSH agent will keep your identity and you can forward it to the remote:
+
+```bash
+sm-local-ssh-ide connect sagemaker-data-science-ml-m5-large-1234567890abcdef0 -A
+```
+
+Once connected, for example, you can securely clone your private git repo from the remote machine with SSH keys just as would you do it on your local machine. Note that in this case you don't need to copy your private keys to the remote machine (more secure):
+```bash
+root@sagemaker-data-science-ml-m5-large-1234567890abcdef0:~# git clone git@ssh.gitlab.example.com:example-project.git
+```
+
+If you didn't add `-A` option, the clone would fail with `Permission denied (publickey)` error.
 
 ## Troubleshooting
 
