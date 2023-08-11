@@ -99,12 +99,12 @@ class SSHEnvironmentWrapper(ABC):
         return iam_arn[role_position + 6:]
 
     @abstractmethod
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         f"""
         :param timeout_in_sec:
         :param retry: (deprecated, use timeout_in_sec) how many retries (each retry is 10 seconds), 360 is for 1 hour
         """
-        raise ValueError("Not implemented")
+        raise NotImplementedError("Abstract method")
 
     def retry_deprecated_warning(self, retry, timeout_in_sec):
         if retry:
@@ -112,18 +112,22 @@ class SSHEnvironmentWrapper(ABC):
             timeout_in_sec = retry * 10
         return timeout_in_sec
 
-    def start_ssm_connection_and_continue(self, ssh_listen_port: int, retry: int = 60,
+    def start_ssm_connection_and_continue(self, ssh_listen_port: int, retry: int = None,
+                                          timeout_in_sec: int = 900,
                                           extra_args: str = ""):
-        proxy = self.start_ssm_connection(ssh_listen_port, retry, extra_args)
+        proxy = self.start_ssm_connection(ssh_listen_port, retry, timeout_in_sec, extra_args)
         proxy.disconnect()
 
-    def start_ssm_connection(self, ssh_listen_port: int, retry: int = 60,
+    def start_ssm_connection(self, ssh_listen_port: int, retry: int = None,
+                             timeout_in_sec: int = 900,
                              extra_args: str = "") -> SSMProxy:
         self.logger.info(f"Starting SSM connection")
-        instance_ids = self.get_instance_ids(timeout_in_sec=retry * 10)
+        timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
+        instance_ids = self.get_instance_ids(timeout_in_sec=timeout_in_sec)
         if not instance_ids:
             raise ValueError(f"No SSM instances found. Has the SSM Agent been started? "
-                             f"Check the remote logs: {self.get_cloudwatch_url()}")
+                             f"Check the remote logs: {self.get_cloudwatch_url()} "
+                             f"AND the remote metadata: {self.get_metadata_url()}")
 
         instance_id = instance_ids[0]
         if "mi-" not in instance_id:
@@ -188,7 +192,7 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         env.update({'SSH_INSTANCE_COUNT': str(self.ssh_instance_count)})
         self.estimator.environment = env
 
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         self.logger.info("Resolving training instance IDs through SSM tags")
         self.logger.info(f"Remote training logs are at {self.get_cloudwatch_url()}")
@@ -286,7 +290,7 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         self.model.env = env
 
     # noinspection DuplicatedCode
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         self.logger.info("Resolving endpoint instance IDs through CloudWatch logs")
         self.logger.info(f"Remote endpoint logs are at {self.get_cloudwatch_url()}")
@@ -321,7 +325,7 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         return self.ssh_log.get_model_metadata_url(self.model.name)
 
     def endpoint_is_online(self):
-        describe_result = boto3.client('sagemaker').describe_endpoint(EndpointName=self.model.name)
+        describe_result = boto3.client('sagemaker').describe_endpoint(EndpointName=self.model.endpoint_name)
         status = describe_result["EndpointStatus"]
         return status == 'InService'
 
@@ -359,7 +363,7 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
             self.mdm.env = env
 
     # noinspection DuplicatedCode
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         self.logger.info("Resolving multi-model endpoint instance IDs through SSM tags")
         self.logger.info(f"Remote multi-model endpoint logs are at {self.get_cloudwatch_url()}")
@@ -415,7 +419,7 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
         self._augment_env(env)
         self.processor.env = env
 
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         self.logger.info("Resolving processing instance IDs through SSM tags")
         self.logger.info(f"Remote processing logs are at {self.get_cloudwatch_url()}")
@@ -479,7 +483,7 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
     def _augment(self):
         super()._augment()
 
-    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 600):
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         self.logger.info("Resolving transformer instance IDs through SSM tags")
         self.logger.info(f"Remote transformer logs are at {self.get_cloudwatch_url()}")

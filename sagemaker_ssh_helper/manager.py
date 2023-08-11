@@ -1,20 +1,62 @@
 import logging
 import time
+from abc import abstractmethod, ABC
 
 import boto3
 from typing import Dict
 
 
-class SSMManager:
+class SSMManagerBase(ABC):
+    logger = logging.getLogger('sagemaker-ssh-helper:SSMManagerBase')
+
+    def __init__(self, region_name: str = None,
+                 sleep_between_retries_in_seconds: int = 10,
+                 redo_attempts: int = 5) -> None:
+        super().__init__()
+        self.region_name = region_name or boto3.session.Session().region_name
+        self.sleep_between_retries_in_seconds = sleep_between_retries_in_seconds
+        self.redo_attempts = redo_attempts
+
+    def get_instance_ids(self, arn_resource_type, arn_resource_name,
+                         timeout_in_sec=0,
+                         expected_count=1):
+        if arn_resource_name.startswith('mi-'):
+            self.logger.warning("SageMaker resource name usually doesn't not start with 'mi-', "
+                                "did you pass the SSM instance ID by mistake?")
+        self.logger.info("Using AWS Region: %s", self.region_name)
+        mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
+
+        while not mi_ids and timeout_in_sec > 0:
+            self.logger.info(f"No instance IDs found. Retrying. Is SSM Agent running on the remote? "
+                             f"Check the remote logs. Seconds left before time out: {timeout_in_sec}")
+            time.sleep(self.sleep_between_retries_in_seconds)
+            mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
+            timeout_in_sec -= self.sleep_between_retries_in_seconds
+
+        self.logger.info(f"Got preliminary SSM instance IDs: {mi_ids}")
+
+        redo_attempts = self.redo_attempts
+        while len(mi_ids) < expected_count and redo_attempts > 0:
+            self.logger.info(f"Re-fetch results for other instances to catchup. Attempts left: {redo_attempts}")
+            time.sleep(30)
+            mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
+            redo_attempts -= 1
+
+        self.logger.info(f"Got final SSM instance IDs: {mi_ids}")
+        return mi_ids
+
+    @abstractmethod
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+        raise NotImplementedError("Abstract method")
+
+
+class SSMManager(SSMManagerBase):
     logger = logging.getLogger('sagemaker-ssh-helper:SSMManager')
 
     def __init__(self, region_name=None, sleep_between_retries_in_seconds=10, redo_attempts=5,
                  clock_timestamp_override=None) -> None:
-        super().__init__()
+        super().__init__(region_name, sleep_between_retries_in_seconds, redo_attempts)
         self.clock_timestamp_override = clock_timestamp_override
-        self.redo_attempts = redo_attempts
-        self.sleep_between_retries_in_seconds = sleep_between_retries_in_seconds
-        self.region_name = region_name or boto3.session.Session().region_name
 
     def list_all_instances_with_tags(self) -> Dict[str, Dict[str, str]]:
         ssm = boto3.client('ssm', region_name=self.region_name)
@@ -87,34 +129,6 @@ class SSMManager:
         result_pairs.sort(key=lambda i: i[1], reverse=True)
         result = [i[0] for i in result_pairs]
         return result
-
-    def get_instance_ids(self, arn_resource_type, arn_resource_name,
-                         timeout_in_sec=0,
-                         expected_count=1):
-        if arn_resource_name.startswith('mi-'):
-            self.logger.warning("SageMaker resource name usually doesn't not start with 'mi-', "
-                                "did you pass the SSM instance ID by mistake?")
-        self.logger.info("Using AWS Region: %s", self.region_name)
-        mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
-
-        while not mi_ids and timeout_in_sec > 0:
-            self.logger.info(f"SSM Agent not yet started on the remote? Retrying. Seconds left: {timeout_in_sec}")
-            time.sleep(self.sleep_between_retries_in_seconds)
-            mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
-            timeout_in_sec -= self.sleep_between_retries_in_seconds
-
-        self.logger.info(f"Got preliminary SSM instance IDs: {mi_ids}")
-
-        redo_attempts = self.redo_attempts
-        # noinspection DuplicatedCode
-        while len(mi_ids) < expected_count and redo_attempts > 0:
-            self.logger.info(f"Re-fetch results for other instances to catchup. Attempts left: {redo_attempts}")
-            time.sleep(30)
-            mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
-            redo_attempts -= 1
-
-        self.logger.info(f"Got final SSM instance IDs: {mi_ids}")
-        return mi_ids
 
     def list_expired_ssh_instances(self, expiration_days=0):
         all_instances = self.list_all_instances_with_tags()

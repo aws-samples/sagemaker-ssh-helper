@@ -61,7 +61,7 @@ def test_processing_different_region_ssh():
         wait=False
     )
 
-    ssh_wrapper.start_ssm_connection_and_continue(15022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(15022)
 
     ssh_wrapper.wait_processing_job()
 

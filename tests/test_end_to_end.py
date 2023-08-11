@@ -49,7 +49,7 @@ def test_train_e2e():
 
     estimator.fit(wait=False)
 
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
 
     ssh_wrapper.wait_training_job()
 
@@ -101,7 +101,10 @@ def test_train_pycharm_debug_e2e():
 
     time.sleep(2)  # wait a little to get server thread started
 
-    ssm_proxy = ssh_wrapper.start_ssm_connection(11022, 60, "-R localhost:12345:localhost:12345")
+    ssm_proxy = ssh_wrapper.start_ssm_connection(
+        11022, timeout_in_sec=600,
+        extra_args="-R localhost:12345:localhost:12345"
+    )
 
     logger.info("Waiting for pydevd to connect")
     server_thread.join()
@@ -109,7 +112,8 @@ def test_train_pycharm_debug_e2e():
     ssm_proxy.disconnect()
 
     result = bucket.get(block=False)
-    assert result == 0, "Listen socket timeout."
+    assert result == 0, "Socket timeout, remote job didn't connect to PyCharm Debug Server mock. " \
+                        "Check the remote logs: " + ssh_wrapper.get_cloudwatch_url()
     assert bucket.qsize() == 0
 
 
@@ -224,7 +228,7 @@ def test_inference_e2e():
     )
 
     try:
-        ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(12022)
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
 
@@ -307,7 +311,7 @@ def test_inference_e2e_mms(instance_type):
         assert predicted_value == [20043]
 
         # Note: in MME the models are lazy loaded, so SSH helper will start upon the first prediction request
-        ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(13022)
 
     finally:
         if predictor:
@@ -387,7 +391,7 @@ def test_inference_e2e_mms_without_model(instance_type):
         assert predicted_value == [20043]
 
         # Note: in MME the models are lazy loaded, so SSH helper will start upon the first prediction request
-        ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(13022)
 
     finally:
         predictor.delete_endpoint(delete_endpoint_config=False)
@@ -411,7 +415,7 @@ def test_processing_e2e():
         wait=False
     )
 
-    ssh_wrapper.start_ssm_connection_and_continue(14022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(14022)
 
     ssh_wrapper.wait_processing_job()
 
@@ -438,7 +442,7 @@ def test_processing_framework_e2e():
         wait=False
     )
 
-    ssh_wrapper.start_ssm_connection_and_continue(15022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(15022)
 
     ssh_wrapper.wait_processing_job()
 
@@ -468,7 +472,7 @@ def test_train_with_bucket_override():
 
     os.environ["SSH_AUTHORIZED_KEYS_PATH"] = f's3://{custom_bucket_name}/ssh-keys-testing/'
     try:
-        ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(11022)
         ssh_wrapper.wait_training_job()
         all_objects = bucket.objects.all()
         assert any([o.key == "ssh-keys-testing/sagemaker-ssh-gw.pub" for o in all_objects])

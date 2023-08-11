@@ -97,7 +97,7 @@ def test_batch_ssh():
                           join_source="Input",
                           wait=False)
 
-    ssh_transformer_wrapper.start_ssm_connection_and_continue(16022, 90)
+    ssh_transformer_wrapper.start_ssm_connection_and_continue(16022)
     ssh_transformer_wrapper.wait_transform_job()
 
     test_util._cleanup_dir("./output", recreate=True)

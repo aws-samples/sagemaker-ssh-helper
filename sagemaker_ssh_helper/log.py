@@ -5,21 +5,20 @@ from datetime import datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError
-from sagemaker import Session
 
 from sagemaker_ssh_helper.aws import AWS
+from sagemaker_ssh_helper.manager import SSMManagerBase
 
 
-class SSHLog:
+class SSHLog(SSMManagerBase):
     logger = logging.getLogger('sagemaker-ssh-helper:SSHLog')
 
-    def __init__(self, region_name=None) -> None:
-        super().__init__()
-        self.region_name = region_name or Session().boto_region_name
+    def __init__(self, region_name=None, sleep_between_retries_in_seconds=10, redo_attempts=5) -> None:
+        super().__init__(region_name, sleep_between_retries_in_seconds, redo_attempts)
         self.aws_console = AWS(self.region_name)
 
     def get_ip_addresses(self, training_job_name, retry=0):
-        SSHLog.logger.info(f"Querying SSH IP addresses for job {training_job_name}")
+        self.logger.info(f"Querying SSH IP addresses for job {training_job_name}")
         query = "fields @timestamp, @logStream, @message" \
                 f"| filter @logStream like '{training_job_name}'" \
                 "| filter @message like /SSH Helper Log IP: [0-9]+/" \
@@ -37,38 +36,46 @@ class SSHLog:
             ip_addresses.append(ip)
 
         while not ip_addresses and retry > 0:
-            SSHLog.logger.info(f"SSH Helper not yet started? Retrying. Attempts left: {retry}")
+            self.logger.info(f"SSH Helper not yet started? Retrying. Attempts left: {retry}")
             ip_addresses = self.get_ip_addresses(training_job_name, 0)
             time.sleep(10)
             retry -= 1
 
         return ip_addresses
 
-    def get_training_ssm_instance_ids(self, training_job_name, retry=0, expected_count=1):
-        SSHLog.logger.warning("SSMManager#get_training_instance_ids() is faster and more stable")
-        SSHLog.logger.info(f"Querying SSM instance IDs for training job {training_job_name}, "
-                           f"expected instance count = {expected_count}")
-        return self.get_ssm_instance_ids('/aws/sagemaker/TrainingJobs', training_job_name, retry,
+    def get_training_ssm_instance_ids(self, training_job_name, timeout_in_sec=0, expected_count=1):
+        self.logger.warning("SSMManager#get_training_instance_ids() is faster and more stable")
+        self.logger.info(f"Querying SSM instance IDs for training job {training_job_name}, "
+                         f"expected instance count = {expected_count}")
+        return self.get_ssm_instance_ids('/aws/sagemaker/TrainingJobs', training_job_name,
+                                         timeout_in_sec=timeout_in_sec,
                                          expected_count=expected_count)
 
-    def get_processing_ssm_instance_ids(self, processing_job_name, retry=0):
-        SSHLog.logger.warning("SSMManager#get_processing_instance_ids() is faster and more stable")
-        SSHLog.logger.info(f"Querying SSM instance IDs for processing job {processing_job_name}")
-        return self.get_ssm_instance_ids('/aws/sagemaker/ProcessingJobs', processing_job_name, retry)
+    def get_processing_ssm_instance_ids(self, processing_job_name, timeout_in_sec=0):
+        self.logger.warning("SSMManager#get_processing_instance_ids() is faster and more stable")
+        self.logger.info(f"Querying SSM instance IDs for processing job {processing_job_name}")
+        return self.get_ssm_instance_ids('/aws/sagemaker/ProcessingJobs', processing_job_name,
+                                         timeout_in_sec=timeout_in_sec)
 
-    def get_endpoint_ssm_instance_ids(self, endpoint_name, retry=0):
-        SSHLog.logger.info(f"Querying SSM instance IDs for endpoint {endpoint_name}")
-        return self.get_ssm_instance_ids(f'/aws/sagemaker/Endpoints/{endpoint_name}', "AllTraffic/", retry)
+    def get_endpoint_ssm_instance_ids(self, endpoint_name, timeout_in_sec=0):
+        self.logger.info(f"Querying SSM instance IDs for endpoint {endpoint_name}")
+        return self.get_ssm_instance_ids(f'/aws/sagemaker/Endpoints/{endpoint_name}', "AllTraffic/",
+                                         timeout_in_sec=timeout_in_sec)
 
-    def get_transformer_ssm_instance_ids(self, transform_job_name, retry=0):
-        SSHLog.logger.warning("SSMManager#get_transformer_instance_ids() is faster and more stable")
-        SSHLog.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
-        return self.get_ssm_instance_ids(f'/aws/sagemaker/TransformJobs', transform_job_name, retry)
+    def get_transformer_ssm_instance_ids(self, transform_job_name, timeout_in_sec=0):
+        self.logger.warning("SSMManager#get_transformer_instance_ids() is faster and more stable")
+        self.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
+        return self.get_ssm_instance_ids(f'/aws/sagemaker/TransformJobs', transform_job_name,
+                                         timeout_in_sec=timeout_in_sec)
 
-    def get_studio_kgw_ssm_instance_ids(self, kgw_name, retry=0):
-        SSHLog.logger.warning("SSMManager#get_studio_kgw_instance_ids() is faster and more stable")
-        SSHLog.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
-        return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}", retry)
+    def get_studio_kgw_ssm_instance_ids(self, kgw_name, timeout_in_sec=0):
+        self.logger.warning("SSMManager#get_studio_kgw_instance_ids() is faster and more stable")
+        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
+        return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}",
+                                         timeout_in_sec=timeout_in_sec)
+
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+        return self.get_ssm_instance_ids_once(log_group=arn_resource_type, stream_name=arn_resource_name)
 
     def get_ssm_instance_ids_once(self, log_group, stream_name):
         query = "fields @timestamp, @logStream, @message" \
@@ -87,28 +94,19 @@ class SSHLog:
             mi_ids.append(mid)
         return mi_ids
 
-    def get_ssm_instance_ids(self, log_group, stream_name, retry=0, sleep_between_retries_seconds=10,
+    def get_ssm_instance_ids(self, log_group, stream_name,
+                             retry: int = None, sleep_between_retries_seconds: int = None,
+                             timeout_in_sec: int = 900,
                              expected_count=1):
-        self.logger.info("Using AWS Region: %s", self.region_name)
-        mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
-
-        while not mi_ids and retry > 0:
-            SSHLog.logger.info(f"SSH Helper not yet started on the remote? Retrying. Attempts left: {retry}")
-            time.sleep(sleep_between_retries_seconds)
-            mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
-            retry -= 1
-
-        SSHLog.logger.info(f"Got preliminary SSM instance IDs: {mi_ids}")
-
-        redo_attempts = 5
-        while len(mi_ids) < expected_count and redo_attempts > 0:
-            SSHLog.logger.info(f"Re-fetch results for other instances to catchup. Attempts left: {redo_attempts}")
-            time.sleep(30)
-            mi_ids = self.get_ssm_instance_ids_once(log_group, stream_name)
-            redo_attempts -= 1
-
-        SSHLog.logger.info(f"Got final SSM instance IDs: {mi_ids}")
-        return mi_ids
+        if sleep_between_retries_seconds:
+            self.logger.warning("Parameter sleep_between_retries_seconds is deprecated, "
+                                "pass it to the constructor instead")
+            self.sleep_between_retries_in_seconds = sleep_between_retries_seconds
+        if retry:
+            self.logger.warning("Parameter retry is deprecated, "
+                                "use timeout_in_sec instead")
+            timeout_in_sec = retry * self.sleep_between_retries_in_seconds
+        return self.get_instance_ids(log_group, stream_name, timeout_in_sec, expected_count)
 
     def _query_log_group(self, log_group, query):
         boto_client = boto3.client('logs', region_name=self.region_name)
@@ -121,6 +119,10 @@ class SSHLog:
             )
         except ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                return []
+            elif e.response["Error"]["Code"] == "MalformedQueryException":
+                # "Query's end date and time is either before the log groups creation time ..."
+                logging.warning("Probably, the endpoint log group doesn't exist yet: " + e.response["Error"]["Message"])
                 return []
             else:
                 raise
