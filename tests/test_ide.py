@@ -236,8 +236,6 @@ def test_studio_internet_free_mode(request):
     ide.delete_kernel_app("byoi-studio-app", wait=False)
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Manual test")
 def test_studio_notebook_in_firefox(request):
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
 
@@ -248,7 +246,6 @@ def test_studio_notebook_in_firefox(request):
         UserProfileName=ide.user,
     )
     studio_pre_signed_url = studio_pre_signed_url_response['AuthorizedUrl']
-    logging.info(f"Studio pre-signed URL: {studio_pre_signed_url}")
 
     logging.info("Launching Firefox")
     browser = webdriver.Firefox()
@@ -291,6 +288,10 @@ def test_studio_notebook_in_firefox(request):
     restart_button.click()
 
     time.sleep(120)  # Give time to restart
+
+    # TODO: save notebook and download for comparison
+    # TODO: ide.download("/root/sagemaker-ssh-helper/SageMaker_SSH_IDE.ipynb",
+    #  "/tmp/SageMaker_SSH_IDE_with_Output.ipynb")
 
     studio_ids = ide.get_kernel_instance_ids("sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036",
                                              timeout_in_sec=300)

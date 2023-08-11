@@ -99,6 +99,7 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:CreateAppImageConfig",
                                       "sagemaker:DeleteAppImageConfig",
                                       "sagemaker:UpdateDomain",
+                                      "sagemaker:CreatePresignedDomainUrl",
                                   ],
                                   resources=["*"]
                               ),
