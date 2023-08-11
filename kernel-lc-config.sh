@@ -5,16 +5,16 @@
 # See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc.html .
 
 # Replace with your JetBrains License Server host name
-# OR keep it as is and put the value into ~/.sm-jb-license-server to override
+# OR keep it as is and put the value into ~/.sm-jb-license-server inside SageMaker Studio to override
 JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
 
 # Replace with your password
-# OR keep it as is and populate ~/.vnc/passwd to override (see https://linux.die.net/man/1/vncpasswd ).
+# OR keep it as is and populate ~/.vnc/passwd inside SageMaker Studio to override (see https://linux.die.net/man/1/vncpasswd ).
 VNC_PASSWORD="123456"
 
 # Replace with a local UserId
-# OR keep it as is and put the value into ~/.sm-ssh-owner to override
-LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE"
+# OR keep it as is and put the value into ~/.sm-ssh-owner inside SageMaker Studio to override
+LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
 
 set -e
 
@@ -40,6 +40,8 @@ export JUPYTER_PATH="$SYSTEM_PYTHON_PREFIX/share/jupyter/"
 # If already configured in the container, it will not take any effect:
 sm-ssh-ide configure
 #sm-ssh-ide configure --ssh-only
+
+# NOTE: If NOT configuring with --ssh-only flag, make sure the instance has at least 8 GB of RAM for the desktop apps
 
 sm-ssh-ide set-jb-license-server "$JB_LICENSE_SERVER_HOST"
 
