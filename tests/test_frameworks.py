@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import sys
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -8,9 +9,11 @@ from typing import Optional
 
 import pytest
 import sagemaker
+from botocore.exceptions import ClientError
+from mock import mock
 from sagemaker import Predictor, Model
 from sagemaker.deserializers import CSVDeserializer, JSONDeserializer
-from sagemaker.djl_inference import DJLModel, DJLPredictor
+from sagemaker.djl_inference import DJLPredictor, DeepSpeedModel
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.serializers import CSVSerializer, JSONSerializer
 from sagemaker.utils import name_from_base
@@ -59,7 +62,7 @@ def test_train_huggingface_ssh():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit(wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -130,7 +133,7 @@ def test_ssh_inference_hugging_face_pretrained_model():
     try:
         logging.info("Testing connection")
 
-        ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(12022)
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
 
@@ -311,7 +314,7 @@ def test_ssh_inference_tensorflow(instance_type):
             endpoint_name=endpoint_name
         )
 
-        ssh_wrapper.start_ssm_connection_and_continue(12022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(12022)
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
 
@@ -399,7 +402,7 @@ def test_ssh_inference_tensorflow_mme_without_model(instance_type):
         assert predicted_value == [20043]
 
         # Note: in MME the models are lazy loaded, so SSH helper will start upon the first prediction request
-        ssh_wrapper.start_ssm_connection_and_continue(13022, 60)
+        ssh_wrapper.start_ssm_connection_and_continue(13022)
 
     finally:
         if predictor:
@@ -424,7 +427,7 @@ def test_train_tensorflow_ssh():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit(wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -473,7 +476,7 @@ def test_train_sklearn_ssh():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit(wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -518,7 +521,7 @@ def test_train_xgboost_ssh():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit(wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -558,7 +561,7 @@ def test_train_estimator_ssh_byoc():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit({'training': training_input}, wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -580,7 +583,7 @@ def test_train_estimator_ssh_byoc():
                                         wait=True)
 
     try:
-        ssh_model_wrapper.start_ssm_connection_and_continue(12022, 60)
+        ssh_model_wrapper.start_ssm_connection_and_continue(12022)
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
 
@@ -634,7 +637,7 @@ def test_train_internet_free_ssh(request):
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit({'training': training_input}, wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -659,7 +662,7 @@ def test_train_mxnet_ssh():
 
     ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
     estimator.fit(wait=False)
-    ssh_wrapper.start_ssm_connection_and_continue(11022, 60)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
     ssh_wrapper.wait_training_job()
     logging.info("Finished training")
 
@@ -667,20 +670,17 @@ def test_train_mxnet_ssh():
 
 
 # noinspection PyCompatibility
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Not working yet")
-def test_djl_inference_ssh():
-    model = DJLModel(
-        "EleutherAI/gpt-j-6B",  # FIXME: unused. Remove duplicate with inference_djl.py
+def test_hf_djl_deepspeed_inference_ssh():
+    """
+    Based on https://github.com/aws/amazon-sagemaker-examples/blob/main/advanced_functionality/pytorch_deploy_large_GPT_model/GPT-J-6B-model-parallel-inference-DJL.ipynb  # noqa
+    """
+    model = DeepSpeedModel(
+        "EleutherAI/gpt-j-6B",
         role=sagemaker.Session().sagemaker_config['SageMaker']['ProcessingJob']['RoleArn'],  # TODO: resolve
-        data_type="fp16",       # FIXME: serving.properties uses fp32
-        number_of_partitions=2,     # FIXME: unused? See serving.properties
+        tensor_parallel_degree=4,
         entry_point=(p := Path('source_dir/inference/inference_djl.py')).name,
         source_dir=str(p.parents[0]),
         dependencies=[SSHEstimatorWrapper.dependency_dir()],
-        env={
-            'TENSOR_PARALLEL_DEGREE': str(2)
-        },
         container_log_level=logging.INFO
     )
 
@@ -691,19 +691,209 @@ def test_djl_inference_ssh():
     predictor: Optional[DJLPredictor] = None
     try:
         predictor = model.deploy(
-            instance_type="ml.g5.12xlarge",
+            instance_type="ml.g4dn.12xlarge",
             endpoint_name=endpoint_name,
             wait=False)
-        ssh_wrapper.start_ssm_connection_and_continue(12022, 30)
+        ssh_wrapper.start_ssm_connection_and_continue(12022)
 
-        # FIXME: ValidationException when calling the DescribeEndpoint operation: Could not find endpoint
-        # assert ssh_wrapper.endpoint_is_online()
+        description = sagemaker.Session().wait_for_endpoint(endpoint_name, 5)
+        logging.info("Endpoint status: %s", str(description))
+        assert ssh_wrapper.endpoint_is_online()
 
-        result = predictor.predict("Test")
+        result = predictor.predict("What is the answer to life, the universe, and everything? The answer: ")
+        logging.info(f"GPT-J 6B prediction result: {result}")
+        assert "What is the answer" in str(result) or "'generated_text': \"What is" in str(result)
+
     finally:
         if predictor:
-            # FIXME: cannot delete endpoint if it's not InService
-            pass
-            # predictor.delete_endpoint(delete_endpoint_config=False)
+            predictor.delete_endpoint(delete_endpoint_config=False)
 
-    assert result == "42"
+
+# noinspection DuplicatedCode
+def test_hf_djl_accelerate_clean():
+    """
+    Based on https://github.com/aws/amazon-sagemaker-examples/blob/main/inference/generativeai/llm-workshop/lab1-deploy-llm/intro_to_llm_deployment.ipynb  # noqa
+    """
+    hf_endpoint_name = sagemaker.utils.name_from_base("gptj-acc")
+    image_uri = (
+        f"763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.20.0-deepspeed0.7.5-cu116"
+    )
+    sagemaker_session = sagemaker.Session()
+
+    role = sagemaker_session.sagemaker_config['SageMaker']['Model']['ExecutionRoleArn']
+
+    # Tar source_dir/inference_hf_accelerate/ into /tmp/acc_model.tar.gz
+    tmp_model = "/tmp/acc_model.tar.gz"  # nosec hardcoded_tmp_directory # safe in tests
+    subprocess.run(
+        ["/bin/tar", "-czf", tmp_model,
+         "-C", str(Path('source_dir/inference_hf_accelerate_clean/')),
+         "code/"],
+        check=True
+    )
+
+    hf_s3_code_artifact = sagemaker_session.upload_data(tmp_model)  # nosec hardcoded_tmp_directory
+
+    # NOTE: HuggingFaceAccelerateModel generates serving.properties with engine=Python (HF Accelerate)
+    #  and don't need a pre-trained model
+    model = Model(
+        image_uri=image_uri,
+        model_data=hf_s3_code_artifact,
+        role=role,
+    )
+    model.deploy(
+        initial_instance_count=1,
+        instance_type="ml.g4dn.4xlarge",
+        endpoint_name=hf_endpoint_name
+    )
+    predictor = sagemaker.Predictor(
+        endpoint_name=hf_endpoint_name,
+        sagemaker_session=sagemaker_session,
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
+    )
+    result = predictor.predict(
+        {"inputs": "What is the answer to life, the universe, and everything? The answer: ",
+         "parameters": {"max_length": 50, "temperature": 0.5}}
+    )
+    logging.info(f"GPT-J 6B prediction result: {result}")
+    predictor.delete_endpoint(delete_endpoint_config=False)
+    assert "What is the answer" in str(result)
+
+
+# noinspection DuplicatedCode
+def test_hf_djl_accelerate_ssh():
+    """
+    Based on https://github.com/aws/amazon-sagemaker-examples/blob/main/inference/generativeai/llm-workshop/lab1-deploy-llm/intro_to_llm_deployment.ipynb  # noqa
+    """
+    hf_endpoint_name = sagemaker.utils.name_from_base("ssh-gptj-acc")
+    image_uri = (
+        f"763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.20.0-deepspeed0.7.5-cu116"
+    )
+    sagemaker_session = sagemaker.Session()
+
+    role = sagemaker_session.sagemaker_config['SageMaker']['Model']['ExecutionRoleArn']
+
+    # Tar source_dir/inference_hf_accelerate/ into /tmp/acc_model.tar.gz
+    tmp_model = "/tmp/acc_model.tar.gz"  # nosec hardcoded_tmp_directory # safe in tests
+    subprocess.run(
+        ["/bin/tar", "-czf", tmp_model,
+         "-C", str(Path('source_dir/inference_hf_accelerate_clean/')),
+         "code/"],
+        check=True
+    )
+
+    hf_s3_code_artifact = sagemaker_session.upload_data(tmp_model)
+
+    # NOTE: HuggingFaceAccelerateModel generates serving.properties with engine=Python (HF Accelerate)
+    #  and don't need a pre-trained model
+    model = Model(
+        model_data=hf_s3_code_artifact,
+        image_uri=image_uri,
+        role=role,
+        # NOTE: entry_point is not used, because is set in serving.properties,
+        #   but this is the required Model parameter now
+        entry_point=(p := Path('source_dir/inference_hf_accelerate/inference_ssh.py')).name,
+        source_dir=str(p.parents[0]),  # will override code/serving.properties with the new entry point
+        dependencies=[SSHEstimatorWrapper.dependency_dir()],
+    )
+    ssh_wrapper = SSHModelWrapper.create(model, connection_wait_time_seconds=0)
+    predictor: Optional[Predictor] = None
+    try:
+        predictor = model.deploy(
+            initial_instance_count=1,
+            instance_type="ml.g4dn.4xlarge",
+            endpoint_name=hf_endpoint_name
+        )
+        assert ssh_wrapper.get_instance_ids()
+
+        ssh_wrapper.start_ssm_connection_and_continue(12022)
+
+        predictor = sagemaker.Predictor(
+            endpoint_name=hf_endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=JSONSerializer(),
+            deserializer=JSONDeserializer(),
+        )
+        result = predictor.predict(
+            {"inputs": "What is the answer to life, the universe, and everything? The answer: ",
+             "parameters": {"max_length": 50, "temperature": 0.5}}
+        )
+        logging.info(f"GPT-J 6B prediction result: {result}")
+        assert "'generated_text': 'What is" in str(result) or "'generated_text': \"What is" in str(result)
+
+    except Exception as e:
+        if predictor:
+            try:
+                predictor.delete_endpoint(delete_endpoint_config=False)
+            except ClientError as delete_e:
+                logging.error(f"Test failed. Additionally, failed to cleanup: {delete_e.response['Error']['Message']}",
+                              exc_info=e)
+                raise
+        raise
+    if predictor:
+        try:
+            predictor.delete_endpoint(delete_endpoint_config=False)
+        except ClientError as delete_e:
+            logging.error(f"Failed to cleanup", exc_info=delete_e)
+            raise
+
+
+# noinspection DuplicatedCode
+@mock.patch.object(sys, 'argv', ['launch', 'source_dir/training_clean/train_clean.py'])
+def test_accelerate_training_clean():
+    """
+    See https://huggingface.co/docs/accelerate/usage_guides/sagemaker .
+
+    Below code is equal to executing the following command:
+
+    accelerate launch ./source_dir/training_clean/train_clean.py
+
+    See: https://github.com/huggingface/accelerate/blob/main/src/accelerate/commands/launch.py#L787-L804
+      and https://github.com/huggingface/accelerate/blob/main/src/accelerate/utils/launch.py#L383-L491 .
+
+    """
+    import accelerate.commands.launch as launch
+    import accelerate.utils.launch as utils_launch
+    parser = launch.launch_command_parser()
+    args = parser.parse_args()
+    args, sagemaker_config, mp_from_config_flag = launch._validate_launch_command(args)
+    if args.module or args.no_python:
+        raise ValueError(
+            "SageMaker requires a python training script file and cannot be used with --module or --no_python"
+        )
+
+    args, sagemaker_inputs = utils_launch.prepare_sagemager_args_inputs(sagemaker_config, args)
+    del os.environ['AWS_PROFILE']  # HF Accelerate forces AWS_PROFILE to be set, but we don't need it
+
+    from sagemaker.huggingface import HuggingFace
+    huggingface_estimator = HuggingFace(**args)
+    huggingface_estimator.fit(inputs=sagemaker_inputs)
+
+    logging.info(f"You can find your model data at: {huggingface_estimator.model_data}")
+
+
+# noinspection DuplicatedCode
+@mock.patch.object(sys, 'argv', ['launch', 'source_dir/training/train.py'])
+def test_accelerate_training_ssh():
+    import accelerate.commands.launch as launch
+    import accelerate.utils.launch as utils_launch
+    parser = launch.launch_command_parser()
+    args = parser.parse_args()
+    args, sagemaker_config, mp_from_config_flag = launch._validate_launch_command(args)
+    if args.module or args.no_python:
+        raise ValueError(
+            "SageMaker requires a python training script file and cannot be used with --module or --no_python"
+        )
+
+    args, sagemaker_inputs = utils_launch.prepare_sagemager_args_inputs(sagemaker_config, args)
+    del os.environ['AWS_PROFILE']  # HF Accelerate forces AWS_PROFILE to be set, but we don't need it
+
+    from sagemaker.huggingface import HuggingFace
+    args["dependencies"] = [SSHEstimatorWrapper.dependency_dir()]
+    estimator = HuggingFace(**args)
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+    estimator.fit(inputs=sagemaker_inputs, wait=False)
+    ssh_wrapper.start_ssm_connection_and_continue(11022)
+    ssh_wrapper.wait_training_job()
+
+    logging.info(f"You can find your model data at: {estimator.model_data}")

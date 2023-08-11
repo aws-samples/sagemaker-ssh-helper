@@ -11,6 +11,7 @@ apt-get update
 apt-get install -y sudo
 sm-local-configure
 source tests/generate_sagemaker_config.sh
+source tests/generate_accelerate_config.sh
 export DEBIAN_FRONTEND=noninteractive
 apt-get install -y graphviz
 export AWS_REGION=eu-west-1
