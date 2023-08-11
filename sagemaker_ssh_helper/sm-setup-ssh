@@ -30,13 +30,21 @@ if [[ "$1" == "configure" ]]; then
 
   echo "Installing SSH server and auxiliary tools"
   if _is_centos; then
-    yum install -y openssh-server net-tools procps less jq vim rsync perl
+    yum install -y openssh-server net-tools procps less jq vim rsync perl rsyslog
   else
     export DEBIAN_FRONTEND=noninteractive
     apt-get -qq update || echo 'sm-ssh-ide: WARNING - issues with retrieving new lists of packages'
     apt-get -qq -y install apt-utils
-    apt-get -qq -y install ssh net-tools procps less jq vim rsync
+    apt-get -qq -y install ssh net-tools procps less jq vim rsync locales rsyslog
+
+    # Install some locales to work with UTF-8 charsets
+    echo "C.UTF-8 UTF-8" >> /etc/locale.gen
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
   fi
+
+  # Sending all system logs to CloudWatch (helps to troubleshoot sshd issues)
+  find /etc/rsyslog.conf /etc/rsyslog.d/ -type f \
+    -exec sed -i -e 's~/var/log/~/var/log/apps/app_container.log__~' {} \;
 
   sed -i -e 's~^ClientAliveInterval~#ClientAliveInterval~' /etc/ssh/sshd_config
   echo "ClientAliveInterval 15" >> /etc/ssh/sshd_config
@@ -94,13 +102,22 @@ if [[ "$1" == "start-ssh" ]]; then
   # Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
   ps wwwe -p 1 | tail -1
 
+  if _is_centos; then
+    :
+  else
+    # Generating UTF-8 locales for Debian
+    locale-gen
+  fi
+
   # Start SSH server
   if _is_centos; then
     # NOTE: systemctl will not work in CentOS SageMaker container (e.g. Spark processing) because lack of
     # privileges to access DBUS, so we run sshd manually. This command doesn't work:
-    # # service sshd start || (echo "ERROR: Failed to start sshd service" && exit 255)
+    # systemctl start sshd
+    /usr/sbin/rsyslogd
     /usr/sbin/sshd
   else
+    service rsyslog start || (echo "ERROR: Failed to start syslogd service")
     service ssh start || (echo "ERROR: Failed to start ssh service" && exit 255)
   fi
 

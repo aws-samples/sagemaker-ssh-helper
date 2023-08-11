@@ -67,6 +67,11 @@ EOF
 
 elif [[ "$1" == "get-metadata" ]]; then
 
+  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
+    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
+    exit 2
+  fi
+
   echo "App name: $(_print_sm_app_name)"
   echo "User profile name: $(_print_sm_user_profile_name)"
   echo "Domain: $(_print_sm_domain_id)"
