@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -o pipefail
 
 cat /etc/hosts
 bash ./compare_release_src.sh
@@ -85,6 +86,8 @@ export AWS_SESSION_TOKEN=${sts[2]}
 # Run tests
 echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
 cd tests
+apt-get install -y firefox-esr
+export MOZ_HEADLESS=1
 # shellcheck disable=SC2086
 coverage run -m pytest \
   --html=pytest_report.html --self-contained-html --junitxml=pytest_report.xml \

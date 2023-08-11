@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -o pipefail
 
 python -m venv ./venv
 source ./venv/bin/activate
@@ -20,6 +21,8 @@ export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
 cd tests
+apt-get install -y firefox-esr
+export MOZ_HEADLESS=1
 # shellcheck disable=SC2086
 pytest \
   -o sagemaker_studio_domain="$SAGEMAKER_STUDIO_DOMAIN" \
