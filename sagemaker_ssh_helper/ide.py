@@ -201,6 +201,8 @@ class SSHIDE:
     def get_kernel_instance_ids(self, app_name, timeout_in_sec):
         self.logger.info("Resolving IDE instance IDs through SSM tags")
         self.log_urls(app_name)
+        self.logger.info(f"Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect {app_name}")
+        self.logger.info(f"SSH only: sm-local-ssh-ide connect {app_name} --ssh-only")
         # FIXME: resolve with domain and user
         result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec)
         return result
