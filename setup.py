@@ -24,7 +24,8 @@ extras = {
         "constructs>=10.0.0,<11.0.0",
         "sagemaker-studio-image-build",
         "sagemaker-training",
-        "selenium"
+        "selenium",
+        "accelerate[sagemaker]",
     ],
     "dev": [
         "sagemaker-pytorch-training",
@@ -35,7 +36,13 @@ extras = {
         "build",
         "twine",
         "pydevd-pycharm~=222.4459.20",
-        "scikit-learn"
+        "scikit-learn",
+        "transformers",
+        "py-cpuinfo",
+        "deepspeed",  # If fails, pip install py-cpuinfo and retry
+        # "djl_python",  # no such module in pip
+        # To set up djl_python, clone https://github.com/deepjavalibrary/djl-serving and
+        #   run 'cd djl-serving/engines/python/setup/ && pip install .'
     ],
     "dev-macos": [
         "tensorflow-macos==2.9.2",
