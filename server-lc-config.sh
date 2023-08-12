@@ -16,9 +16,9 @@ conda activate base
 pip uninstall -y -q awscli
 pip install -q sagemaker-ssh-helper
 
-# Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from main branch
+# Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from the main branch
 #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
-#cd ./sagemaker-ssh-helper/ && git pull --no-rebase && pip install . && cd ..
+#cd ./sagemaker-ssh-helper/ && git pull --no-rebase && git clean -f && pip install . && cd ..
 
 ps xfaeww
 

@@ -27,64 +27,64 @@ logger = logging.getLogger('sagemaker-ssh-helper:test_ide')
 
 SSH_TEST_IMAGES = [
     # 0 - Data Science
-    ('test-data-science', 'ssh-test-ds1-ml-m5-large',
+    ('test-data-science', 'ssh-test-ds1-cpu',
      'datascience-1.0', 'ml.m5.large', 'Python 3.7.10'),
     # 1 - Data Science 2.0
-    ('test-data-science', 'ssh-test-ds2-ml-m5-large',
+    ('test-data-science', 'ssh-test-ds2-cpu',
      'sagemaker-data-science-38', 'ml.m5.large', 'Python 3.8.13'),
     # 2 - Data Science 3.0
-    ('test-data-science', 'ssh-test-ds3-ml-m5-large',
+    ('test-data-science', 'ssh-test-ds3-cpu',
      'sagemaker-data-science-310-v1', 'ml.m5.large', 'Python 3.10.6'),
 
     # 3 - Base Python 2.0
-    ('test-base-python', 'ssh-test-bp2-ml-m5-large',
+    ('test-base-python', 'ssh-test-bp2-cpu',
      'sagemaker-base-python-38', 'ml.m5.large', 'Python 3.8.12'),
     # 4 - Base Python 3.0
-    ('test-base-python', 'ssh-test-bp3-ml-m5-large',
+    ('test-base-python', 'ssh-test-bp3-cpu',
      'sagemaker-base-python-310-v1', 'ml.m5.large', 'Python 3.10.8'),
 
     # 5 - SparkMagic
-    ('test-spark', 'ssh-test-magic-ml-m5-large',
+    ('test-spark', 'ssh-test-magic-cpu',
      'sagemaker-sparkmagic', 'ml.m5.large', 'Python 3.7.10'),
     # 6 - SparkAnalytics 1.0
-    ('test-spark', 'ssh-test-analytics-ml-m5-large',
+    ('test-spark', 'ssh-test-analytics-cpu',
      'sagemaker-sparkanalytics-v1', 'ml.m5.large', 'Python 3.8.13'),
     # 7 - SparkAnalytics 2.0
-    ('test-spark', 'ssh-test-analytics2-ml-m5-large',
+    ('test-spark', 'ssh-test-analytics2-cpu',
      'sagemaker-sparkanalytics-310-v1', 'ml.m5.large', 'Python 3.10.6'),
 
     # 8 - MXNet 1.9 Python 3.8 CPU Optimized
-    ('test-mxnet', 'ssh-test-mx19-ml-m5-large',
+    ('test-mxnet', 'ssh-test-mx19-cpu',
      'mxnet-1.9-cpu-py38-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', 'Python 3.8.10'),
     # 9 - MXNet 1.9 Python 3.8 GPU Optimized
     # TODO: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-    # ('test-mxnet', 'ssh-test-mx19-ml-g4dn-xlarge',
+    # ('test-mxnet', 'ssh-test-mx19-gpu',
     #  'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3'),
 
     # 10 - PyTorch 1.12 Python 3.8 CPU Optimized
-    ('test-pytorch', 'ssh-test-pt112-ml-m5-large',
+    ('test-pytorch', 'ssh-test-pt112-cpu',
      'pytorch-1.12-cpu-py38', 'ml.m5.large', 'Python 3.8.16'),
     # 11 - PyTorch 1.12 Python 3.8 GPU Optimized
-    ('test-pytorch', 'ssh-test-pt112-ml-g4dn-xlarge',
+    ('test-pytorch', 'ssh-test-pt112-gpu',
      'pytorch-1.12-gpu-py38', 'ml.g4dn.xlarge', 'Python 3.8.16'),
     # 12 - PyTorch 1.13 Python 3.9 CPU Optimized
-    ('test-pytorch', 'ssh-test-pt113-ml-m5-large',
+    ('test-pytorch', 'ssh-test-pt113-cpu',
      'pytorch-1.13-cpu-py39', 'ml.m5.large', 'Python 3.9.16'),
     # 13 - PyTorch 1.13 Python 3.9 GPU Optimized
-    ('test-pytorch', 'ssh-test-pt113-ml-g4dn-xlarge',
+    ('test-pytorch', 'ssh-test-pt113-gpu',
      'pytorch-1.13-gpu-py39', 'ml.g4dn.xlarge', 'Python 3.9.16'),
 
     # 14 - TensorFlow 2.11.0 Python 3.9 CPU Optimized
-    ('test-tensorflow', 'ssh-test-tf211-ml-m5-large',
+    ('test-tensorflow', 'ssh-test-tf211-cpu',
      'tensorflow-2.11.0-cpu-py39-ubuntu20.04-sagemaker-v1.1', 'ml.m5.large', 'Python 3.9.10'),
     # 15 - TensorFlow 2.11.0 Python 3.9 GPU Optimized
-    ('test-tensorflow', 'ssh-test-tf211-ml-g4dn-xlarge',
+    ('test-tensorflow', 'ssh-test-tf211-gpu',
      'tensorflow-2.11.0-gpu-py39-cu112-ubuntu20.04-sagemaker-v1.1', 'ml.g4dn.xlarge', 'Python 3.9.10'),
     # 16 - TensorFlow 2.12.0 Python 3.10 CPU Optimized
-    ('test-tensorflow', 'ssh-test-tf212-ml-m5-large',
+    ('test-tensorflow', 'ssh-test-tf212-cpu',
      'tensorflow-2.12.0-cpu-py310-ubuntu20.04-sagemaker-v1', 'ml.m5.large', 'Python 3.10.10'),
     # 17 - TensorFlow 2.12.0 Python 3.10 GPU Optimized
-    ('test-tensorflow', 'ssh-test-tf212-ml-g4dn-xlarge',
+    ('test-tensorflow', 'ssh-test-tf212-gpu',
      'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1', 'ml.g4dn.xlarge', 'Python 3.10.10'),
 ]
 
@@ -267,6 +267,9 @@ def test_studio_notebook_in_firefox(request):
     logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
     kernel_menu_item.click()
 
+    # TODO: File -> Open from Path -> /sagemaker-ssh-helper/SageMaker_SSH_IDE.ipynb
+    # TODO: File -> Save Notebook As... -> /SageMaker_SSH_IDE-DS2-CPU.ipynb
+
     logging.info("Restarting kernel and running all cells")
     restart_menu_xpath = "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' " \
                          "and text()='Restart Kernel and Run All Cells…']"
@@ -290,8 +293,8 @@ def test_studio_notebook_in_firefox(request):
     time.sleep(120)  # Give time to restart
 
     # TODO: save notebook and download for comparison
-    # TODO: ide.download("/root/sagemaker-ssh-helper/SageMaker_SSH_IDE.ipynb",
-    #  "/tmp/SageMaker_SSH_IDE_with_Output.ipynb")
+    # TODO: ide.download("/root/SageMaker_SSH_IDE-DS2-CPU.ipynb",
+    #  "/tmp/SageMaker_SSH_IDE-DS2-CPU.ipynb")
 
     studio_ids = ide.get_kernel_instance_ids("sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036",
                                              timeout_in_sec=300)

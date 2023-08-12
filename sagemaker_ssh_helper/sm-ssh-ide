@@ -38,14 +38,14 @@ EOF
       if _is_centos; then
 
         # Based on https://repost.aws/knowledge-center/ec2-linux-2-install-gui
-        amazon-linux-extras install mate-desktop1.x
+        amazon-linux-extras install -y mate-desktop1.x
         echo PREFERRED=/usr/bin/mate-session > /etc/sysconfig/desktop
 
         yum install -y tigervnc-server
         mkdir -p /etc/tigervnc/
         echo localhost > /etc/tigervnc/vncserver-config-mandatory
 
-        amazon-linux-extras install epel
+        amazon-linux-extras install -y epel
         yum install -y chromium
 
       else
