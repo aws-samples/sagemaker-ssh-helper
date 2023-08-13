@@ -13,7 +13,7 @@ if [[ "$COMMAND" == "connect" ]]; then
   INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.log import SSHLog;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSHLog().get_endpoint_ssm_instance_ids("$ENDPOINT_NAME", retry=30)[0])
+print(SSHLog().get_endpoint_ssm_instance_ids("$ENDPOINT_NAME", timeout_in_sec=300)[0])
 EOF
   )
 

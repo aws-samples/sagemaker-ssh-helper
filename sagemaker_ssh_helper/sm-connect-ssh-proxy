@@ -64,6 +64,9 @@ send_command=$(echo "$send_command" | python -m json.tool)
 command_id=$(echo "$send_command" | grep "CommandId" | sed -e "$json_value_regexp")
 echo "Got command ID: $command_id"
 
+# Wait a little bit to prevent strange InvocationDoesNotExist error
+sleep 5
+
 for i in $(seq 1 15); do
   # Switch to unicode for AWS CLI to properly parse output
   export LC_CTYPE=en_US.UTF-8
