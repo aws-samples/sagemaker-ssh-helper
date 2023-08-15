@@ -65,6 +65,22 @@ EOF
 
     echo "sm-ssh-ide: Configuration complete."
 
+elif [[ "$1" == "get-user-profile-name" ]]; then
+  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
+    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
+    exit 2
+  fi
+
+  _print_sm_user_profile_name
+
+elif [[ "$1" == "get-domain" ]]; then
+  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
+    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
+    exit 2
+  fi
+
+  _print_sm_domain_id
+
 elif [[ "$1" == "get-metadata" ]]; then
 
   if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
@@ -77,7 +93,7 @@ elif [[ "$1" == "get-metadata" ]]; then
   echo "Domain: $(_print_sm_domain_id)"
   echo ""
   echo "Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect $(_print_sm_app_name)"
-  echo "SSH only: sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
+  echo "To connect with SSH only: sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
 
 elif [[ "$1" == "set-jb-license-server" ]]; then
 
@@ -149,8 +165,7 @@ elif [[ "$1" == "init-ssm" ]]; then
     export SSH_SSM_ROLE
     export SSH_OWNER_TAG=$LOCAL_USER_ID
 
-    # Init SSM and pipe the output to CloudWatch (stdout of the pid 1).
-    sm-init-ssm | tee /proc/1/fd/1
+    sm-init-ssm
 
 elif [[ "$1" == "start" ]]; then
     OPTIONS=$(cat /opt/sagemaker-ssh-helper/.sm-ssh-ide-options || echo "")
