@@ -160,6 +160,18 @@ class IamSsmStackTests(Stack):
                                   resources=[
                                       f"arn:{Aws.PARTITION}:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/codebuild/sagemaker-studio-image-build-*:log-stream:*"]
                               ),
+                              PolicyStatement(
+                                  effect=Effect.ALLOW,
+                                  actions=[
+                                      "ssm:DeregisterManagedInstance",
+                                  ],
+                                  resources=[f"arn:{Aws.PARTITION}:ssm:*:{Aws.ACCOUNT_ID}:managed-instance/mi-*"],
+                                  conditions={
+                                      "StringLike": {
+                                          "ssm:resourceTag/SSHOwner": "*"
+                                      }
+                                  }
+                              ),
                           ]))
 
         sagemaker_core_policy.attach_to_role(user_role)

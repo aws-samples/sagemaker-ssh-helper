@@ -35,18 +35,6 @@ class IamSsmStack(Stack):
                               PolicyStatement(
                                   effect=Effect.ALLOW,
                                   actions=[
-                                      "ssm:DeregisterManagedInstance",
-                                  ],
-                                  resources=[f"arn:{Aws.PARTITION}:ssm:*:{Aws.ACCOUNT_ID}:managed-instance/mi-*"],
-                                  conditions={
-                                      "StringLike": {
-                                          "ssm:resourceTag/SSHOwner": "*"
-                                      }
-                                  }
-                              ),
-                              PolicyStatement(
-                                  effect=Effect.ALLOW,
-                                  actions=[
                                       "ssm:StartSession",
                                       "ssm:SendCommand",
                                   ],

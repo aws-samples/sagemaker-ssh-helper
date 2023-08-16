@@ -185,16 +185,6 @@ a. Attach the inline policy named `SSHSageMakerClientPolicy`. Replace `<<ACCOUNT
         },
         {
             "Condition": {
-                "StringLike": {
-                    "ssm:resourceTag/SSHOwner": "*"
-                }
-            },
-            "Action": "ssm:DeregisterManagedInstance",
-            "Resource": "arn:aws:ssm:*:<<ACCOUNT_ID>>:managed-instance/mi-*",
-            "Effect": "Allow"
-        },
-        {
-            "Condition": {
                 "StringEquals": {
                     "ssm:resourceTag/SSHOwner": "${aws:userid}"
                 }
