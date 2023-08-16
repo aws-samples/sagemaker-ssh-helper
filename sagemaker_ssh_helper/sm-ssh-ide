@@ -66,27 +66,17 @@ EOF
     echo "sm-ssh-ide: Configuration complete."
 
 elif [[ "$1" == "get-user-profile-name" ]]; then
-  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
-    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
-    exit 2
-  fi
+  _assert_is_ssh_ide_inside_studio
+  USER_PROFILE=$(_print_sm_user_profile_name)
+  echo "$USER_PROFILE"
 
-  _print_sm_user_profile_name
-
-elif [[ "$1" == "get-domain" ]]; then
-  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
-    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
-    exit 2
-  fi
-
-  _print_sm_domain_id
+elif [[ "$1" == "get-domain-id" ]]; then
+  _assert_is_ssh_ide_inside_studio
+  DOMAIN_ID=$(_print_sm_domain_id)
+  echo "$DOMAIN_ID"
 
 elif [[ "$1" == "get-metadata" ]]; then
-
-  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
-    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
-    exit 2
-  fi
+  _assert_is_ssh_ide_inside_studio
 
   echo "App name: $(_print_sm_app_name)"
   echo "User profile name: $(_print_sm_user_profile_name)"

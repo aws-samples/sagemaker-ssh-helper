@@ -51,9 +51,9 @@ send_command=$(aws ssm send-command \
     --parameters "commands=[
         'mkdir -p /etc/ssh/authorized_keys.d/',
         'aws s3 cp --recursive \"${SSH_AUTHORIZED_KEYS}\" /etc/ssh/authorized_keys.d/',
-        'find /etc/ssh/authorized_keys.d/',
+        'ls -la /etc/ssh/authorized_keys.d/',
         'cat /etc/ssh/authorized_keys.d/* > /etc/ssh/authorized_keys',
-        'find /etc/ssh/authorized_keys'
+        'ls -la /etc/ssh/authorized_keys'
       ]" \
     --no-cli-pager --no-paginate \
     --output json)

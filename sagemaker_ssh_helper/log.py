@@ -191,15 +191,16 @@ class SSHLog(SSMManagerBase):
                f"/transform-jobs/{transform_job_name}"
 
     def get_ide_cloudwatch_url(self, domain, user, app_name):
+        app_type = 'JupyterServer' if app_name == 'default' else 'KernelGateway'
         if domain and user:
             return f"https://{self.aws_console.get_console_domain()}/" \
                    f"cloudwatch/home?region={self.region_name}#" \
                    f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
-                   f"$3FlogStreamNameFilter$3D{domain}$252F{user}$252FKernelGateway$252F{app_name}"
+                   f"$3FlogStreamNameFilter$3D{domain}$252F{user}$252F{app_type}$252F{app_name}"
         return f"https://{self.aws_console.get_console_domain()}/" \
                f"cloudwatch/home?region={self.region_name}#" \
                f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
-               f"$3FlogStreamNameFilter$3DKernelGateway$252F{app_name}"
+               f"$3FlogStreamNameFilter$3D{app_type}$252F{app_name}"
 
     def get_ide_metadata_url(self, domain, user):
         return f"https://{self.aws_console.get_console_domain()}/" \

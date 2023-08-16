@@ -179,3 +179,10 @@ function _print_sm_studio_python() {
       print(KernelSpecManager().get_all_specs()['python3']['spec']['argv'][0])")
   echo -n "$SM_STUDIO_PYTHON"
 }
+
+function _assert_is_ssh_ide_inside_studio() {
+  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
+    echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
+    exit 2
+  fi
+}

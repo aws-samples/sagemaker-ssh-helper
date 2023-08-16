@@ -9,6 +9,7 @@ set -e
 
 sudo yum install -y hostname
 hostname
+id
 cat /opt/ml/metadata/resource-metadata.json
 
 source /opt/conda/etc/profile.d/conda.sh
@@ -29,7 +30,7 @@ env
 
 sm-local-configure
 
-function _install_noVNC_linux() {
+function start_noVNC_linux() {
   json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
   latest_noVNC_release=$(curl -s https://api.github.com/repos/novnc/noVNC/releases/latest)
 
@@ -39,8 +40,24 @@ function _install_noVNC_linux() {
   curl -sSL "https://api.github.com/repos/novnc/noVNC/tarball/$novnc_tag" -o "/tmp/noVNC.tgz"
   mkdir -p /tmp/noVNC
   tar xzf /tmp/noVNC.tgz -C /tmp/noVNC --strip-components=1
-}
-_install_noVNC_linux
 
-cd /tmp/noVNC
-nohup ./utils/novnc_proxy --vnc 127.0.0.1:5901 &
+  cd /tmp/noVNC
+  nohup ./utils/novnc_proxy --vnc 127.0.0.1:5901 &
+}
+
+# Comment the below line, if don't want to use WebVNC to connect into kernel gateway VNC sessions
+start_noVNC_linux
+
+
+function start_ssh_ide() {
+  sudo -E env "PATH=$PATH" sm-ssh-ide configure --ssh-only
+  sudo -E env "PATH=$PATH" sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"
+  sudo -E env "PATH=$PATH" sm-ssh-ide init-ssm
+  sudo -E env "PATH=$PATH" sm-ssh-ide stop
+  sudo -E env "PATH=$PATH" sm-ssh-ide start
+  sudo -E env "PATH=$PATH" nohup sm-ssh-ide ssm-agent &
+}
+
+# Uncomment the below two lines, if you plan to connect to the Jupyter Server with `sm-local-ssh-ide connect default`
+#LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
+#start_ssh_ide

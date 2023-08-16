@@ -43,9 +43,10 @@ sm-ssh-ide configure
 
 # NOTE: If NOT configuring with --ssh-only flag, make sure the instance has at least 8 GB of RAM for the desktop apps
 
+# Useful only in combination with VNC (keep it default, if configuring with --ssh-only flag):
 sm-ssh-ide set-jb-license-server "$JB_LICENSE_SERVER_HOST"
 
-# If configured with --ssh-only flag, will not take any effect:
+# If configured with --ssh-only flag, will not take any effect (safe to keep the default):
 sm-ssh-ide set-vnc-password "$VNC_PASSWORD"
 
 sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"

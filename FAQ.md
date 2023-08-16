@@ -26,6 +26,7 @@ We often see a lot of questions that surface repeatedly. This repository is an a
   * [How to start a job with SageMaker SSH Helper in an AWS Region different from my default one?](#how-to-start-a-job-with-sagemaker-ssh-helper-in-an-aws-region-different-from-my-default-one)
   * [How to configure an AWS CLI profile to work with SageMaker SSH Helper?](#how-to-configure-an-aws-cli-profile-to-work-with-sagemaker-ssh-helper)
   * [How do I automate my pipeline with SageMaker SSH Helper end-to-end?](#how-do-i-automate-my-pipeline-with-sagemaker-ssh-helper-end-to-end)
+  * [Can I connect from my local machine to Jupyter Server in addition to Kernel Gateways?](#can-i-connect-from-my-local-machine-to-jupyter-server-in-addition-to-kernel-gateways)
   * [How do I securely forward my local private SSH keys from local machine to the remote host with SSH Agent?](#how-do-i-securely-forward-my-local-private-ssh-keys-from-local-machine-to-the-remote-host-with-ssh-agent)
 * [Troubleshooting](#troubleshooting)
   * [Something doesn't work for me, what should I do?](#something-doesnt-work-for-me-what-should-i-do)
@@ -481,7 +482,7 @@ We set both `AWS_REGION` and `AWS_DEFAULT_REGION`, because depending on your env
 You can control AWS CLI settings with [environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), in particular, this is how to select the AWS CLI profile with `sm-local-ssh-*` tools:
 
 ```shell
-AWS_PROFILE=<<profile_name>> sm-local-ssh-ide <<kernel_gateway_app_name>> 
+AWS_PROFILE=<<profile_name>> sm-local-ssh-ide connect <<kernel_gateway_app_name>> 
 ```
 
 ### How do I automate my pipeline with SageMaker SSH Helper end-to-end?
@@ -491,6 +492,29 @@ Take a loot at the [end-to-end automated tests](https://github.com/aws-samples/s
 There's `get_instance_ids()` method already mentioned in the documentation. Underlying automation methods are available in the [SSMManager class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/manager.py) and the [SSHLog class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/log.py).
 
 Also check the method `start_ssm_connection_and_continue()` from the [SSHEnvironmentWrapper class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/wrapper.py) - it automates creating the SSH tunnel, running remote commands and stopping the waiting loop as well as graceful disconnect. Underlying implementation is in the [SSMProxy class](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/sagemaker_ssh_helper/proxy.py).
+
+### Can I connect from my local machine to Jupyter Server in addition to Kernel Gateways?
+
+Yes. Ask your Administrator to uncomment the last two lines with the `start_ssh_ide` command in the Jupyter Server lifecycle config [server-lc-config.sh](server-lc-config.sh) and to [attach](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) it to your domain as a default configuration, e.g., under the name `sagemaker-ssh-helper-server`. [Restart](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-tasks-update-studio.html) the JupyterServer app, if it's already running.
+
+Alternatively, run the same commands from System Terminal (File -> New -> Terminal) under `sagemaker-user`.
+```bash
+# remote
+# commands from server-lc-config.sh
+# ...
+LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
+start_ssh_ide
+```
+
+Set `LOCAL_USER_ID` to your *local machine* user ID.
+
+After the SSM agent starts, you will be able to connect to the Jupyter Server app:
+
+```bash
+sm-local-ssh-ide connect default --ssh-only
+```
+
+*Note*: The default instance has only 4 GB of RAM (as of writing) and it's too small to run a MATE desktop environment and VNC. So, you should use the `--ssh-only` flag.
 
 ### How do I securely forward my local private SSH keys from local machine to the remote host with SSH Agent?
 
@@ -507,15 +531,28 @@ Certificate added: /Users/janedoe/.ssh/id_ecdsa-cert.pub
 Now SSH agent will keep your identity and you can forward it to the remote:
 
 ```bash
+# local
 sm-local-ssh-ide connect sagemaker-data-science-ml-m5-large-1234567890abcdef0 -A
 ```
 
 Once connected, for example, you can securely clone your private git repo from the remote machine with SSH keys just as would you do it on your local machine. Note that in this case you don't need to copy your private keys to the remote machine (more secure):
 ```bash
-root@sagemaker-data-science-ml-m5-large-1234567890abcdef0:~# git clone git@ssh.gitlab.example.com:example-project.git
+# remote
+git clone git@ssh.gitlab.example.com:example-project.git
 ```
 
 If you didn't add `-A` option, the clone would fail with `Permission denied (publickey)` error.
+
+*Note:* If you're [connecting to Jupyter Server](FAQ.md#can-i-connect-from-my-local-machine-to-jupyter-server-in-addition-to-kernel-gateways) instead of Kernel Gateway, to clone the repository to the SageMaker user home directory and see it in the SageMaker Studio file browser, you should amend the permissions for SSH agent socket and switch from `root` to `sagemaker-user` with the following commands:
+
+```bash
+setfacl -m sagemaker-user:x $(dirname "$SSH_AUTH_SOCK")
+setfacl -m sagemaker-user:rwx "$SSH_AUTH_SOCK"
+su sagemaker-user
+cd $HOME
+git clone ... 
+```
+
 
 ## Troubleshooting
 
@@ -535,6 +572,16 @@ or this one:
 
 ```text
 An error occurred (InvalidInstanceId) when calling the SendCommand operation: Instances [[mi-1234567890abcdef0]] not in a valid state for account 555555555555
+```
+
+* Turn on Session Manager [logging](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-logging.html) and inspect the session logs.
+
+* If you have issues with SSH, but you can connect successfully from AWS Console, make sure you can run the both below SSM commands successfully on your local machine:
+
+```bash
+aws ssm start-session --target mi-01234567890abcdef
+aws ssm start-session --target mi-01234567890abcdef \
+  --document-name AWS-StartSSHSession --parameters portNumber=22
 ```
 
 * (SageMaker Studio) Check SSM agent logs. From the image terminal run:

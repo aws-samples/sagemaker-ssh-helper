@@ -627,7 +627,7 @@ pip install sagemaker-ssh-helper
 
 2. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
 
-*Tip:* Alternatively, instead of using `SageMaker_SSH_IDE.ipynb`, attach to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
+*Tip:* Alternatively, instead of using `SageMaker_SSH_IDE.ipynb`, [attach](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
 (you may need to ask your administrator to do this).
 Once configured, from the Launcher choose the environment, puck up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
@@ -743,7 +743,7 @@ Then follow these steps:
 
 1. On the SageMaker Studio System terminal run the commands from [server-lc-config.sh](server-lc-config.sh).
 
-Alternatively, ask the Administrator to [attach the lifecycle config](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) to the SageMaker Studio domain or to your profile as the `JupyterServer` config.
+Alternatively, ask the Administrator to [attach the lifecycle config](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) to the SageMaker Studio domain or to your profile as the default `JupyterServer` config, e.g., with the name `sagemaker-ssh-helper-webvnc`.
 
 2. Follow the step 1 for [the IDE configuration procedure](#studio), i.e., run the IDE notebook or lifecycle config inside the kernel gateway of your choice. 
 
@@ -755,7 +755,7 @@ Instead of your local user ID put the SageMaker Studio user ID (you can get it b
 sm-local-ssh-ide connect <<kernel_gateway_app_name>>
 ```
 
-Add additional params to the command, e.g., `-L localhost:8787:localhost:8787` to forward the Dask dashboard that is running inside the kernel gateway.
+Add additional params to the command, e.g., `-L localhost:8787:localhost:8787` to forward the Dask dashboard that is running inside the kernel gateway (note, that Dask web app may not work properly through Jupyter Proxy, so VNC is the recommended alternative).
 
 4. Navigate to `https://d-egm0dexample.studio.eu-west-1.sagemaker.aws/jupyter/default/proxy/6080/vnc.html?host=d-egm0dexample.studio.eu-west-1.sagemaker.aws&port=443&path=jupyter/default/proxy/6080/websockify`
 
