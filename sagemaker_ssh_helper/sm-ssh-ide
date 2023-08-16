@@ -269,8 +269,9 @@ elif [[ "$1" == "stop" ]]; then
       echo "sm-ssh-ide: Stopping VNC server"
       vncserver -kill :1 || echo "sm-ssh-ide: VNC server already stopped?"
 
-      # Wait dbus to shop
+      # Wait dbus to stop and terminate manually, if it didn't
       sleep 5
+      pkill -f dbus-daemon || :
 
       pkill -e Xtigervnc || :
       pkill -e Xtightvnc || :
