@@ -95,7 +95,8 @@ def test_hpo_ssh():
     training_jobs = analytics.training_job_summaries()
     training_job_name = training_jobs[0]['TrainingJobName']
 
-    instance_ids = SSMManager().get_training_instance_ids(training_job_name, 300)
+    ssh_wrapper = SSHEstimatorWrapper.attach(training_job_name)
+    instance_ids = ssh_wrapper.get_instance_ids()
     assert len(instance_ids) == 1
 
     tuner.wait()

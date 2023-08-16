@@ -396,7 +396,7 @@ See [#7](https://github.com/aws-samples/sagemaker-ssh-helper/issues/7) for this 
 
 In this case, `wrapper.get_instance_ids()` won't really work because you don't call `fit()` directly on the estimator and SSH Helper does not understand what training job you are trying to connect to.
 
-You should use extra lower-level APIs to fetch the training job name of your interest first, and then either use `SSMManager` (recommended) or `SSHLog` (slower) to fetch their instance ids from the code:
+You should use the SageMaker Python SDK API to fetch the training job name of your interest first, and then use `SSHEstimatorWrapper.attach()` method to create a wrapper for fetching instance ids:
 
 ```python
 import time
@@ -404,7 +404,6 @@ import time
 from sagemaker.mxnet import MXNet
 from sagemaker.tuner import HyperparameterTuner
 
-from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
 
 estimator = MXNet(...)
@@ -430,7 +429,8 @@ analytics = tuner.analytics()
 training_jobs = analytics.training_job_summaries()
 training_job_name = training_jobs[0]['TrainingJobName']
 
-instance_ids = SSMManager().get_training_instance_ids(training_job_name, 300)
+ssh_wrapper = SSHEstimatorWrapper.attach(training_job_name)
+instance_ids = ssh_wrapper.get_instance_ids()
 
 print(f'To connect over SSM run: aws ssm start-session --target {instance_ids[0]}')
 ```
@@ -588,15 +588,6 @@ aws ssm start-session --target mi-01234567890abcdef \
 ```text
 tail /var/log/amazon/ssm/*.log && date
 ```
-
-Note that the error messages related to `EC2Identity` are not relevant, because SageMaker is a managed service and users have no access to underlying EC2 infrastructure:
-
-```text
-2023-03-27 20:07:23 ERROR [EC2Identity] failed to get identity instance id. Error: RequestError: send request failed
-caused by: Get "http://169.254.169.254/latest/meta-data/instance-id": dial tcp 169.254.169.254:80: connect: invalid argument
-```
-
- These messages are kind of expected and can be safely ignored.
 
 * Check that `sshd` process is started in SageMaker Studio notebook by running a command in the image terminal:
 
