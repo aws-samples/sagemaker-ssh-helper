@@ -29,12 +29,12 @@ if [[ "$1" == "configure" ]]; then
     _install_helper_scripts
 
     cat >/etc/profile.d/sm-ssh-ide.sh <<EOF
-export XAUTHORITY="/tmp/.Xauthority"
-export ICEAUTHORITY="/tmp/.ICEauthority"
-touch "/tmp/.Xauthority"
-touch "/tmp/.ICEauthority"
-chmod 600 "/tmp/.Xauthority"
-chmod 600 "/tmp/.ICEauthority"
+export XAUTHORITY="/tmp/.Xauthority-$USER"
+export ICEAUTHORITY="/tmp/.ICEauthority-$USER"
+touch "/tmp/.Xauthority-$USER"
+touch "/tmp/.ICEauthority-$USER"
+chmod 600 "/tmp/.Xauthority-$USER"
+chmod 600 "/tmp/.ICEauthority-$USER"
 EOF
     source /etc/profile.d/sm-ssh-ide.sh
 
