@@ -74,7 +74,9 @@ class SSHLog(SSMManagerBase):
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}",
                                          timeout_in_sec=timeout_in_sec)
 
-    def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter: str = None):
+        if arn_filter:
+            raise ValueError("Not supported for SSHLog")
         return self.get_ssm_instance_ids_once(log_group=arn_resource_type, stream_name=arn_resource_name)
 
     def get_ssm_instance_ids_once(self, log_group, stream_name):

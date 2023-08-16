@@ -19,12 +19,13 @@ class SSMManagerBase(ABC):
 
     def get_instance_ids(self, arn_resource_type, arn_resource_name,
                          timeout_in_sec=0,
-                         expected_count=1):
+                         expected_count=1,
+                         arn_filter: str = None):
         if arn_resource_name.startswith('mi-'):
             self.logger.warning("SageMaker resource name usually doesn't not start with 'mi-', "
                                 "did you pass the SSM instance ID by mistake?")
         self.logger.info("Using AWS Region: %s", self.region_name)
-        mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name)
+        mi_ids = self.get_instance_ids_once(arn_resource_type, arn_resource_name, arn_filter)
 
         while not mi_ids and timeout_in_sec > 0:
             self.logger.info(f"No instance IDs found. Retrying. Is SSM Agent running on the remote? "
@@ -46,7 +47,7 @@ class SSMManagerBase(ABC):
         return mi_ids
 
     @abstractmethod
-    def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter: str = None):
         raise NotImplementedError("Abstract method")
 
 
@@ -101,6 +102,11 @@ class SSMManager(SSMManagerBase):
         self.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
         return self.get_instance_ids('transform-job', transform_job_name, timeout_in_sec)
 
+    def get_studio_user_kgw_instance_ids(self, domain_id, user_profile_name, kgw_name, timeout_in_sec=0):
+        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
+        return self.get_instance_ids('app', f"{kgw_name}", timeout_in_sec,
+                                     arn_filter=f":app/{domain_id}/{user_profile_name}/")
+
     def get_studio_kgw_instance_ids(self, kgw_name, timeout_in_sec=0):
         self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
         return self.get_instance_ids('app', f"{kgw_name}", timeout_in_sec)
@@ -109,7 +115,8 @@ class SSMManager(SSMManagerBase):
         self.logger.info(f"Querying SSM instance IDs for SageMaker notebook instance {instance_name}")
         return self.get_instance_ids('notebook-instance', f"{instance_name}", timeout_in_sec)
 
-    def get_instance_ids_once(self, arn_resource_type, arn_resource_name):
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name,
+                              arn_filter: str = None):
         # TODO: use tag filter instead, for faster performance
         all_instances = self.list_all_instances_with_tags()
         result_pairs = []
@@ -119,7 +126,8 @@ class SSMManager(SSMManagerBase):
                 continue
             if f"/{arn_resource_name}" in tags["SSHResourceArn"] and \
                     arn_resource_name == tags["SSHResourceName"] and \
-                    f":{arn_resource_type}/" in tags["SSHResourceArn"]:
+                    f":{arn_resource_type}/" in tags["SSHResourceArn"] and \
+                    (not arn_filter or arn_filter in tags["SSHResourceArn"]):
                 if "SSHTimestamp" in tags:
                     timestamp = tags["SSHTimestamp"]
                 else:

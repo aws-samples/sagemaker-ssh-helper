@@ -198,13 +198,20 @@ class SSHIDE:
         sagemaker_account_id = "470317259841"  # eu-west-1, TODO: check all images
         return f"arn:aws:sagemaker:{self.current_region}:{sagemaker_account_id}:image/{image_name}"
 
+    def print_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0):
+        print(self.get_kernel_instance_ids(app_name, timeout_in_sec)[index])
+
     def get_kernel_instance_ids(self, app_name, timeout_in_sec):
         self.logger.info("Resolving IDE instance IDs through SSM tags")
         self.log_urls(app_name)
         self.logger.info(f"Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect {app_name}")
         self.logger.info(f"To connect with SSH only: sm-local-ssh-ide connect {app_name} --ssh-only")
-        # FIXME: resolve with domain and user
-        result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec)
+        if self.domain_id and self.user:
+            result = SSMManager().get_studio_user_kgw_instance_ids(self.domain_id, self.user, app_name, timeout_in_sec)
+        else:
+            self.logger.warning(f"Domain ID or user profile name are not set. Will attempt to connect to the latest "
+                                f"active kernel gateway with the name {app_name} in the region {self.current_region}")
+            result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec)
         return result
 
     def log_urls(self, app_name):

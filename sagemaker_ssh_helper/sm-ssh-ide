@@ -1,6 +1,15 @@
 #!/bin/bash -l
 # Very important to start with 'bash -l' - to escape SageMaker Studio notebook environment
 
+# Commands:
+# configure [--ssh-only]
+# set-local-user-id <local_user_id>
+# set-jb-license-server <jb-license-server-hostname-without-http>
+# set-vnc-password <123456>
+# get-user-profile-name
+# get-domain-id
+# get-metadata
+
 set -e
 
 dir=$(dirname "$0")
@@ -97,7 +106,6 @@ elif [[ "$1" == "set-jb-license-server" ]]; then
     fi
 
     JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
-    # TODO: check that it's not started with 'http'
 
     if grep -q "$JB_LICENSE_SERVER_HOST" /etc/hosts; then
         echo "sm-ssh-ide: Skipping the update of /etc/hosts with PyCharm license server (already there)"

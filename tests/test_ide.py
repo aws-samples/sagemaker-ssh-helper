@@ -162,19 +162,6 @@ def test_notebook_instance():
     assert "Python 3.8" in python_version
 
 
-def test_called_process_error_with_output():
-    got_error = False
-    try:
-        # should fail, because we're not connected to a remote kernel
-        subprocess.check_output("sm-local-ssh-ide run-command python --version".split(' '), stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        output = e.output.decode('latin1').strip()
-        logger.info(f"Got error (expected): {output}")
-        got_error = True
-        assert output == "ssh: connect to host localhost port 10022: Connection refused"
-    assert got_error
-
-
 def test_studio_internet_free_mode(request):
     """
     See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html
@@ -234,6 +221,48 @@ def test_studio_internet_free_mode(request):
     assert "127.0.0.1:5901" in services_running
 
     ide.delete_kernel_app("byoi-studio-app", wait=False)
+
+
+def test_studio_multiple_users(request):
+    ide_ds = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+    ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
+
+    ide_ds.create_ssh_kernel_app(
+        'ssh-test-user',
+        image_name_or_arn='sagemaker-data-science-310-v1',
+        instance_type='ml.m5.large',
+        ssh_lifecycle_config='sagemaker-ssh-helper-dev',
+        recreate=True
+    )
+
+    # Give a head start
+    time.sleep(60)
+
+    ide_pt.create_ssh_kernel_app(
+        'ssh-test-user',
+        image_name_or_arn='sagemaker-data-science-310-v1',
+        instance_type='ml.m5.large',
+        ssh_lifecycle_config='sagemaker-ssh-helper-dev',
+        recreate=True
+    )
+
+    # Give time for instance ID to propagate
+    time.sleep(60)
+
+    studio_ids = ide_ds.get_kernel_instance_ids('ssh-test-user', timeout_in_sec=300)
+    studio_id = studio_ids[0]
+
+    with SSMProxy(10022) as ssm_proxy:
+        ssm_proxy.connect_to_ssm_instance(studio_id)
+
+        user_profile_name = ssm_proxy.run_command_with_output("sm-ssh-ide get-user-profile-name")
+        user_profile_name = user_profile_name.decode('latin1')
+        logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
+
+    ide_ds.delete_kernel_app('ssh-test-user', wait=False)
+    ide_pt.delete_kernel_app('ssh-test-user', wait=False)
+
+    assert "test-data-science" in user_profile_name
 
 
 def test_studio_notebook_in_firefox(request):

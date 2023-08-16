@@ -3,17 +3,21 @@
 # Commands:
 # connect <kernel_gateway_name> [--ssh-only] [<extra_ssh_args>]
 # run-command <command> <args...>
-# TODO: create <kernel_gateway_name> [--recreate] --domain <domain> --user <profile-name> --image datascience-1.0 --instance ml.t3.medium
+# set-domain-id <domain_id>
+# set-user-profile-name <user_profile_name>
+# set-jb-license-server <jb-license-server-hostname-without-http>
+# TODO: create <kernel_gateway_name> [--recreate] --image datascience-1.0 --instance ml.t3.medium
 # TODO: list (all apps from all users and domains marked with '*' if can connect with SSH and with '!' if user don't match)
-# TODO: open-firefox <kernel_gateway_name> --domain <domain> --user <profile-name>
-# TODO: set-domain, set-user (defaults)
-# TODO: set-kernel-gateway-name, get-kernel-gateway-name (sets default for connect and create)
 
 # SageMaker Studio Kernel Gateway name is usually the same as the hostname,
 # e. g. sagemaker-data-science-ml-m5-large-1234567890abcdef0
 
 # To open SageMaker Studio UI in Firefox from command line on macOS, use the following command:
 # open -a Firefox $(AWS_PROFILE=terry aws sagemaker create-presigned-domain-url --domain-id d-lnwlaexample --user-profile-name terry-whitlock --query AuthorizedUrl --output text)
+
+# replace with your JetBrains License Server host, or leave it as is if you don't use one
+JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
+
 
 COMMAND=$1
 
@@ -22,30 +26,34 @@ if [[ "$COMMAND" == "connect" ]]; then
   SM_STUDIO_KGW_NAME="$2"
   OPTIONS="$3"
 
-  # FIXME: distinguish between user profiles
+  # TODO: if name is empty, list and choose
+
+  DOMAIN_ID=""
+  if [ -f ~/.sm-studio-domain-id ]; then
+    DOMAIN_ID="$(cat ~/.sm-studio-domain-id)"
+  else
+    echo "sm-local-ssh-ide: WARNING: SageMaker Studio domain ID is not set, "\
+      "will attempt to connect to the latest active kernel gateway with name '$SM_STUDIO_KGW_NAME' in the region. "\
+      "Run 'sm-local-ssh-ide set-domain-id' to override."
+  fi
+  USER_PROFILE_NAME=""
+  if [ -f ~/.sm-studio-user-profile-name ]; then
+    USER_PROFILE_NAME="$(cat ~/.sm-studio-user-profile-name)"
+  else
+    echo "sm-local-ssh-ide: WARNING: SageMaker Studio user profile name is not set, "\
+      "will attempt to connect to the latest active kernel gateway with name '$SM_STUDIO_KGW_NAME' in the region. "\
+      "Run 'sm-local-ssh-ide set-user-profile-name' to override."
+  fi
 
   INSTANCE_ID=$(python <<EOF
 import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
 import logging; logging.basicConfig(level=logging.INFO);
-print(SSHIDE(None, None).get_kernel_instance_ids("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)[0])
+SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
 EOF
   )
 
-  # TODO: set-jb-license-server
-  # TODO: check that it's not started with 'http'
-  # replace with your JetBrains License Server host, or leave it as is if you don't use one
-  JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
-
-  if [ -f ~/.sm-jb-license-server ]; then
-      echo "sm-local-ssh-ide: ~/.sm-jb-license-server file with PyCharm license server host is already configured, skipping override"
-      JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
-  else
-      echo "sm-local-ssh-ide: Saving PyCharm License server host into ~/.sm-jb-license-server"
-      echo "$JB_LICENSE_SERVER_HOST" > ~/.sm-jb-license-server
-  fi
-
-
   if [[ "$OPTIONS" == "--ssh-only" ]]; then
+    echo "sm-local-ssh-ide: Connecting only SSH to local port 10022 (got the flag --ssh-only)"
     shift
     shift
     shift
@@ -55,6 +63,11 @@ EOF
         -L localhost:10022:localhost:22 \
         $*
   else
+    if [ -f ~/.sm-jb-license-server ]; then
+        JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
+    fi
+
+    echo "sm-local-ssh-ide: Connecting SSH, VNC and Jupyter to local ports 10022, 5901 and 8889 (add --ssh-only flag to override)"
     shift
     shift
     sm-local-start-ssh "$INSTANCE_ID" \
@@ -65,6 +78,29 @@ EOF
         $*
   fi
 
+elif [[ "$COMMAND" == "set-jb-license-server" ]]; then
+    JB_LICENSE_SERVER_HOST="$2"
+
+    echo "sm-local-ssh-ide: Saving PyCharm License server host into ~/.sm-jb-license-server"
+    echo "$JB_LICENSE_SERVER_HOST" > ~/.sm-jb-license-server
+
+elif [[ "$COMMAND" == "set-domain-id" ]]; then
+    DOMAIN_ID="$2"
+    if [[ "$DOMAIN_ID" == "" ]]; then
+      echo "sm-local-ssh-ide: ERROR: <domain-id> argument is expected"
+      exit 1
+    fi
+    echo "sm-local-ssh-ide: Saving SageMaker Studio domain ID into ~/.sm-studio-domain-id"
+    echo "$DOMAIN_ID" > ~/.sm-studio-domain-id
+
+elif [[ "$COMMAND" == "set-user-profile-name" ]]; then
+    USER_PROFILE_NAME="$2"
+    if [[ "$USER_PROFILE_NAME" == "" ]]; then
+      echo "sm-local-ssh-ide: ERROR: <user-profile-name> argument is expected"
+      exit 1
+    fi
+    echo "sm-local-ssh-ide: Saving SageMaker Studio user profile name into ~/.sm-studio-user-profile-name"
+    echo "$USER_PROFILE_NAME" > ~/.sm-studio-user-profile-name
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 

@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from datetime import timedelta
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from sagemaker.pytorch import PyTorch
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper, SSHEstimatorWrapper, SSHModelWrapper
 from test_util import _create_bucket_if_doesnt_exist
+
+logger = logging.getLogger('sagemaker-ssh-helper:test_functions')
 
 
 def test_ssm_role_from_arn():
@@ -288,3 +291,16 @@ def test_model_repacking_default_entry_point_with_existing_model():
     logging.info("Model data: %s", model.repacked_model_data)
     assert model.repacked_model_data is not None  # FIXME: not working
     # FIXME: SAGEMAKER_SUBMIT_DIRECTORY = file://source_dir/inference_hf_accelerate instead of /opt/ml/model/code
+
+
+def test_called_process_error_with_output():
+    got_error = False
+    try:
+        # should fail, because we're not connected to a remote kernel
+        subprocess.check_output("sm-local-ssh-ide run-command python --version".split(' '), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        output = e.output.decode('latin1').strip()
+        logger.info(f"Got error (expected): {output}")
+        got_error = True
+        assert output == "ssh: connect to host localhost port 10022: Connection refused"
+    assert got_error
