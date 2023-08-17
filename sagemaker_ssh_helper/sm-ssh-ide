@@ -64,6 +64,8 @@ EOF
         echo "/usr/bin/mate-session" > ~/.xsession
         chmod +x ~/.xsession
 
+        # shellcheck disable=SC2016
+        sed -i -e 's~^ERRFILE=$HOME/.xsession-errors~ERRFILE=/var/log/apps/app_container.log__xsession-errors~' /etc/X11/Xsession
       fi
 
     else
@@ -191,7 +193,7 @@ elif [[ "$1" == "start" ]]; then
       if _is_centos; then
         :
       else
-        echo "sm-ssh-ide: Starting DBUS service"
+        echo "sm-ssh-ide: Starting DBUS service (it can take a while)"
         /etc/init.d/dbus start
       fi
 
