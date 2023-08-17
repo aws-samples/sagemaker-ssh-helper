@@ -188,6 +188,13 @@ elif [[ "$1" == "start" ]]; then
 
     if [[ "$OPTIONS" != "--ssh-only" ]]; then
 
+      if _is_centos; then
+        :
+      else
+        echo "sm-ssh-ide: Starting DBUS service"
+        /etc/init.d/dbus start
+      fi
+
       echo "sm-ssh-ide: Starting VNC server"
       vncserver :1
 
@@ -271,6 +278,12 @@ elif [[ "$1" == "stop" ]]; then
 
       # Wait dbus to stop and terminate manually, if it didn't
       sleep 5
+      if _is_centos; then
+        :
+      else
+        echo "sm-ssh-ide: Stopping DBUS service"
+        /etc/init.d/dbus stop
+      fi
       pkill -f dbus-daemon || :
 
       pkill -e Xtigervnc || :
