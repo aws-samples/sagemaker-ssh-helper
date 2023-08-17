@@ -186,3 +186,28 @@ function _assert_is_ssh_ide_inside_studio() {
     exit 2
   fi
 }
+
+function _locale_gen() {
+  if _is_centos; then
+    :
+  else
+    # Generating UTF-8 locales only for Debian
+    locale-gen
+  fi
+}
+
+function _start_syslogd() {
+  if _is_centos; then
+    /usr/sbin/rsyslogd
+  else
+    service rsyslog start || (echo "ERROR: Failed to start syslogd service")
+  fi
+}
+
+function _start_sshd() {
+  if _is_centos; then
+    /usr/sbin/sshd
+  else
+    service ssh start || (echo "ERROR: Failed to start sshd service" && exit 255)
+  fi
+}

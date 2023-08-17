@@ -29,6 +29,7 @@ run_tests:
       - tests/htmlcov/
       - tests/coverage.xml
       - tests/.coverage
+      - tests/output/
       - bandit.txt
       - flake8.txt
 
@@ -41,3 +42,4 @@ profile_tests:
     when: always
     paths:
       - tests/prof/
+

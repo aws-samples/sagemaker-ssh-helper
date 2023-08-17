@@ -95,6 +95,10 @@ def test_sagemaker_studio(instances, request):
 
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user)
 
+    # TODO:
+    #  os.env["LOCAL_USER_ID"] -> ./.sm-ssh-owner
+    #  ide.upload_UI("./.sm-ssh-owner", "/.sm-ssh-owner") - cannot upload dot file in UI?
+
     ide.create_ssh_kernel_app(
         app_name,
         image_name_or_arn=image_name,
@@ -296,8 +300,14 @@ def test_studio_notebook_in_firefox(request):
     logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
     kernel_menu_item.click()
 
-    # TODO: File -> Open from Path -> /sagemaker-ssh-helper/SageMaker_SSH_IDE.ipynb
-    # TODO: File -> Save Notebook As... -> /SageMaker_SSH_IDE-DS2-CPU.ipynb
+    # TODO: ide.upload_ssh("../SageMaker_SSH_IDE.ipynb", "/root/SageMaker_SSH_IDE-DS2-CPU.ipynb")
+    # TODO: ide.upload_UI("../SageMaker_SSH_IDE.ipynb", "/SageMaker_SSH_IDE-DS2-CPU.ipynb")
+    # TODO: ide.upload_UI("../", "/sagemaker-ssh-helper", exclude=["*"], include=["setup.py", "sagemaker_ssh_helper/"])
+    # TODO: File -> Reload notebook from Disk
+    # TODO: ide.add_new_cell([
+    #  "%%sh"
+    #  "pip3 install -U ./sagemaker-ssh-helper/"
+    #  ])
 
     logging.info("Restarting kernel and running all cells")
     restart_menu_xpath = "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' " \
@@ -321,10 +331,6 @@ def test_studio_notebook_in_firefox(request):
 
     time.sleep(120)  # Give time to restart
 
-    # TODO: save notebook and download for comparison
-    # TODO: ide.download("/root/SageMaker_SSH_IDE-DS2-CPU.ipynb",
-    #  "/tmp/SageMaker_SSH_IDE-DS2-CPU.ipynb")
-
     studio_ids = ide.get_kernel_instance_ids("sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036",
                                              timeout_in_sec=300)
     studio_id = studio_ids[0]
@@ -333,6 +339,11 @@ def test_studio_notebook_in_firefox(request):
         ssm_proxy.connect_to_ssm_instance(studio_id)
         services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
         services_running = services_running.decode('latin1')
+
+    # TODO: File -> Save Notebook
+    # TODO: ide.download_ssh("/root/SageMaker_SSH_IDE-DS2-CPU.ipynb",
+    #  "./output/SageMaker_SSH_IDE-DS2-CPU.ipynb")
+    # See: https://github.com/aws-samples/sagemaker-ssh-helper/issues/18
 
     assert "127.0.0.1:8889" in services_running
     assert "127.0.0.1:5901" in services_running

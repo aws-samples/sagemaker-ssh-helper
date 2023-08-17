@@ -22,3 +22,4 @@ __pycache__
 /djl-serving/
 /src_diff/
 /tests/geckodriver.log
+/tests/.sm-ssh-owner

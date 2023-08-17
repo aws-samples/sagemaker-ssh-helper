@@ -177,12 +177,14 @@ elif [[ "$1" == "start" ]]; then
     echo "sm-ssh-ide: Saving env variables for remote SSH interpreter"
     sm-save-env
 
+    echo "sm-ssh-ide: Generating UTF-8 locales"
+    _locale_gen
+
+    echo "sm-ssh-ide: Starting Syslog service"
+    _start_syslogd
+
     echo "sm-ssh-ide: Starting SSH service"
-    if _is_centos; then
-      /usr/sbin/sshd
-    else
-      service ssh start || (echo "sm-ssh-ide: ERROR: Failed to start ssh service" && exit 255)
-    fi
+    _start_sshd
 
     if [[ "$OPTIONS" != "--ssh-only" ]]; then
 

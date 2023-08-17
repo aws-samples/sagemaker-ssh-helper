@@ -102,24 +102,9 @@ if [[ "$1" == "start-ssh" ]]; then
   # Dump container bootstrap environment (PID 1) - can be different from above, useful for debugging
   ps wwwe -p 1 | tail -1
 
-  if _is_centos; then
-    :
-  else
-    # Generating UTF-8 locales for Debian
-    locale-gen
-  fi
-
-  # Start SSH server
-  if _is_centos; then
-    # NOTE: systemctl will not work in CentOS SageMaker container (e.g. Spark processing) because lack of
-    # privileges to access DBUS, so we run sshd manually. This command doesn't work:
-    # systemctl start sshd
-    /usr/sbin/rsyslogd
-    /usr/sbin/sshd
-  else
-    service rsyslog start || (echo "ERROR: Failed to start syslogd service")
-    service ssh start || (echo "ERROR: Failed to start ssh service" && exit 255)
-  fi
+  _locale_gen
+  _start_syslogd
+  _start_sshd
 
   sm-init-ssm
 
