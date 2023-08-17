@@ -193,8 +193,8 @@ elif [[ "$1" == "start" ]]; then
       if _is_centos; then
         :
       else
-        echo "sm-ssh-ide: Starting DBUS service (it can take a while)"
-        /etc/init.d/dbus start
+        echo "sm-ssh-ide: Starting DBUS service"
+        nohup /etc/init.d/dbus start &
       fi
 
       echo "sm-ssh-ide: Starting VNC server"
