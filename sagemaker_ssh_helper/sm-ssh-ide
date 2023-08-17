@@ -187,8 +187,6 @@ elif [[ "$1" == "start" ]]; then
     if [[ "$OPTIONS" != "--ssh-only" ]]; then
 
       echo "sm-ssh-ide: Starting VNC server"
-
-      export USER=root
       vncserver :1
 
       SM_STUDIO_PYTHON=$(_print_sm_studio_python)
