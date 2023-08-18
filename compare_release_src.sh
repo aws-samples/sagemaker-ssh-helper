@@ -24,3 +24,6 @@ for branch in "main" "$latest"; do
   diff -r -X /tmp/diff_exclude.txt "/tmp/sagemaker-ssh-helper-$branch/" ./ >"src_diff/$branch.txt" || :
 done
 
+echo "compare_release_src.sh: Begin differences with main branch:"
+cat src_diff/main.txt
+echo "compare_release_src.sh: End differences with main branch."
