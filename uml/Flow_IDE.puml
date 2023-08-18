@@ -122,8 +122,8 @@ ssm_agent -> ssm: Go online
 
 
 note right dev
-sm-local-ssh-ide set-domain d-egm0dexample
-sm-local-ssh-ide set-user terry-whitlock
+sm-local-ssh-ide set-domain-id d-egm0dexample
+sm-local-ssh-ide set-user-profile-nam terry-whitlock
 end note
 
 note right dev

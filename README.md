@@ -640,6 +640,17 @@ Once configured, from the Launcher choose the environment, puck up the lifecycle
 sm-local-configure
 ```
 
+4. Set your SageMaker Studio domain ID and user profile name:
+
+```bash
+sm-local-ssh-ide set-domain-id <<domain_id>>
+sm-local-ssh-ide set-user-profile-name <<user_profile_name>>
+```
+
+Since SageMaker Studio app names are not unique across domains and user profiles, it will help to find the correct instance in a multi-user environment.
+
+For your convenience, the domain ID and the user profile name are printed by the `sm-ssh-ide get-metadata` command when you run the notebook (check the cell output).
+
 4. Start SSH tunnel and port forwarding from a terminal session as follows:
 
 ```shell
@@ -649,6 +660,8 @@ sm-local-ssh-ide connect <<kernel_gateway_app_name>>
 The parameter <<kernel_gateway_app_name>> is either taken from SageMaker Studio when you run notebook [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb), 
 or from the image terminal as a `hostname` output, or you can find it in the list of running apps in AWS Console under Amazon SageMaker -> Control Panel -> User Details.
 It looks like this: `sagemaker-data-science-ml-m5-large-1234567890abcdef0`.
+
+For your convenience, the app name is printed by the `sm-ssh-ide get-metadata` command when you run the notebook (check the cell output).
 
 The local port `10022` will be connected to the remote SSH server port, to let you connect with SSH from IDE.  
 In addition, the local port `8889` will be connected to remote Jupyter notebook port, the port `5901` to the remote VNC server 
