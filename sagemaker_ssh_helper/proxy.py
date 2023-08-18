@@ -98,6 +98,7 @@ class SSMProxy(ABC):
         return retval
 
     def run_command_with_output(self, command):
+        self.logger.info(f"Running command and capturing output: '{command}'")
         self._wait_for_tcp_port()
 
         try:
