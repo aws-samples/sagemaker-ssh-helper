@@ -18,12 +18,11 @@ EXTRA_SSH_ARGS=$*
 
 read -r -d '' program << EOF
 import logging
-import sagemaker
 logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
+import sagemaker
 print(sagemaker.Session().default_bucket())
 EOF
 
-# TODO: write message about exporting a var to override
 if [ -z "${SSH_AUTHORIZED_KEYS_PATH}" ]; then
   bucket=$(python -c "$program")
   SSH_AUTHORIZED_KEYS_PATH="s3://$bucket/ssh-authorized-keys/"

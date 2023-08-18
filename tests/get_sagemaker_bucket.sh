@@ -2,8 +2,8 @@
 
 read -r -d '' program << EOF
 import logging
-import sagemaker
 logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
+import sagemaker
 print(sagemaker.Session().default_bucket())
 EOF
 
