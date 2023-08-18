@@ -43,8 +43,17 @@ if [[ "$1" == "configure" ]]; then
   fi
 
   # Sending all system logs to CloudWatch (helps to troubleshoot sshd issues)
-  find /etc/rsyslog.conf /etc/rsyslog.d/ -type f \
-    -exec sed -i -e 's~/var/log/~/var/log/apps/app_container.log__~' {} \;
+  if _is_ssh_ide_inside_studio; then
+    find /etc/rsyslog.conf /etc/rsyslog.d/ -type f \
+      -exec sed -i -e 's~/var/log/~/var/log/apps/app_container.log__~' {} \;
+  else
+    find /etc/rsyslog.conf /etc/rsyslog.d/ -type f \
+      -exec sed -i -e 's~/var/log/.*~/proc/1/fd/1~' {} \;
+    # shellcheck disable=SC2016
+    sed -i -e 's~^$PrivDropToUser~#$PrivDropToUser~' /etc/rsyslog.conf
+    # shellcheck disable=SC2016
+    sed -i -e 's~^$PrivDropToGroup~#$PrivDropToGroup~' /etc/rsyslog.conf
+  fi
 
   sed -i -e 's~^ClientAliveInterval~#ClientAliveInterval~' /etc/ssh/sshd_config
   echo "ClientAliveInterval 15" >> /etc/ssh/sshd_config

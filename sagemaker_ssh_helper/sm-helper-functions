@@ -180,8 +180,15 @@ function _print_sm_studio_python() {
   echo -n "$SM_STUDIO_PYTHON"
 }
 
+function _is_ssh_ide_inside_studio() {
+  [[ -f /opt/ml/metadata/resource-metadata.json ]]
+}
+
+
 function _assert_is_ssh_ide_inside_studio() {
-  if [[ ! -f /opt/ml/metadata/resource-metadata.json ]]; then
+  if _is_ssh_ide_inside_studio; then
+    :  # all good
+  else
     echo "sm-ssh-ide: ERROR: must be running inside SageMaker Studio"
     exit 2
   fi
@@ -198,7 +205,8 @@ function _locale_gen() {
 
 function _start_syslogd() {
   if _is_centos; then
-    /usr/sbin/rsyslogd
+    nohup /usr/sbin/rsyslogd &
+    nohup /usr/lib/systemd/systemd-journald &
   else
     service rsyslog start || (echo "ERROR: Failed to start syslogd service")
   fi
