@@ -246,6 +246,13 @@ elif [[ "$1" == "get-studio-python-version" ]]; then
     $SM_STUDIO_PYTHON --version
 
 elif [[ "$1" == "env-diagnostics" ]]; then
+    if _is_centos; then
+      echo "Operating system: CentOS/RHEL-based system detected"
+    else
+      echo "Operating system: Debian/Ubuntu-based system detected"
+    fi
+
+    head -2 /etc/os-release || :
 
     echo "System Python location: $(which python || echo 'Not found')"
     echo "System Python version: $(python --version || echo 'Not found')"
