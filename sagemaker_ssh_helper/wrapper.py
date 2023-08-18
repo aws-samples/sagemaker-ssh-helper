@@ -69,7 +69,9 @@ class SSHEnvironmentWrapper(ABC):
 
     def _augment_env(self, env):
         if self.local_user_id is None:
-            caller_id = boto3.client('sts').get_caller_identity()
+            region = self.sagemaker_session.boto_region_name
+            endpoint_url = "https://sts.{}.amazonaws.com".format(region)
+            caller_id = boto3.client("sts", region_name=region, endpoint_url=endpoint_url).get_caller_identity()
             user_id = caller_id.get('UserId')
         else:
             user_id = self.local_user_id
