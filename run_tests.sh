@@ -3,6 +3,7 @@
 set -e
 set -o pipefail
 
+echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
 cat /etc/hosts
 bash ./compare_release_src.sh
 # Creating venv
@@ -85,7 +86,6 @@ export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
 # Run tests
-echo "Extra args for pytest - $PYTEST_EXTRA_ARGS"
 cd tests
 apt-get install -y firefox-esr
 export MOZ_HEADLESS=1
