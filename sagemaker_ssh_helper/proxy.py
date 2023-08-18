@@ -123,7 +123,7 @@ class SSMProxy(ABC):
         except subprocess.CalledProcessError as e:
             out = e.output.decode('latin1')
             proxy_out = self.fetch_proxy_output()
-            raise ValueError(
+            error = ValueError(
                 f"Failed to run command: {command}. "
                 f"Return code: {e.returncode}. "
                 f"\n---Begin proxy output:---\n{proxy_out}---End proxy output--- "
@@ -131,7 +131,9 @@ class SSMProxy(ABC):
                 f"Check your local log, stdout, and stderr "
                 f"as well as remote logs{' at ' + self.cloudwatch_url if self.cloudwatch_url else ''} "
                 f"for more details, if needed."
-            ) from e
+            )
+            self.logger.error(f"Failed to run command: {e}", exc_info=error)
+            raise error from e
 
     def fetch_proxy_output(self):
         array_of_byte_strings = []
