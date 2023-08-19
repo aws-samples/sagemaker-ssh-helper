@@ -99,7 +99,7 @@ class SSMProxy(ABC):
 
     def run_command_with_output(self, command):
         self.logger.info(f"Running command and capturing output: '{command}'")
-        self._wait_for_tcp_port()
+        self._wait_for_tcp_port(timeout=90)
 
         try:
             # Pre-fetching the key to avoid the 'Warning: Permanently added ... to the list of known hosts' in output
@@ -149,14 +149,18 @@ class SSMProxy(ABC):
 
     def _wait_for_tcp_port(self, timeout=45):
         # Use 127.0.0.1 here to avoid AF_INET6 resolution that can give errors
-        self.logger.info(f"Connecting to 127.0.0.1:{self.ssh_listen_port}")
+        self.logger.info(f"Waiting for connection to become available on 127.0.0.1:{self.ssh_listen_port}")
+        is_timeout = True
         for i in range(0, timeout):
             try:
                 with socket.create_connection(("127.0.0.1", self.ssh_listen_port), 2):
+                    is_timeout = False
                     self.logger.info(f"Connection to 127.0.0.1:{self.ssh_listen_port} is successful")
                     break
             except ConnectionRefusedError:
                 time.sleep(1)
+        if is_timeout:
+            self.logger.warning(f"Timeout waiting for connection on 127.0.0.1:{self.ssh_listen_port}")
 
     def disconnect(self):
         self.logger.info(f"Disconnecting proxy and stopping SSH port forwarding")

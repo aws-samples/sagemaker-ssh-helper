@@ -10,9 +10,13 @@
 set -e
 
 INSTANCE_ID="$1"
-SSH_AUTHORIZED_KEYS="$2"
+SSH_AUTHORIZED_KEYS_PATH="$2"
 shift
 shift
+PORT_FWD_ARGS=$*
+
+echo "$(date -Iseconds) sm-connect-ssh-proxy: Connecting to: $INSTANCE_ID"
+echo "$(date -Iseconds) sm-connect-ssh-proxy: Extra args: $PORT_FWD_ARGS"
 
 instance_status=$(aws ssm describe-instance-information --filters Key=InstanceIds,Values="$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text)
 
@@ -26,15 +30,13 @@ fi
 # TODO: make it possible to override the default (also helps avoid race conditions)
 SSH_KEY=~/.ssh/sagemaker-ssh-gw
 
-echo "Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS"
+echo "Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS_PATH"
 
 echo 'yes' | ssh-keygen -t ecdsa -q -f "${SSH_KEY}" -N '' >/dev/null
-aws s3 cp "${SSH_KEY}.pub" "${SSH_AUTHORIZED_KEYS}"
+aws s3 cp "${SSH_KEY}.pub" "${SSH_AUTHORIZED_KEYS_PATH}"
 
 CURRENT_REGION=$(aws configure list | grep region | awk '{print $2}')
 echo "Will use AWS Region: $CURRENT_REGION"
-
-PORT_FWD_ARGS=$*
 
 AWS_CLI_VERSION=$(aws --version)
 echo "AWS CLI version (should be v2): $AWS_CLI_VERSION"
@@ -50,7 +52,7 @@ send_command=$(aws ssm send-command \
     --timeout-seconds 30 \
     --parameters "commands=[
         'mkdir -p /etc/ssh/authorized_keys.d/',
-        'aws s3 cp --recursive \"${SSH_AUTHORIZED_KEYS}\" /etc/ssh/authorized_keys.d/',
+        'aws s3 cp --recursive \"${SSH_AUTHORIZED_KEYS_PATH}\" /etc/ssh/authorized_keys.d/',
         'ls -la /etc/ssh/authorized_keys.d/',
         'cat /etc/ssh/authorized_keys.d/* > /etc/ssh/authorized_keys',
         'ls -la /etc/ssh/authorized_keys'
@@ -96,8 +98,7 @@ if [[ "$command_status" != "Success" ]]; then
   exit 2
 fi
 
-echo "Connecting to $INSTANCE_ID with SSM and starting SSH port forwarding with the args: $PORT_FWD_ARGS"
-# TODO: remove duplicating message from SSMProxy
+echo "$(date -Iseconds) sm-connect-ssh-proxy: Starting SSH over SSM proxy"
 
 # We don't use AWS-StartPortForwardingSession feature of SSM here, because we need port forwarding in both directions
 #  with -L and -R parameters of SSH. This is useful for forwarding the PyCharm license server, which needs -R option.
