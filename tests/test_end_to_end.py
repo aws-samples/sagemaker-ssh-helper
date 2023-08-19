@@ -190,8 +190,13 @@ def test_debugger_stop_gpu(request):
     The notification had to be triggered by {low_gpu_lambda.handler}.
     """
     topic_name = sns_notification_topic_arn.split(':')[-1]
-    time.sleep(120)  # wait for SNS metrics to populate
-    metrics_count = SSHLog().count_sns_notifications(topic_name, timedelta(minutes=15))
+    metrics_count = 0
+    for i in range(1, 10):
+        metrics_count = SSHLog().count_sns_notifications(topic_name, timedelta(minutes=15))
+        logging.info(f"Recent SNS notifications received: {metrics_count}")
+        if metrics_count > 0:
+            break
+        time.sleep(30)  # wait for SNS metrics to populate
     assert metrics_count > 0, 'SNS notification had to be triggered by Low GPU Lambda'
 
 
