@@ -227,6 +227,7 @@ def test_studio_internet_free_mode(request):
     ide.delete_kernel_app("byoi-studio-app", wait=False)
 
 
+# noinspection DuplicatedCode
 def test_studio_multiple_users(request):
     ide_ds = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
     ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
@@ -254,6 +255,50 @@ def test_studio_multiple_users(request):
     time.sleep(60)
 
     studio_ids = ide_ds.get_kernel_instance_ids('ssh-test-user', timeout_in_sec=300)
+    studio_id = studio_ids[0]
+
+    with SSMProxy(10022) as ssm_proxy:
+        ssm_proxy.connect_to_ssm_instance(studio_id)
+
+        user_profile_name = ssm_proxy.run_command_with_output("sm-ssh-ide get-user-profile-name")
+        user_profile_name = user_profile_name.decode('latin1')
+        logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
+
+    ide_ds.delete_kernel_app('ssh-test-user', wait=False)
+    ide_pt.delete_kernel_app('ssh-test-user', wait=False)
+
+    assert "test-data-science" in user_profile_name
+
+
+# noinspection DuplicatedCode
+def test_studio_default_domain_multiple_users(request):
+    ide_ds = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+    ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
+
+    ide_ds.create_ssh_kernel_app(
+        'ssh-test-user',
+        image_name_or_arn='sagemaker-data-science-310-v1',
+        instance_type='ml.m5.large',
+        ssh_lifecycle_config='sagemaker-ssh-helper-dev',
+        recreate=True
+    )
+
+    # Give a head start
+    time.sleep(60)
+
+    ide_pt.create_ssh_kernel_app(
+        'ssh-test-user',
+        image_name_or_arn='sagemaker-data-science-310-v1',
+        instance_type='ml.m5.large',
+        ssh_lifecycle_config='sagemaker-ssh-helper-dev',
+        recreate=True
+    )
+
+    # Give time for instance ID to propagate
+    time.sleep(60)
+
+    # Empty domain "" to fetch the latest profile, useful when switching between many AWS accounts with the same profile
+    studio_ids = SSHIDE("", 'test-data-science').get_kernel_instance_ids('ssh-test-user', timeout_in_sec=300)
     studio_id = studio_ids[0]
 
     with SSMProxy(10022) as ssm_proxy:

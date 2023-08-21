@@ -204,10 +204,14 @@ class SSHIDE:
     def get_kernel_instance_ids(self, app_name, timeout_in_sec):
         self.logger.info("Resolving IDE instance IDs through SSM tags")
         self.log_urls(app_name)
-        self.logger.info(f"Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect {app_name}")
-        self.logger.info(f"To connect with SSH only: sm-local-ssh-ide connect {app_name} --ssh-only")
         if self.domain_id and self.user:
             result = SSMManager().get_studio_user_kgw_instance_ids(self.domain_id, self.user, app_name, timeout_in_sec)
+        elif self.user:
+            self.logger.warning(f"Domain ID is not set. Will attempt to connect to the latest "
+                                f"active kernel gateway with the name {app_name} in the region {self.current_region} "
+                                f"for user profile {self.user}")
+            result = SSMManager().get_studio_user_kgw_instance_ids("", self.user, app_name,
+                                                                   timeout_in_sec)
         else:
             self.logger.warning(f"Domain ID or user profile name are not set. Will attempt to connect to the latest "
                                 f"active kernel gateway with the name {app_name} in the region {self.current_region}")

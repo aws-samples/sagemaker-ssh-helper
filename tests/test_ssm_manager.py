@@ -168,3 +168,74 @@ def test_can_filter_instances_by_timestamp():
     assert "mi-01234567890abcd01" in ids
     assert "mi-01234567890abcd03" in ids
     assert "mi-01234567890abcd04" in ids
+
+
+# noinspection DuplicatedCode
+def test_can_filter_by_domain_and_user():
+    manager = SSMManager(redo_attempts=0)
+    manager.list_all_instances_with_tags = Mock(return_value={
+        "mi-01234567890abcd07": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789ab/default-1111111111111/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 2
+        },
+        "mi-01234567890abcd08": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789bc/default-1111111111111/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 3
+        },
+        "mi-01234567890abcd09": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789ab/default-5555555555555/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 1
+        },
+    })
+
+    ids = manager.get_studio_user_kgw_instance_ids(
+        "d-0123456789bc", "default-1111111111111",
+        "sagemaker-data-science-ml-m5-large-1234567890abcdef0"
+    )
+    assert len(ids) == 1
+    assert ids[0] == "mi-01234567890abcd08"
+
+
+# noinspection DuplicatedCode
+def test_can_filter_by_user_with_latest_domain():
+    manager = SSMManager(redo_attempts=0)
+    manager.list_all_instances_with_tags = Mock(return_value={
+        "mi-01234567890abcd07": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789ab/default-1111111111111/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 2
+        },
+        "mi-01234567890abcd08": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789bc/default-1111111111111/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 3
+        },
+        "mi-01234567890abcd09": {
+            "SSHResourceName": "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHResourceArn": "arn:aws:sagemaker:eu-west-1:555555555555:app/d-0123456789ab/default-5555555555555/KernelGateway/sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+            "SSHCreator": "",
+            "SSHOwner": "",
+            "SSHTimestamp": 1
+        },
+    })
+
+    ids = manager.get_studio_user_kgw_instance_ids(
+        "", "default-1111111111111",
+        "sagemaker-data-science-ml-m5-large-1234567890abcdef0"
+    )
+    assert len(ids) == 2
+    assert ids[0] == "mi-01234567890abcd08"
+    assert ids[1] == "mi-01234567890abcd07"

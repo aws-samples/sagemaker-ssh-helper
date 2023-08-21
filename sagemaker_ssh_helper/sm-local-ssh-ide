@@ -32,16 +32,14 @@ if [[ "$COMMAND" == "connect" ]]; then
   if [ -f ~/.sm-studio-domain-id ]; then
     DOMAIN_ID="$(cat ~/.sm-studio-domain-id)"
   else
-    echo "sm-local-ssh-ide: WARNING: SageMaker Studio domain ID is not set, "\
-      "will attempt to connect to the latest active kernel gateway with name '$SM_STUDIO_KGW_NAME' in the region. "\
+    echo "sm-local-ssh-ide: WARNING: SageMaker Studio domain ID is not set."\
       "Run 'sm-local-ssh-ide set-domain-id' to override."
   fi
   USER_PROFILE_NAME=""
   if [ -f ~/.sm-studio-user-profile-name ]; then
     USER_PROFILE_NAME="$(cat ~/.sm-studio-user-profile-name)"
   else
-    echo "sm-local-ssh-ide: WARNING: SageMaker Studio user profile name is not set, "\
-      "will attempt to connect to the latest active kernel gateway with name '$SM_STUDIO_KGW_NAME' in the region. "\
+    echo "sm-local-ssh-ide: WARNING: SageMaker Studio user profile name is not set."\
       "Run 'sm-local-ssh-ide set-user-profile-name' to override."
   fi
 

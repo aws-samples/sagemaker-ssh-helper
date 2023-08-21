@@ -74,8 +74,8 @@ class SSHLog(SSMManagerBase):
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}",
                                          timeout_in_sec=timeout_in_sec)
 
-    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter: str = None):
-        if arn_filter:
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter_regex: str = None):
+        if arn_filter_regex:
             raise ValueError("Not supported for SSHLog")
         return self.get_ssm_instance_ids_once(log_group=arn_resource_type, stream_name=arn_resource_name)
 
@@ -194,7 +194,7 @@ class SSHLog(SSMManagerBase):
 
     def get_ide_cloudwatch_url(self, domain, user, app_name):
         app_type = 'JupyterServer' if app_name == 'default' else 'KernelGateway'
-        if domain and user:
+        if user:
             return f"https://{self.aws_console.get_console_domain()}/" \
                    f"cloudwatch/home?region={self.region_name}#" \
                    f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
