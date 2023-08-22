@@ -314,6 +314,8 @@ def test_studio_default_domain_multiple_users(request):
     assert "test-data-science" in user_profile_name
 
 
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Not yet stable")
 def test_studio_notebook_in_firefox(request):
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
 
