@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+echo "Keywords expression for pytest (PYTEST_EXTRA_KEYWORDS): -k '$PYTEST_KEYWORDS'"
+echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
 python -m venv ./venv
 source ./venv/bin/activate
 pip install '.[test]'
@@ -33,5 +35,5 @@ pytest \
   -o sagemaker_role="$SAGEMAKER_ROLE" \
   -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
   --profile --profile-svg \
-  $PYTEST_EXTRA_ARGS
+  -k "$PYTEST_KEYWORDS" $PYTEST_EXTRA_ARGS
 cd -

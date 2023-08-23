@@ -3,6 +3,7 @@
 set -e
 set -o pipefail
 
+echo "Keywords expression for pytest (PYTEST_EXTRA_KEYWORDS): -k '$PYTEST_KEYWORDS'"
 echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
 cat /etc/hosts
 bash ./compare_release_src.sh
@@ -98,7 +99,7 @@ coverage run -m pytest \
   -o vpc_only_security_group="$VPC_ONLY_SECURITY_GROUP" \
   -o sagemaker_role="$SAGEMAKER_ROLE" \
   -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
-  $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
+  -k "$PYTEST_KEYWORDS" $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
 coverage xml
 coverage html --show-contexts
 cd -
