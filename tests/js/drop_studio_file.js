@@ -32,7 +32,7 @@ input.onchange = function () {
         }
     }
 
-    ['dragenter', 'drop'].forEach(function (name) {
+    ['dragenter', 'drop', 'dragleave'].forEach(function (name) {
         console.log('Dispatching mouse event with file transfer')
         const evt = document.createEvent('MouseEvent');
         evt.initMouseEvent(name, !0, !0, window, 0, 0, 0, x, y, !1, !1, !1, !1, 0, null);

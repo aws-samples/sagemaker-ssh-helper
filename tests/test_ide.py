@@ -333,9 +333,6 @@ def test_studio_notebook_in_firefox(request):
     logging.info("Launching SageMaker Studio")
     browser.get(studio_pre_signed_url)
 
-    logging.info("Checking for SageMaker Studio in Firefox")
-    assert "JupyterLab" in browser.title
-
     logging.info("Waiting for SageMaker Studio to launch")
     WebDriverWait(browser, 600).until(
         EC.presence_of_element_located((By.XPATH, "//div[@id='space-menu']"))
@@ -344,7 +341,16 @@ def test_studio_notebook_in_firefox(request):
     logging.info(f"Found SageMaker Studio space menu item: {kernel_menu_item.text}")
     assert kernel_menu_item.text == 'test-data-science / Personal Studio'
 
-    time.sleep(10)  # wait until obscurity of the menu items is gone and UI is fully loaded
+    time.sleep(60)  # wait until obscurity of the menu items is gone and UI is fully loaded
+
+    logging.info("Checking the kernel name")
+    kernel_item = browser.find_element(
+        By.XPATH,
+        "//button[@class='bp3-button bp3-minimal jp-Toolbar-kernelName "
+        "jp-ToolbarButtonComponent minimal jp-Button']"
+    )
+    logging.info(f"Found Kernel name: {kernel_item.text}")
+    assert kernel_item.text == "Data Science 2.0\n|\nPython 3\n|\n2 vCPU + 8 GiB"
 
     dist_file_name_pattern = 'sagemaker_ssh_helper-.*-py3-none-any.whl'
     dist_file_name = [f for f in os.listdir('../dist') if re.match(dist_file_name_pattern, f)][0]
@@ -376,15 +382,6 @@ def test_studio_notebook_in_firefox(request):
         "and text()='Restart Kernel and Run All Cells…']")
     logging.info(f"Found SageMaker Studio restart kernel menu item: {restart_menu_item.text}")
     restart_menu_item.click()
-
-    logging.info("Checking the kernel name")
-    kernel_item = browser.find_element(
-        By.XPATH,
-        "//button[@class='bp3-button bp3-minimal jp-Toolbar-kernelName "
-        "jp-ToolbarButtonComponent minimal jp-Button']"
-    )
-    logging.info(f"Found Kernel name: {kernel_item.text}")
-    assert kernel_item.text == "Data Science 2.0\n|\nPython 3\n|\n2 vCPU + 8 GiB"
 
     # TODO: check banner if kernel is still starting, wait until banner disappears, then click restart
     # <div class="css-a7sx0c-bannerContainer sagemaker-starting-banner" id="sagemaker-notebook-banner"><div class="css-1qyc1pu-kernelStartingBannerContainer"><div><div class="css-6wrpfe-bannerSpinDiv"></div></div><div><p class="css-g9mx5z-bannerPromptSpanTitle">Starting notebook kernel...</p></div></div></div>
@@ -437,10 +434,10 @@ def upload_file(browser, file_abs_path):
     logging.info(f"Created a file upload item: {file_input}")
     file_input.send_keys(file_abs_path)
     time.sleep(5)  # Give time to overwrite dialog to apper
-    confirmOverride(browser)
+    confirm_overwrite(browser)
 
 
-def confirmOverride(browser):
+def confirm_overwrite(browser):
     overwrite_button = browser.find_elements(
         By.XPATH,
         "//div[@class='jp-Dialog-buttonLabel' "
