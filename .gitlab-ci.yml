@@ -18,12 +18,9 @@ run_tests:
         coverage_format: cobertura
         path: tests/coverage.xml
     paths:
+      - dist/
       - src_diff/
-      - pip_freeze_before.txt
-      - pip_freeze_after.txt
-      - pip_freeze_diff.txt
-      - pip_freeze_after_test.txt
-      - pip_freeze_diff_test.txt
+      - pip_freeze/
       - tests/pytest_report.xml
       - tests/pytest_report.html
       - tests/htmlcov/

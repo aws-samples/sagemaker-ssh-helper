@@ -1,7 +1,9 @@
 import logging
 import os
+import re
 import subprocess
 import time
+from pathlib import Path
 
 import pytest
 from selenium.webdriver.support.wait import WebDriverWait
@@ -314,8 +316,6 @@ def test_studio_default_domain_multiple_users(request):
     assert "test-data-science" in user_profile_name
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Not yet stable")
 def test_studio_notebook_in_firefox(request):
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
 
@@ -337,44 +337,64 @@ def test_studio_notebook_in_firefox(request):
     assert "JupyterLab" in browser.title
 
     logging.info("Waiting for SageMaker Studio to launch")
-    WebDriverWait(browser, 300).until(
-        EC.presence_of_element_located((By.XPATH, "//div[@id='jp-MainLogo']"))
+    WebDriverWait(browser, 600).until(
+        EC.presence_of_element_located((By.XPATH, "//div[@id='space-menu']"))
     )
-    time.sleep(15)  # wait until obscurity of the menu item is gone and UI is fully loaded
+    kernel_menu_item = browser.find_element(By.XPATH, "//div[@id='space-menu']")
+    logging.info(f"Found SageMaker Studio space menu item: {kernel_menu_item.text}")
+    assert kernel_menu_item.text == 'test-data-science / Personal Studio'
 
-    # TODO: ide.upload_ssh("../SageMaker_SSH_IDE.ipynb", "/root/SageMaker_SSH_IDE-DS2-CPU.ipynb")
-    # TODO: ide.upload_UI("../SageMaker_SSH_IDE.ipynb", "/SageMaker_SSH_IDE-DS2-CPU.ipynb")
-    # TODO: ide.upload_UI("../", "/sagemaker-ssh-helper", exclude=["*"], include=["setup.py", "sagemaker_ssh_helper/"])
+    time.sleep(10)  # wait until obscurity of the menu items is gone and UI is fully loaded
+
+    dist_file_name_pattern = 'sagemaker_ssh_helper-.*-py3-none-any.whl'
+    dist_file_name = [f for f in os.listdir('../dist') if re.match(dist_file_name_pattern, f)][0]
+    logging.info(f"Found dist file: {dist_file_name}")
+
     # TODO: File -> Reload notebook from Disk
     # TODO: ide.add_new_cell([
-    #  "%%sh"
-    #  "pip3 install -U ./sagemaker-ssh-helper/"
+    #  f"%%sh"
+    #  f"pip3 install -U ./{dist_file_name}"
     #  ])
 
-    kernel_menu_xpath = "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' " \
-                        "and text()='Kernel']"
-    kernel_menu_item = browser.find_element(By.XPATH, kernel_menu_xpath)
-    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
+    upload_file(browser, os.path.abspath("../SageMaker_SSH_IDE.ipynb"))
+    logging.info("IDE notebook uploaded")
+    upload_file(browser, os.path.abspath(Path("../dist/", dist_file_name)))
+    logging.info("Dist file uploaded")
+
+    kernel_menu_item = browser.find_element(
+        By.XPATH,
+        "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' "
+        "and text()='Kernel']"
+    )
+    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item.text}")
     kernel_menu_item.click()
 
     logging.info("Restarting kernel and running all cells")
-    restart_menu_xpath = "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' " \
-                         "and text()='Restart Kernel and Run All Cells…']"
-    restart_menu_item = browser.find_element(By.XPATH, restart_menu_xpath)
-    logging.info(f"Found SageMaker Studio restart kernel menu item: {restart_menu_item}")
+    restart_menu_item = browser.find_element(
+        By.XPATH,
+        "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' "
+        "and text()='Restart Kernel and Run All Cells…']")
+    logging.info(f"Found SageMaker Studio restart kernel menu item: {restart_menu_item.text}")
     restart_menu_item.click()
 
-    # TODO: check if kernel has been already started, also check that it's a correct kernel and instance type
-    # <button type="button" class="bp3-button bp3-minimal jp-Toolbar-kernelName jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title="Switch kernel"><span class="bp3-button-text"><span class="jp-ToolbarButtonComponent-label">No Kernel</span></span></button>
-    # <button type="button" class="bp3-button bp3-minimal jp-Toolbar-kernelName jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title=""><span class="bp3-button-text"><span class="jp-ToolbarButtonComponent-label" style="display: none;">Python 3 (Data Science 2.0)</span></span><span class="css-1jyspix newButtonTarget"><span class="css-1vcsdgo">Data Science 2.0</span><span class="css-pyakce">|</span><span>Python 3</span><span class="css-pyakce">|</span><span>2 vCPU +  4 GiB</span></span></button>
+    logging.info("Checking the kernel name")
+    kernel_item = browser.find_element(
+        By.XPATH,
+        "//button[@class='bp3-button bp3-minimal jp-Toolbar-kernelName "
+        "jp-ToolbarButtonComponent minimal jp-Button']"
+    )
+    logging.info(f"Found Kernel name: {kernel_item.text}")
+    assert kernel_item.text == "Data Science 2.0\n|\nPython 3\n|\n2 vCPU + 8 GiB"
 
     # TODO: check banner if kernel is still starting, wait until banner disappears, then click restart
     # <div class="css-a7sx0c-bannerContainer sagemaker-starting-banner" id="sagemaker-notebook-banner"><div class="css-1qyc1pu-kernelStartingBannerContainer"><div><div class="css-6wrpfe-bannerSpinDiv"></div></div><div><p class="css-g9mx5z-bannerPromptSpanTitle">Starting notebook kernel...</p></div></div></div>
 
-    restart_button_xpath = "//div[@class='jp-Dialog-buttonLabel' " \
-                           "and text()='Restart']"
-    restart_button = browser.find_element(By.XPATH, restart_button_xpath)
-    logging.info(f"Found SageMaker Studio restart button: {restart_button}")
+    restart_button = browser.find_element(
+        By.XPATH,
+        "//div[@class='jp-Dialog-buttonLabel' "
+        "and text()='Restart']"
+    )
+    logging.info(f"Found SageMaker Studio restart button: {restart_button.text}")
     restart_button.click()
 
     time.sleep(120)  # Give time to restart
@@ -404,3 +424,28 @@ def test_studio_notebook_in_firefox(request):
 
     logging.info("Closing Firefox")
     browser.close()
+
+
+def upload_file(browser, file_abs_path):
+    file_drop_area = browser.find_element(
+        By.XPATH,
+        "//ul[@class='jp-DirListing-content']"
+    )
+    logging.info(f"Found file browser to drop the file to: {file_drop_area.text}")
+    time.sleep(2)
+    file_input = browser.execute_script(Path('js/drop_studio_file.js').read_text(), file_drop_area, 0, 0)
+    logging.info(f"Created a file upload item: {file_input}")
+    file_input.send_keys(file_abs_path)
+    time.sleep(5)  # Give time to overwrite dialog to apper
+    confirmOverride(browser)
+
+
+def confirmOverride(browser):
+    overwrite_button = browser.find_elements(
+        By.XPATH,
+        "//div[@class='jp-Dialog-buttonLabel' "
+        "and text()='Overwrite']"
+    )
+    if len(overwrite_button) > 0:
+        logging.info(f"Found overwrite dialog button: {overwrite_button[0].text}")
+        overwrite_button[0].click()

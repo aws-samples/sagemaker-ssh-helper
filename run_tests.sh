@@ -11,16 +11,18 @@ bash ./compare_release_src.sh
 python -m venv ./venv
 source ./venv/bin/activate
 # Install the package
-pip freeze --all | tee pip_freeze_before.txt
+mkdir -p pip_freeze/
+pip freeze --all | tee pip_freeze/before.txt
 pip install '.'
 pip check
-pip freeze --all | tee pip_freeze_after.txt
+pip freeze --all | tee pip_freeze/after.txt
 cp -r ./venv/ ./venv-lambda/
 pip install '.[cdk,test]'
 pip check
-pip freeze --all | tee pip_freeze_after_test.txt
-( diff pip_freeze_before.txt pip_freeze_after.txt || : ) | tee pip_freeze_diff.txt
-( diff pip_freeze_after.txt pip_freeze_after_test.txt || : ) | tee pip_freeze_diff_test.txt
+pip freeze --all | tee pip_freeze/after_test.txt
+( diff pip_freeze/before.txt pip_freeze/after.txt || : ) | tee pip_freeze/diff.txt
+( diff pip_freeze/after.txt pip_freeze/after_test.txt || : ) | tee pip_freeze/diff_test.txt
+python -m build
 # Scanning sources
 bandit -r ./sagemaker_ssh_helper/ ./tests/ ./*.py --skip B603,B404,B101 2>&1 | tee bandit.txt
 flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ ./*.py | tee flake8.txt
