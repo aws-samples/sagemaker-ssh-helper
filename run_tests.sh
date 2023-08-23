@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-echo "Keywords expression for pytest (PYTEST_EXTRA_KEYWORDS): -k '$PYTEST_KEYWORDS'"
+echo "Keywords expression for pytest (PYTEST_KEYWORDS): -k '$PYTEST_KEYWORDS'"
 echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
 cat /etc/hosts
 bash ./compare_release_src.sh
