@@ -45,15 +45,16 @@ def handler(event, context):
                 logging.warning(f"Found issues with GPU utilization of the training job "
                                 f"{ssh_training_wrapper.training_job_name()}: {status_details}")
 
-                # Send notification email and/or SMS through Amazon SNS topic
+                logging.info(f"Send notification email and/or SMS through Amazon SNS topic {sns_notification_topic_arn}")
                 sns_resource = boto3.resource('sns')
                 sns_notification_topic = sns_resource.Topic(sns_notification_topic_arn)
-                sns_notification_topic.publish(
+                response = sns_notification_topic.publish(
                     Subject='Training job with low GPU utilization',
                     Message=status_details + "\n\n" +
                             "Training job metadata URL:\n" +
                             ssh_training_wrapper.get_metadata_url()
                 )
+                logging.info(f"SNS response: {response}")
 
                 # Optionally, stop the job (not recommended, better to keep notifications only)
                 # ssh_training_wrapper.stop_training_job()

@@ -138,5 +138,6 @@ def test_cloudwatch_metrics_sns(request):
 
     log = SSHLog()
     metrics_count = log.count_sns_notifications(topic_name, timedelta(minutes=15))
+    logging.info(metrics_count)
 
     assert metrics_count > 0
