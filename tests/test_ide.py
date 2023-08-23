@@ -337,15 +337,10 @@ def test_studio_notebook_in_firefox(request):
     assert "JupyterLab" in browser.title
 
     logging.info("Waiting for SageMaker Studio to launch")
-    kernel_menu_xpath = "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' " \
-                        "and text()='Kernel']"
-    WebDriverWait(browser, 30).until(
-        EC.presence_of_element_located((By.XPATH, kernel_menu_xpath))
+    WebDriverWait(browser, 300).until(
+        EC.presence_of_element_located((By.XPATH, "//div[@id='jp-MainLogo']"))
     )
     time.sleep(15)  # wait until obscurity of the menu item is gone and UI is fully loaded
-    kernel_menu_item = browser.find_element(By.XPATH, kernel_menu_xpath)
-    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
-    kernel_menu_item.click()
 
     # TODO: ide.upload_ssh("../SageMaker_SSH_IDE.ipynb", "/root/SageMaker_SSH_IDE-DS2-CPU.ipynb")
     # TODO: ide.upload_UI("../SageMaker_SSH_IDE.ipynb", "/SageMaker_SSH_IDE-DS2-CPU.ipynb")
@@ -355,6 +350,12 @@ def test_studio_notebook_in_firefox(request):
     #  "%%sh"
     #  "pip3 install -U ./sagemaker-ssh-helper/"
     #  ])
+
+    kernel_menu_xpath = "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' " \
+                        "and text()='Kernel']"
+    kernel_menu_item = browser.find_element(By.XPATH, kernel_menu_xpath)
+    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item}")
+    kernel_menu_item.click()
 
     logging.info("Restarting kernel and running all cells")
     restart_menu_xpath = "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' " \
