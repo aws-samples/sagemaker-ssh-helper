@@ -11,6 +11,7 @@ extras = {
         "constructs>=10.0.0,<11.0.0",
     ],
     "test": [
+        "build",
         "coverage",
         "flake8",
         "mock",
