@@ -334,7 +334,7 @@ def test_studio_notebook_in_firefox(request):
     browser.get(studio_pre_signed_url)
 
     logging.info("Waiting for SageMaker Studio to launch")
-    WebDriverWait(browser, 600).until(
+    WebDriverWait(browser, 1200).until(
         EC.presence_of_element_located((By.XPATH, "//div[@id='space-menu']"))
     )
     kernel_menu_item = browser.find_element(By.XPATH, "//div[@id='space-menu']")
