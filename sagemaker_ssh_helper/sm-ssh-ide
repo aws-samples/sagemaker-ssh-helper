@@ -152,7 +152,7 @@ elif [[ "$1" == "init-ssm" ]]; then
     echo "sm-ssh-ide: Will use local user ID: $LOCAL_USER_ID"
 
     user_profile_json=$(aws sagemaker describe-user-profile \
-      --domain "$(_print_sm_domain_id)" \
+      --domain-id "$(_print_sm_domain_id)" \
       --user-profile-name "$(_print_sm_user_profile_name)" \
       --output json \
       | tr -d "\n")
