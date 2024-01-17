@@ -73,7 +73,7 @@ To understand more what CDK bootstrapping does, see [the documentation](https://
 
 a. Enable advanced instances tier to use managed instances (such as SageMaker managed containers): 
    
-Go to AWS Console -> Systems Manager -> Fleet Manager -> Account management -> Instance tier settings -> Change account setting -> Confirm change from Standard-Tier to Advanced-Tier.
+Go to AWS Console -> Systems Manager -> Fleet Manager -> Settings -> Change instance tier settings -> Confirm change from Standard-Tier to Advanced-Tier.
 
 Repeat for each AWS Region that you plan to use with SageMaker SSH Helper.
 
