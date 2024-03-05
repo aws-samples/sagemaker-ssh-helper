@@ -15,16 +15,20 @@ like nvidia-smi, or iteratively fix and re-execute your training script within s
 PyCharm Professional Edition or Visual Studio Code.
 3. Port forwarding to access diagnostic tools running inside SageMaker, e.g., Dask dashboard, TensorBoard or Spark Web UI.
 
+![Screenshot](images/high-level-architecture.png)
+
 Other asks include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, or start a VNC session to SageMaker Studio to run GUI apps.  
 
-## How it works
-SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed by creating an SSM session between your client machine and the SageMaker container. Then you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM session, that allows opening a Linux shell and configuring bidirectional SSH port forwarding to run applications like remote development, debugging, desktop GUI, and others.
 
-![Screenshot](images/high-level-architecture.png)
+## How it works
+SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register a SageMaker container in SSM, followed by creating a session between your client machine and the Session Manager service. From there, you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM sessions, that allows opening a Linux shell and configuring bidirectional SSH port forwarding to run applications like remote development, debugging, desktop GUI, and others.
+
+![Screenshot](images/guidance-diagram.png)
 
 Once you become familiar with the library, check the [Flow Diagrams](Flow_Diagrams.md) of the common use cases. 
 
-Also make sure you looked at our [Frequently Asked Questions](FAQ.md).
+Make sure you also looked at our [Frequently Asked Questions](FAQ.md) as well as the existing both open and resolved [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues?q=is%3Aissue), before raising a new issue or question.
+
 
 ## Getting started
 
