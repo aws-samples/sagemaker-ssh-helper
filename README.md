@@ -18,9 +18,9 @@ PyCharm Professional Edition or Visual Studio Code.
 Other asks include but not limited to connecting to a remote Jupyter Notebook in SageMaker Studio from your IDE, or start a VNC session to SageMaker Studio to run GUI apps.  
 
 ## How it works
-SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container in SSM, followed by creating an SSM session between your client machine and the SageMaker container. Then you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM session, that allows opening a Linux shell and configuring bidirectional SSH port forwarding to run applications like remote development, debugging, desktop GUI, and others.
+SageMaker SSH helper uses AWS Systems Manager (SSM) Session Manager, to register the SageMaker container (e.g. training job, inference endpoint, notebook, etc) in SSM, followed by creating a session between your client machine and the Session Manager service. From there, you can "SSH into SageMaker" by creating an SSH (Secure Shell) connection on top of the SSM sessions, that allows opening a Linux shell and configuring bidirectional SSH port forwarding to run applications like remote development, debugging, desktop GUI, and others.
 
-![Screenshot](images/high-level-architecture.png)
+![Screenshot](images/guidance-diagram.png)
 
 Once you become familiar with the library, check the [Flow Diagrams](Flow_Diagrams.md) of the common use cases. 
 
