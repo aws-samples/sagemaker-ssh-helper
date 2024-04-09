@@ -31,10 +31,10 @@ if [[ "$1" == "configure" ]]; then
     cat >/etc/profile.d/sm-ssh-ide.sh <<EOF
 export XAUTHORITY="/tmp/.Xauthority-\$USER"
 export ICEAUTHORITY="/tmp/.ICEauthority-\$USER"
-touch "/tmp/.Xauthority-\$USER"
-touch "/tmp/.ICEauthority-\$USER"
-chmod 600 "/tmp/.Xauthority-\$USER"
-chmod 600 "/tmp/.ICEauthority-\$USER"
+sudo touch "/tmp/.Xauthority-\$USER"
+sudo touch "/tmp/.ICEauthority-\$USER"
+sudo chmod 600 "/tmp/.Xauthority-\$USER"
+sudo chmod 600 "/tmp/.ICEauthority-\$USER"
 EOF
     source /etc/profile.d/sm-ssh-ide.sh
 
@@ -151,12 +151,21 @@ elif [[ "$1" == "init-ssm" ]]; then
     LOCAL_USER_ID="$(cat ~/.sm-ssh-owner)"
     echo "sm-ssh-ide: Will use local user ID: $LOCAL_USER_ID"
 
-    user_profile_json=$(aws sagemaker describe-user-profile \
-      --domain-id "$(_print_sm_domain_id)" \
-      --user-profile-name "$(_print_sm_user_profile_name)" \
-      --output json \
-      | tr -d "\n")
-    execution_role=$(echo "$user_profile_json" | grep "ExecutionRole" \
+    if [[ -n $(_print_sm_user_profile_name) && $(_print_sm_user_profile_name) != "null" ]]; then
+      json=$(aws sagemaker describe-user-profile \
+        --domain-id "$(_print_sm_domain_id)" \
+        --user-profile-name "$(_print_sm_user_profile_name)" \
+        --output json \
+        | tr -d "\n")
+    else
+      json=$(aws sagemaker describe-space \
+        --domain-id "$(_print_sm_domain_id)" \
+        --space-name "$(_print_sm_space_name)" \
+        --output json \
+        | tr -d "\n")
+    fi
+
+    execution_role=$(echo "$json" | grep "ExecutionRole" \
       | sed -e 's/^.*"ExecutionRole": \"\([^"]*\)\".*$/\1/')
 
     SSH_SSM_ROLE=$(echo "$execution_role" | sed -e 's/^.*:role\/\(.*\)/\1/')
@@ -192,7 +201,7 @@ elif [[ "$1" == "start" ]]; then
     touch /tmp/.ssh-ide-local-lock
 
     echo "sm-ssh-ide: Saving env variables for remote SSH interpreter"
-    sm-save-env
+    sudo sm-save-env
 
     echo "sm-ssh-ide: Generating UTF-8 locales"
     _locale_gen
@@ -244,7 +253,7 @@ elif [[ "$1" == "start" ]]; then
 elif [[ "$1" == "ssm-agent" ]]; then
 
     echo "sm-ssh-ide: Starting SSM agent"
-    /usr/bin/amazon-ssm-agent
+    sudo /usr/bin/amazon-ssm-agent
 
 elif [[ "$1" == "status" ]]; then
 

@@ -170,7 +170,13 @@ function _print_sm_domain_id() {
 # shellcheck disable=SC2001
 function _print_sm_user_profile_name() {
   sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
-  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"UserProfileName":\"\([^"]*\)\".*$/\1/'
+  echo -n "$sm_resource_metadata_json" | jq -r '.UserProfileName'
+}
+
+# shellcheck disable=SC2001
+function _print_sm_space_name() {
+  sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
+  echo -n "$sm_resource_metadata_json" | jq -r '.SpaceName'
 }
 
 function _print_sm_studio_python() {
@@ -216,6 +222,6 @@ function _start_sshd() {
   if _is_centos; then
     /usr/sbin/sshd
   else
-    service ssh start || (echo "ERROR: Failed to start sshd service" && exit 255)
+    sudo service ssh start || (echo "ERROR: Failed to start sshd service" && exit 255)
   fi
 }
