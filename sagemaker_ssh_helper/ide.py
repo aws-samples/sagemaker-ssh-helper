@@ -46,9 +46,10 @@ class Image:
 class SSHIDE:
     logger = logging.getLogger('sagemaker-ssh-helper:SSHIDE')
 
-    def __init__(self, domain_id: str, user: str, region_name: str = None):
+    def __init__(self, domain_id: str, user: str, region_name: str = None, space: str = None):
         self.user = user
         self.domain_id = domain_id
+        self.space = space
         self.current_region = region_name or boto3.session.Session().region_name
         self.client = boto3.client('sagemaker', region_name=self.current_region)
         self.ssh_log = SSHLog(region_name=self.current_region)
@@ -201,6 +202,9 @@ class SSHIDE:
     def print_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0):
         print(self.get_kernel_instance_ids(app_name, timeout_in_sec)[index])
 
+    def print_space_instance_id(self, app_name, timeout_in_sec, index: int = 0):
+        print(self.get_space_instance_ids(app_name, timeout_in_sec)[index])
+
     def get_kernel_instance_ids(self, app_name, timeout_in_sec):
         self.logger.info("Resolving IDE instance IDs through SSM tags")
         self.log_urls(app_name)
@@ -217,6 +221,24 @@ class SSHIDE:
                                 f"active kernel gateway with the name {app_name} in the region {self.current_region}")
             result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec)
         return result
+
+    def get_space_instance_ids(self, app_name, timeout_in_sec):
+        self.logger.info("Resolving IDE instance IDs through SSM tags")
+        self.log_urls(app_name)
+        if self.domain_id and self.space:
+            result = SSMManager().get_studio_space_app_instance_ids(self.domain_id, self.space, app_name, timeout_in_sec)
+        elif self.space:
+            self.logger.warning(f"Domain ID is not set. Will attempt to connect to the latest "
+                                f"active kernel gateway with the name {app_name} in the region {self.current_region} "
+                                f"for space {self.space}")
+            result = SSMManager().get_studio_space_app_instance_ids("", self.space, app_name,
+                                                                   timeout_in_sec)
+        else:
+            self.logger.warning(f"Domain ID or space name are not set. Will attempt to connect to the latest "
+                                f"active kernel gateway with the name {app_name} in the region {self.current_region}")
+            result = SSMManager().get_studio_app_instance_ids(app_name, timeout_in_sec)
+        return result
+
 
     def log_urls(self, app_name):
         self.logger.info(f"Remote logs are at {self.get_cloudwatch_url(app_name)}")

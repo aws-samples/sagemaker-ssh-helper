@@ -53,4 +53,8 @@ response=$(aws ssm create-activation \
 acode=$(echo $response | jq --raw-output '.ActivationCode')
 aid=$(echo $response | jq --raw-output '.ActivationId')
 
-echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+if [[ -n $(_print_sm_user_profile_name) && $(_print_sm_user_profile_name) != "null" ]]; then
+  echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+else
+  echo Yes | sudo amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+fi
