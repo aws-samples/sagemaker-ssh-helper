@@ -500,7 +500,6 @@ class SSHProcessorWrapper(SSHEnvironmentWrapper):
         print(f"To connect over SSH run:\n"
               f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.get_processor_latest_job_name()}.processing.sagemaker")
 
-
     def __init__(self, processor: sagemaker.processing.Processor,
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True,
@@ -729,4 +728,3 @@ class SSHNotebookInstanceWrapper(SSHEnvironmentWrapper):
               f"sm-local-configure")
         print(f"To connect over SSH run:\n"
               f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.notebook_instance.notebook_name}.notebook.sagemaker")
-
