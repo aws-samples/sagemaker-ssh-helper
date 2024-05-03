@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import os
 from abc import ABC, abstractmethod
+from datetime import timedelta
 
 import boto3
 import sagemaker
@@ -17,9 +18,11 @@ from sagemaker.transformer import _TransformJob  # need access to sagemaker inte
 
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.spark import PySparkProcessor
+from sagemaker_ssh_helper.sm_ssh import SageMakerSecureShellHelper
 
 from sagemaker_ssh_helper.aws import AWS
 from sagemaker_ssh_helper.detached_sagemaker import DetachedEstimator, DetachedProcessor
+from sagemaker_ssh_helper.ide import SSHIDE, NotebookInstance
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
@@ -108,6 +111,12 @@ class SSHEnvironmentWrapper(ABC):
         """
         raise NotImplementedError("Abstract method")
 
+    def get_instance_id(self, retry: int = None, timeout_in_sec: int = 900, index: int = 0):
+        ids = self.get_instance_ids(retry, timeout_in_sec)
+        if not ids:
+            raise ValueError(f"No SSM instances found.")
+        return ids[index]
+
     def retry_deprecated_warning(self, retry, timeout_in_sec):
         if retry:
             self.logger.warning("retry is deprecated, use timeout_in_sec instead")
@@ -116,13 +125,19 @@ class SSHEnvironmentWrapper(ABC):
 
     def start_ssm_connection_and_continue(self, ssh_listen_port: int, retry: int = None,
                                           timeout_in_sec: int = 900,
+                                          timeout: timedelta = timedelta(minutes=15),
                                           extra_args: str = ""):
-        proxy = self.start_ssm_connection(ssh_listen_port, retry, timeout_in_sec, extra_args)
+        if timeout_in_sec != timeout.total_seconds():
+            timeout_in_sec = timeout.total_seconds()
+        proxy = self.start_ssm_connection(ssh_listen_port, retry, timeout_in_sec=timeout_in_sec, extra_args=extra_args)
         proxy.disconnect()
 
     def start_ssm_connection(self, ssh_listen_port: int, retry: int = None,
+                             timeout: timedelta = timedelta(minutes=15),
                              timeout_in_sec: int = 900,
                              extra_args: str = "") -> SSMProxy:
+        if timeout_in_sec != timeout.total_seconds():
+            timeout_in_sec = timeout.total_seconds()
         self.logger.info(f"Starting SSM connection")
         timeout_in_sec = self.retry_deprecated_warning(retry, timeout_in_sec)
         instance_ids = self.get_instance_ids(timeout_in_sec=timeout_in_sec)
@@ -160,6 +175,35 @@ class SSHEnvironmentWrapper(ABC):
     @abstractmethod
     def get_metadata_url(self):
         raise ValueError("Not implemented")
+
+    @abstractmethod
+    def print_ssh_info(self):
+        raise ValueError("Not implemented")
+
+    @classmethod
+    def attach_to_resource(cls, fqdn: str,
+                           domain_id: str = '',
+                           user_profile_name: str = '',
+                           sagemaker_session: Session = None):
+        resource_type = SageMakerSecureShellHelper.fqdn_to_type(fqdn)
+        resource_name = SageMakerSecureShellHelper.fqdn_to_name(fqdn)
+        if resource_type == 'inference':
+            return SSHModelWrapper.attach(resource_name, sagemaker_session)
+        elif resource_type == 'training':
+            return SSHEstimatorWrapper.attach(resource_name, sagemaker_session)
+        elif resource_type == 'processing':
+            return SSHProcessorWrapper.attach(resource_name, sagemaker_session)
+        elif resource_type == 'transform':
+            return SSHTransformerWrapper.attach(resource_name, sagemaker_session)
+        elif resource_type == 'ide':
+            return SSHIDEWrapper.attach(domain_id, user_profile_name, resource_name, sagemaker_session)
+        elif resource_type == 'notebook':
+            return SSHNotebookInstanceWrapper.attach(resource_name, sagemaker_session)
+        else:
+            raise ValueError(f"Don't know how to handle this resource type: {resource_type}")
+
+    def region(self):
+        return self.sagemaker_session.boto_region_name
 
 
 class SSHEstimatorWrapper(SSHEnvironmentWrapper):
@@ -229,9 +273,13 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         self.logger.info("Training job is stopped")
 
     @classmethod
-    def create(cls, estimator: sagemaker.estimator.EstimatorBase, connection_wait_time_seconds: int = 600,
+    def create(cls, estimator: sagemaker.estimator.EstimatorBase,
+               connection_wait_time_seconds: int = 600,
+               connection_wait_time: timedelta = timedelta(minutes=10),
                ssh_instance_count: int = 2, local_user_id: str = None,
                log_to_stdout: bool = False) -> SSHEstimatorWrapper:
+        if connection_wait_time_seconds != connection_wait_time.total_seconds():
+            connection_wait_time_seconds = connection_wait_time.total_seconds()
         # noinspection PyProtectedMember
         if estimator._current_job_name:
             raise ValueError(
@@ -270,6 +318,16 @@ class SSHEstimatorWrapper(SSHEnvironmentWrapper):
         if ':training-job/' not in training_job_arn:
             raise ValueError(f"Not a training job ARN: {training_job_arn}")
         return cls.attach(training_job_arn.split('/')[1], sagemaker_session)
+
+    def print_ssh_info(self):
+        print(f"Remote training logs are at {self.get_cloudwatch_url()}")
+        print(f"Training job metadata is at {self.get_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.training_job_name()}.training.sagemaker")
 
 
 class SSHModelWrapper(SSHEnvironmentWrapper):
@@ -330,6 +388,24 @@ class SSHModelWrapper(SSHEnvironmentWrapper):
         describe_result = boto3.client('sagemaker').describe_endpoint(EndpointName=self.model.endpoint_name)
         status = describe_result["EndpointStatus"]
         return status == 'InService'
+
+    @classmethod
+    def attach(cls, endpoint_name: str, sagemaker_session):
+        model = sagemaker.Model(image_uri='', sagemaker_session=sagemaker_session)
+        model.endpoint_name = endpoint_name
+        return SSHModelWrapper(model)
+
+    def print_ssh_info(self):
+        print(f"Remote endpoint logs are at {self.get_cloudwatch_url()}")
+        print(f"Endpoint metadata is at {self.get_metadata_url()}")
+        print(f"Endpoint config metadata is at {self.get_config_metadata_url()}")
+        print(f"Model metadata is at {self.get_model_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.model.endpoint_name}.inference.sagemaker")
 
 
 class SSHMultiModelWrapper(SSHEnvironmentWrapper):
@@ -400,8 +476,31 @@ class SSHMultiModelWrapper(SSHEnvironmentWrapper):
     def get_model_metadata_url(self):
         return self.ssh_log.get_model_metadata_url(self.mdm.name)
 
+    def print_ssh_info(self):
+        print(f"Remote multi-model endpoint logs are at {self.get_cloudwatch_url()}")
+        print(f"Multi-model endpoint metadata is at {self.get_metadata_url()}")
+        print(f"Endpoint config metadata is at {self.get_config_metadata_url()}")
+        print(f"Model metadata is at {self.get_model_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.mdm.endpoint_name}.inference.sagemaker")
+
 
 class SSHProcessorWrapper(SSHEnvironmentWrapper):
+    def print_ssh_info(self):
+        print(f"Remote processing logs are at {self.get_cloudwatch_url()}")
+        print(f"Processing job metadata is at {self.get_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.get_processor_latest_job_name()}.processing.sagemaker")
+
+
     def __init__(self, processor: sagemaker.processing.Processor,
                  ssm_iam_role: str = '',
                  bootstrap_on_start: bool = True,
@@ -520,3 +619,114 @@ class SSHTransformerWrapper(SSHEnvironmentWrapper):
 
     def get_metadata_url(self):
         return self.ssh_log.get_transform_metadata_url(self.get_transformer_latest_job_name())
+
+    @classmethod
+    def attach(cls, transform_job_name, sagemaker_session: Session = None) -> SSHTransformerWrapper:
+        transformer = sagemaker.transformer.Transformer.attach(transform_job_name)
+        return SSHTransformerWrapper(
+            transformer,
+            SSHModelWrapper.attach(transform_job_name, sagemaker_session or Session())
+        )
+
+    def print_ssh_info(self):
+        print(f"Remote batch transform logs are at {self.get_cloudwatch_url()}")
+        print(f"Batch transform job metadata is at {self.get_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.get_transformer_latest_job_name()}.transform.sagemaker")
+
+
+class SSHIDEWrapper(SSHEnvironmentWrapper):
+    def __init__(self,
+                 ssm_iam_role: str,
+                 ide: SSHIDE,
+                 bootstrap_on_start: bool = True,
+                 connection_wait_time_seconds: int = 600,
+                 sagemaker_session: sagemaker.Session = None,
+                 local_user_id: str = None,
+                 log_to_stdout: bool = False):
+        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds, sagemaker_session,
+                         local_user_id, log_to_stdout)
+        self.app_name = None
+        self.ide = ide
+        self.not_earlier_than_timestamp = 0
+
+    @classmethod
+    def attach(cls, domain_id, user_profile_name, app_name, sagemaker_session: Session = None,
+               not_earlier_than_timestamp: int = 0) -> SSHIDEWrapper:
+        sagemaker_session = sagemaker_session or sagemaker.Session()
+        result = SSHIDEWrapper(
+            '',
+            SSHIDE(domain_id, user_profile_name, sagemaker_session.boto_region_name),
+            connection_wait_time_seconds=0
+        )
+        result.app_name = app_name
+        result.not_earlier_than_timestamp = not_earlier_than_timestamp
+        return result
+
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
+        return self.ide.get_kernel_instance_ids(self.app_name, timeout_in_sec=timeout_in_sec,
+                                                not_earlier_than_timestamp=self.not_earlier_than_timestamp)
+
+    def get_cloudwatch_url(self):
+        return self.ide.get_cloudwatch_url(self.app_name)
+
+    def get_metadata_url(self):
+        return self.ide.get_user_metadata_url()
+
+    def print_ssh_info(self):
+        print(f"SageMaker Studio logs are at {self.get_cloudwatch_url()}")
+        print(f"SageMaker Studio metadata is at {self.get_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.app_name}.studio.sagemaker")
+
+
+class SSHNotebookInstanceWrapper(SSHEnvironmentWrapper):
+    def __init__(self,
+                 ssm_iam_role: str,
+                 notebook_instance: NotebookInstance,
+                 bootstrap_on_start: bool = True,
+                 connection_wait_time_seconds: int = 600,
+                 sagemaker_session: sagemaker.Session = None,
+                 local_user_id: str = None,
+                 log_to_stdout: bool = False):
+        super().__init__(ssm_iam_role, bootstrap_on_start, connection_wait_time_seconds, sagemaker_session,
+                         local_user_id, log_to_stdout)
+        self.notebook_instance = notebook_instance
+
+    def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
+        return self.notebook_instance.get_instance_ids()
+
+    def get_cloudwatch_url(self):
+        return self.notebook_instance.get_cloudwatch_url()
+
+    def get_metadata_url(self):
+        return self.notebook_instance.get_metadata_url()
+
+    @classmethod
+    def attach(cls, notebook_name, sagemaker_session):
+        sagemaker_session = sagemaker_session or sagemaker.Session()
+        result = SSHNotebookInstanceWrapper(
+            '',
+            NotebookInstance(notebook_name, sagemaker_session.boto_region_name),
+            connection_wait_time_seconds=0
+        )
+        return result
+
+    def print_ssh_info(self):
+        print(f"SageMaker Notebook Instance logs are at {self.get_cloudwatch_url()}")
+        print(f"SageMaker Notebook Instance metadata is at {self.get_metadata_url()}")
+        print(f"To connect over SSM run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} aws ssm start-session --target {self.get_instance_id()}")
+        print(f"To configure local host for SSH run:\n"
+              f"sm-local-configure")
+        print(f"To connect over SSH run:\n"
+              f"AWS_DEFAULT_REGION={self.region()} sm-ssh connect {self.notebook_instance.notebook_name}.notebook.sagemaker")
+

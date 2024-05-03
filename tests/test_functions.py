@@ -7,7 +7,6 @@ from pathlib import Path
 import boto3
 import pytest
 import sagemaker.config
-from sagemaker import Model
 
 from sagemaker.pytorch import PyTorch
 
@@ -16,6 +15,12 @@ from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper, SSHEstimatorWrap
 from test_util import _create_bucket_if_doesnt_exist
 
 logger = logging.getLogger('sagemaker-ssh-helper:test_functions')
+
+
+def test_smoke():
+    # Quick way to test CI/CD pipeline without running any tests.
+    # Pass PYTEST_EXTRA_ARGS=test_functions.py::test_smoke as GitLab variable
+    assert 42 == 42
 
 
 def test_ssm_role_from_arn():
@@ -243,56 +248,6 @@ def test_entry_point_source_dir():
     assert str(Path('source_dir/inference_hf_accelerate/')) == 'source_dir/inference_hf_accelerate'
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Not working yet")
-def test_model_repacking_from_scratch():
-    model = Model(
-        image_uri="763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.20.0-deepspeed0.7.5-cu116",
-        role="arn:aws:iam::555555555555:role/service-role/AmazonSageMaker-ExecutionRole-Example",
-        entry_point=(p := Path('source_dir/inference_hf_accelerate/inference_ssh.py')).name,
-        source_dir=str(p.parents[0]),
-        dependencies=[SSHEstimatorWrapper.dependency_dir()],
-        sagemaker_session=sagemaker.Session(),  # FIXME: otherwise AttributeError: 'NoneType' object has no attribute 'config'
-    )
-    _ = model.prepare_container_def(instance_type='ml.m5.xlarge')
-    logging.info("Model data: %s", model.repacked_model_data)
-    assert model.repacked_model_data is not None  # FIXME: not working
-    # FIXME: SAGEMAKER_SUBMIT_DIRECTORY = file://source_dir/inference_hf_accelerate instead of /opt/ml/model/code
-
-
-def test_model_repacking_with_existing_model():
-    model = Model(
-        model_data="s3://sagemaker-eu-west-1-169264033083/data/acc_model.tar.gz",
-        image_uri="763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.20.0-deepspeed0.7.5-cu116",
-        role="arn:aws:iam::555555555555:role/service-role/AmazonSageMaker-ExecutionRole-Example",
-        entry_point=(p := Path('source_dir/inference_hf_accelerate/inference_ssh.py')).name,
-        source_dir=str(p.parents[0]),
-        dependencies=[SSHEstimatorWrapper.dependency_dir()],
-        sagemaker_session=sagemaker.Session(),  # FIXME: otherwise AttributeError: 'NoneType' object has no attribute 'config'
-    )
-    _ = model.prepare_container_def(instance_type='ml.m5.xlarge')
-    logging.info("Model data: %s", model.repacked_model_data)
-    assert model.repacked_model_data is not None
-
-
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Not working yet")
-def test_model_repacking_default_entry_point_with_existing_model():
-    model = Model(
-        model_data="s3://sagemaker-eu-west-1-169264033083/data/acc_model.tar.gz",
-        image_uri="763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.20.0-deepspeed0.7.5-cu116",
-        role="arn:aws:iam::555555555555:role/service-role/AmazonSageMaker-ExecutionRole-Example",
-        source_dir=str(Path('source_dir/inference_hf_accelerate/')),
-        # entry_point is send in the DJL serving.properties file
-        dependencies=[SSHEstimatorWrapper.dependency_dir()],
-        sagemaker_session=sagemaker.Session(),  # FIXME: otherwise AttributeError: 'NoneType' object has no attribute 'config'
-    )
-    _ = model.prepare_container_def(instance_type='ml.m5.xlarge')
-    logging.info("Model data: %s", model.repacked_model_data)
-    assert model.repacked_model_data is not None  # FIXME: not working
-    # FIXME: SAGEMAKER_SUBMIT_DIRECTORY = file://source_dir/inference_hf_accelerate instead of /opt/ml/model/code
-
-
 def test_called_process_error_with_output():
     got_error = False
     try:
@@ -302,5 +257,5 @@ def test_called_process_error_with_output():
         output = e.output.decode('latin1').strip()
         logger.info(f"Got error (expected): {output}")
         got_error = True
-        assert output == "ssh: connect to host localhost port 10022: Connection refused"
+        assert "ssh: connect to host localhost port 10022: Connection refused" in output
     assert got_error

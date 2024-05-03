@@ -1,37 +1,79 @@
 #!/bin/bash
 
+# NOTE: This is a lower level interface to the SSH Helper.
+# Run `sm-ssh -h` for the high-level interface.
+
 # Syntax:
-# sm-local-start-ssh <instance_id> <extra_ssh_args>
+# sm-local-start-ssh [--proxy-setup-only] <instance_id> <extra_ssh_args>
+
+set -e
+set -o pipefail
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
+
+proxy_setup_only="false"
+if [[ "$1" == "--proxy-setup-only" ]]; then
+  shift
+  proxy_setup_only="true"
+fi
+
 
 INSTANCE_ID=$1
 shift
 
-INSTANCE_ID=$(echo "$INSTANCE_ID" | tr '\n' ' ' | grep -o 'mi-.*$' | awk -F' ' '{print $1}')
+INSTANCE_ID=$(echo "$INSTANCE_ID" | tr '\n' ' ' | grep -o 'mi-.*$' | tr -d ' ')
 
 if [ -z "${INSTANCE_ID}" ]; then
   echo "INSTANCE_ID is not provided or incorrect (should be in the form mi-1234567890abcdef0)"
   exit 1
 fi
 
+if [[ "$proxy_setup_only" == "false" ]]; then
+  echo "sm-local-start-ssh: Got instance ID: '$INSTANCE_ID'"
+fi
+
 # Useful for port forwarding and debugging, eg. passing -vvv option
 EXTRA_SSH_ARGS=$*
 
-read -r -d '' program << EOF
+if [[ "$proxy_setup_only" == "false" ]]; then
+  echo "sm-local-start-ssh: Fetching bucket location"
+fi
+
+if [ -z "${SSH_AUTHORIZED_KEYS_PATH}" ]; then
+  # shellcheck disable=SC2091
+  bucket=$($(_python) <<EOF
 import logging
 logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
 import sagemaker
 print(sagemaker.Session().default_bucket())
 EOF
-
-if [ -z "${SSH_AUTHORIZED_KEYS_PATH}" ]; then
-  bucket=$(python -c "$program")
+  )
   SSH_AUTHORIZED_KEYS_PATH="s3://$bucket/ssh-authorized-keys/"
 fi
 
-echo "SSH authorized keys S3 path -> ${SSH_AUTHORIZED_KEYS_PATH}"
-echo "NOTE: to override the default S3 path, run 'export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-public-keys-jane-doe/' without quotes before attempting to connect."
+if [[ "$proxy_setup_only" == "false" ]]; then
+  echo "SSH authorized keys S3 path -> ${SSH_AUTHORIZED_KEYS_PATH}"
+  echo "NOTE: to override the default S3 path, run 'export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-public-keys-jane-doe/' without quotes before attempting to connect."
+fi
 
-# shellcheck disable=SC2086  # extra args have to be unquoted to be parsed from the inner script
-sm-connect-ssh-proxy "${INSTANCE_ID}" \
-    "${SSH_AUTHORIZED_KEYS_PATH}" \
-    $EXTRA_SSH_ARGS
+if [[ "$proxy_setup_only" == "false" ]]; then
+  # shellcheck disable=SC2086  # extra args have to be unquoted to be parsed from the inner script
+  sm-connect-ssh-proxy "${INSTANCE_ID}" \
+      "${SSH_AUTHORIZED_KEYS_PATH}" \
+      $EXTRA_SSH_ARGS
+else
+  # shellcheck disable=SC2086
+  sm-connect-ssh-proxy --silent-setup-only "${INSTANCE_ID}" \
+      "${SSH_AUTHORIZED_KEYS_PATH}" \
+      $EXTRA_SSH_ARGS
+
+  CURRENT_REGION=$(aws configure list | grep region | awk '{print $2}')
+
+  aws ssm start-session\
+   --reason 'Local user started SSH with SageMaker SSH Helper proxy'\
+   --region "${CURRENT_REGION}"\
+   --target "${INSTANCE_ID}"\
+   --document-name AWS-StartSSHSession\
+   --parameters portNumber=22
+fi

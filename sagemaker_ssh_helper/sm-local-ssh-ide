@@ -1,49 +1,90 @@
 #!/bin/bash
 
+# NOTE: This is a lower level interface to the SSH Helper.
+# Run `sm-ssh -h` for the high-level interface.
+
 # Commands:
-# connect <kernel_gateway_name> [--ssh-only] [<extra_ssh_args>]
+# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] connect <app_name> [--ssh-only] [<extra_ssh_args>]
+# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] start-proxy <app_name>
 # run-command <command> <args...>
 # set-domain-id <domain_id>
 # set-user-profile-name <user_profile_name>
 # set-jb-license-server <jb-license-server-hostname-without-http>
-# TODO: create <kernel_gateway_name> [--recreate] --image datascience-1.0 --instance ml.t3.medium
-# TODO: list (all apps from all users and domains marked with '*' if can connect with SSH and with '!' if user don't match)
 
-# SageMaker Studio Kernel Gateway name is usually the same as the hostname,
-# e. g. sagemaker-data-science-ml-m5-large-1234567890abcdef0
+# SageMaker Studio app name for Kernel Gateways is usually the same as the hostname,
+#   e. g. 'sagemaker-data-science-ml-m5-large-1234567890abcdef0' (without quotes).
+# For JupyterServer app it's 'default'.
 
-# To open SageMaker Studio UI in Firefox from command line on macOS, use the following command:
+# Tip: to open SageMaker Studio UI in Firefox from command line on macOS, use the following command:
 # open -a Firefox $(AWS_PROFILE=terry aws sagemaker create-presigned-domain-url --domain-id d-lnwlaexample --user-profile-name terry-whitlock --query AuthorizedUrl --output text)
+
 
 # replace with your JetBrains License Server host, or leave it as is if you don't use one
 JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
 
 
+set -e
+set -o pipefail
+
+_on_error() {
+  echo 'sm-local-ssh-ide: Terminated.'
+}
+trap '_on_error' ERR
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
+
+DOMAIN_ID=""
+USER_PROFILE_NAME=""
+
+if [[ "$1" == "--domain-id" ]]; then
+    DOMAIN_ID=$2
+    shift
+    shift
+fi
+
+if [[ "$1" == "--user-profile-name" ]]; then
+    USER_PROFILE_NAME=$2
+    shift
+    shift
+fi
+
 COMMAND=$1
 
-if [[ "$COMMAND" == "connect" ]]; then
-
-  SM_STUDIO_KGW_NAME="$2"
-  OPTIONS="$3"
-
-  # TODO: if name is empty, list and choose
-
-  DOMAIN_ID=""
+if [[ "$COMMAND" != "set-user-profile-name" && "$COMMAND" != "set-domain-id" \
+      && "$DOMAIN_ID" == "" && "$USER_PROFILE_NAME" == "" ]]; then
   if [ -f ~/.sm-studio-domain-id ]; then
     DOMAIN_ID="$(cat ~/.sm-studio-domain-id)"
   else
     echo "sm-local-ssh-ide: WARNING: SageMaker Studio domain ID is not set."\
       "Run 'sm-local-ssh-ide set-domain-id' to override."
   fi
-  USER_PROFILE_NAME=""
   if [ -f ~/.sm-studio-user-profile-name ]; then
     USER_PROFILE_NAME="$(cat ~/.sm-studio-user-profile-name)"
   else
     echo "sm-local-ssh-ide: WARNING: SageMaker Studio user profile name is not set."\
       "Run 'sm-local-ssh-ide set-user-profile-name' to override."
   fi
+fi
 
-  INSTANCE_ID=$(python <<EOF
+if [[ "$COMMAND" == "start-proxy" ]]; then
+  SM_SSH_HOST_NAME="$2"
+  SM_RESOURCE_TYPE="studio"
+
+  _check_ssh_proxy_host_name "$SM_SSH_HOST_NAME" "$SM_RESOURCE_TYPE"
+  _export_ssh_key_env_var "$SM_SSH_HOST_NAME"
+
+  INSTANCE_ID=$(_generate_key_and_print_instance_id "$SM_SSH_HOST_NAME" "$DOMAIN_ID" "$USER_PROFILE_NAME")
+
+  sm-local-start-ssh --proxy-setup-only "${INSTANCE_ID}"
+
+elif [[ "$COMMAND" == "connect" ]]; then
+
+  SM_STUDIO_KGW_NAME="$2"
+  OPTIONS="$3"
+
+  # shellcheck disable=SC2091
+  INSTANCE_ID=$($(_python) <<EOF
 import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
 import logging; logging.basicConfig(level=logging.INFO);
 SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
@@ -55,8 +96,6 @@ EOF
     shift
     shift
     shift
-    # TODO: don't create the tunnel for SSH-only option
-    # TODO: adopt unique host name like user.mi-123.studio and user.latest.studio to be used directly in IDE
     sm-local-start-ssh "$INSTANCE_ID" \
         -L localhost:10022:localhost:22 \
         $*
@@ -64,7 +103,6 @@ EOF
     if [ -f ~/.sm-jb-license-server ]; then
         JB_LICENSE_SERVER_HOST="$(cat ~/.sm-jb-license-server)"
     fi
-
     echo "sm-local-ssh-ide: Connecting SSH, VNC and Jupyter to local ports 10022, 5901 and 8889 (add --ssh-only flag to override)"
     shift
     shift

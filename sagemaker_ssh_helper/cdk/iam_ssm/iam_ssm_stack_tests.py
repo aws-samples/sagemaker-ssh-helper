@@ -77,11 +77,15 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:CreateTransformJob",
                                       "sagemaker:CreateHyperParameterTuningJob",
                                       "sagemaker:DescribeTrainingJob",
+                                      "sagemaker:ListTrainingJobs",
                                       "sagemaker:DescribeProcessingJob",
+                                      "sagemaker:ListProcessingJobs",
                                       "sagemaker:DescribeModel",
                                       "sagemaker:DescribeEndpointConfig",
                                       "sagemaker:DescribeEndpoint",
+                                      "sagemaker:ListEndpoints",
                                       "sagemaker:DescribeTransformJob",
+                                      "sagemaker:ListTransformJobs",
                                       "sagemaker:DescribeHyperParameterTuningJob",
                                       "sagemaker:ListTrainingJobsForHyperParameterTuningJob",
                                       "sagemaker:DeleteEndpointConfig",
@@ -91,6 +95,7 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:CreateApp",
                                       "sagemaker:DeleteApp",
                                       "sagemaker:DescribeApp",
+                                      "sagemaker:ListApps",
                                       "sagemaker:CreateImage",
                                       "sagemaker:DescribeImage",
                                       "sagemaker:DeleteImage",
@@ -100,6 +105,7 @@ class IamSsmStackTests(Stack):
                                       "sagemaker:DeleteAppImageConfig",
                                       "sagemaker:UpdateDomain",
                                       "sagemaker:CreatePresignedDomainUrl",
+                                      "sagemaker:ListNotebookInstances",
                                   ],
                                   resources=["*"]
                               ),
@@ -159,6 +165,11 @@ class IamSsmStackTests(Stack):
                                   ],
                                   resources=[
                                       f"arn:{Aws.PARTITION}:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/codebuild/sagemaker-studio-image-build-*:log-stream:*"]
+                              ),
+                              PolicyStatement(
+                                  effect=Effect.ALLOW,
+                                  actions=["sns:Publish"],
+                                  resources=["*"]
                               ),
                               PolicyStatement(
                                   effect=Effect.ALLOW,

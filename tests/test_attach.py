@@ -33,9 +33,7 @@ def test_attach_estimator():
     job: _TrainingJob = estimator.latest_training_job
     ssh_wrapper = SSHEstimatorWrapper.attach(job.name)
 
-    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
-    instance_ids = ssh_wrapper.get_instance_ids()
-    logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.start_ssm_connection_and_continue(11022)
 

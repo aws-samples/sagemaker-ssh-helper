@@ -1,0 +1,15 @@
+# Amazon SageMaker hosts with SageMaker SSH Helper
+# *.studio.sagemaker
+# *.training.sagemaker
+# *.inference.sagemaker
+# *.transform.sagemaker
+# *.processing.sagemaker
+# *.notebook.sagemaker
+Host *.*.sagemaker
+  IdentityFile ~/.ssh/%h
+  PasswordAuthentication no
+  ConnectTimeout 90
+  ServerAliveInterval 15
+  ServerAliveCountMax 4
+  ProxyCommand sm-ssh start-proxy %h
+  User root

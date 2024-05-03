@@ -45,11 +45,12 @@ def test_train_e2e():
         container_log_level=logging.INFO
     )
 
-    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time=timedelta(minutes=10))
 
     estimator.fit(wait=False)
 
-    ssh_wrapper.start_ssm_connection_and_continue(11022)
+    ssh_wrapper.start_ssm_connection_and_continue(11022, timeout=timedelta(minutes=5))
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_training_job()
 
@@ -69,7 +70,7 @@ def test_train_pycharm_debug_e2e():
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
-    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=600)
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time=timedelta(minutes=10))
 
     estimator.fit(wait=False)
 
@@ -102,7 +103,7 @@ def test_train_pycharm_debug_e2e():
     time.sleep(2)  # wait a little to get server thread started
 
     ssm_proxy = ssh_wrapper.start_ssm_connection(
-        11022, timeout_in_sec=600,
+        11022, timeout=timedelta(minutes=5),
         extra_args="-R localhost:12345:localhost:12345"
     )
 
@@ -130,11 +131,11 @@ def test_train_placeholder():
                         keep_alive_period_in_seconds=1800,
                         container_log_level=logging.INFO)
 
-    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=0)
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time=timedelta(seconds=0))
 
     estimator.fit(wait=False)
 
-    proxy = ssh_wrapper.start_ssm_connection(11022, 60)
+    proxy = ssh_wrapper.start_ssm_connection(11022, timeout=timedelta(minutes=5))
 
     # Do something on the remote node...
 
@@ -144,7 +145,9 @@ def test_train_placeholder():
 
 
 # noinspection DuplicatedCode
-def test_debugger_stop_gpu(request):
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Temp issues with the profiler - D96111855")
+def test_low_gpu_debugger_stop(request):
     sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
 
     from sagemaker.debugger import ProfilerRule, rule_configs, ProfilerConfig
@@ -178,7 +181,7 @@ def test_debugger_stop_gpu(request):
         rules=rules
     )
 
-    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time_seconds=0)
+    ssh_wrapper = SSHEstimatorWrapper.create(estimator, connection_wait_time=timedelta(seconds=0))
 
     estimator.fit(wait=False)
 
@@ -234,6 +237,7 @@ def test_inference_e2e():
 
     try:
         ssh_wrapper.start_ssm_connection_and_continue(12022)
+        ssh_wrapper.print_ssh_info()
 
         time.sleep(60)  # Cold start latency to prevent prediction time out
 
@@ -317,6 +321,7 @@ def test_inference_e2e_mms(instance_type):
 
         # Note: in MME the models are lazy loaded, so SSH helper will start upon the first prediction request
         ssh_wrapper.start_ssm_connection_and_continue(13022)
+        ssh_wrapper.print_ssh_info()
 
     finally:
         if predictor:
@@ -421,6 +426,7 @@ def test_processing_e2e():
     )
 
     ssh_wrapper.start_ssm_connection_and_continue(14022)
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_processing_job()
 
@@ -448,6 +454,7 @@ def test_processing_framework_e2e():
     )
 
     ssh_wrapper.start_ssm_connection_and_continue(15022)
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_processing_job()
 

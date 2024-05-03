@@ -25,8 +25,12 @@ class SSMProxy(ABC):
         self.region_name = region_name
         self.extra_args = extra_args
         self.ssh_listen_port = ssh_listen_port
+        self.connected = False
 
     def connect_to_ssm_instance(self, instance_id) -> None:
+        if self.connected:
+            raise Exception("Already connected")
+
         self.logger.info(
             f"Connecting to {instance_id} with SSM and starting SSH port forwarding "
             f"on local port {self.ssh_listen_port}"
@@ -76,6 +80,9 @@ class SSMProxy(ABC):
 
         if not output_str.startswith("Linux"):
             raise ValueError("Failed to get system version. Got instead: " + output_str)
+
+        self.connected = True
+        self.logger.info(f"Connected to remote instance {instance_id}")
 
     def terminate_waiting_loop(self):
         self.logger.info("Terminating the remote waiting loop / sleep process")
@@ -164,6 +171,7 @@ class SSMProxy(ABC):
 
     def disconnect(self):
         self.logger.info(f"Disconnecting proxy and stopping SSH port forwarding")
+        self.connected = False
         parent = psutil.Process(self.p.pid)
         try:
             for child in parent.children(recursive=True):

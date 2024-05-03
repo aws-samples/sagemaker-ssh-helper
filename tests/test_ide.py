@@ -3,27 +3,25 @@ import os
 import re
 import subprocess
 import time
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.firefox.options import Options
 
+from sagemaker_ssh_helper.browser_automation import JupyterNotebook, SageMakerStudioAutomation
 from sagemaker_ssh_helper.ide import SSHIDE
 from sagemaker_ssh_helper.manager import SSMManager
 from sagemaker_ssh_helper.proxy import SSMProxy
 
 from selenium import webdriver
 
-from selenium.webdriver.common.by import By
-
-import boto3
-
-from selenium.webdriver.support import expected_conditions as EC
+from sagemaker_ssh_helper.wrapper import SSHIDEWrapper
 
 logger = logging.getLogger('sagemaker-ssh-helper:test_ide')
 
 
-# TODO: add a test for typing SageMaker Studio terminal commands - check conda env is activated (Selenium?)
+# TODO: add a test for typing SageMaker Studio terminal commands - check conda env is activated
 
 # See https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-images.html .
 
@@ -50,18 +48,17 @@ SSH_TEST_IMAGES = [
      'sagemaker-sparkmagic', 'ml.m5.large', 'Python 3.7.10'),
     # 6 - SparkAnalytics 1.0
     ('test-spark', 'ssh-test-analytics-cpu',
-     'sagemaker-sparkanalytics-v1', 'ml.m5.large', 'Python 3.8.13'),
+     'sagemaker-sparkanalytics-v1', 'ml.m5.large', 'Python 3.8.13'),  # noqa
     # 7 - SparkAnalytics 2.0
     ('test-spark', 'ssh-test-analytics2-cpu',
-     'sagemaker-sparkanalytics-310-v1', 'ml.m5.large', 'Python 3.10.6'),
+     'sagemaker-sparkanalytics-310-v1', 'ml.m5.large', 'Python 3.10.6'),  # noqa
 
     # 8 - MXNet 1.9 Python 3.8 CPU Optimized
     ('test-mxnet', 'ssh-test-mx19-cpu',
      'mxnet-1.9-cpu-py38-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', 'Python 3.8.10'),
     # 9 - MXNet 1.9 Python 3.8 GPU Optimized
-    # TODO: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-    # ('test-mxnet', 'ssh-test-mx19-gpu',
-    #  'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3'),
+    ('test-mxnet', 'ssh-test-mx19-gpu',
+     'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3'),
 
     # 10 - PyTorch 1.12 Python 3.8 CPU Optimized
     ('test-pytorch', 'ssh-test-pt112-cpu',
@@ -84,10 +81,10 @@ SSH_TEST_IMAGES = [
      'tensorflow-2.11.0-gpu-py39-cu112-ubuntu20.04-sagemaker-v1.1', 'ml.g4dn.xlarge', 'Python 3.9.10'),
     # 16 - TensorFlow 2.12.0 Python 3.10 CPU Optimized
     ('test-tensorflow', 'ssh-test-tf212-cpu',
-     'tensorflow-2.12.0-cpu-py310-ubuntu20.04-sagemaker-v1', 'ml.m5.large', 'Python 3.10.10'),
+     'tensorflow-2.12.0-cpu-py310-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', 'Python 3.10.10'),
     # 17 - TensorFlow 2.12.0 Python 3.10 GPU Optimized
     ('test-tensorflow', 'ssh-test-tf212-gpu',
-     'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1', 'ml.g4dn.xlarge', 'Python 3.10.10'),
+     'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3.10.10'),
 ]
 
 
@@ -97,9 +94,7 @@ def test_sagemaker_studio(instances, request):
 
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user)
 
-    # TODO:
-    #  os.env["LOCAL_USER_ID"] -> ./.sm-ssh-owner
-    #  ide.upload_UI("./.sm-ssh-owner", "/.sm-ssh-owner") - cannot upload dot file in UI?
+    time_stamp_before_app_created = int(time.time())
 
     ide.create_ssh_kernel_app(
         app_name,
@@ -109,15 +104,15 @@ def test_sagemaker_studio(instances, request):
         recreate=True
     )
 
-    # Need to wait here, otherwise it will try to connect to an old offline instance
-    # TODO: more robust mechanism?
-    time.sleep(60)
+    time.sleep(30)  # Give time for CPU load to normalize
 
-    studio_ids = ide.get_kernel_instance_ids(app_name, timeout_in_sec=300)
-    studio_id = studio_ids[0]
+    ide_wrapper = SSHIDEWrapper.attach(
+        ide.domain_id, ide.user, app_name,
+        not_earlier_than_timestamp=time_stamp_before_app_created
+    )
 
-    with SSMProxy(10022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
+    with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
+        ide_wrapper.print_ssh_info()
 
         services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
         services_running = services_running.decode('latin1')
@@ -157,7 +152,7 @@ def test_notebook_instance():
 
         _ = ssm_proxy.run_command("apt-get install -q -y net-tools")
 
-        services_running = ssm_proxy.run_command_with_output("netstat -nptl")
+        services_running = ssm_proxy.run_command_with_output("netstat -nptl")  # noqa
         services_running = services_running.decode('latin1')
 
         python_version = ssm_proxy.run_command_with_output("/opt/conda/bin/python --version")
@@ -174,7 +169,7 @@ def test_studio_internet_free_mode(request):
     """
     logging.info("Building BYO SageMaker Studio image for Internet-free mode")
     subprocess.check_call(
-        "sm-docker build . --file tests/byoi_studio/Dockerfile.internet_free --repo smstudio-custom-ssh:custom"
+        "sm-docker build . --file tests/byoi_studio/Dockerfile.internet_free --repo smstudio-custom-ssh:custom"  # noqa
         .split(' '),
         cwd="../"
     )
@@ -185,7 +180,7 @@ def test_studio_internet_free_mode(request):
 
     image = ide.create_and_attach_image(
         'custom-image-ssh',
-        'smstudio-custom-ssh:custom',
+        'smstudio-custom-ssh:custom',  # noqa
         request.config.getini('sagemaker_role'),
         app_image_config_name='custom-image-config-ssh',
         kernel_specs=[
@@ -206,6 +201,8 @@ def test_studio_internet_free_mode(request):
 
     ide.delete_app("byoi-studio-app", 'KernelGateway', wait=True)
 
+    time_stamp_before_app_created = int(time.time())
+
     ide.create_ssh_kernel_app(
         "byoi-studio-app",
         image.arn,
@@ -213,13 +210,12 @@ def test_studio_internet_free_mode(request):
         recreate=True
     )
 
-    time.sleep(60)
+    ide_wrapper = SSHIDEWrapper.attach(
+        ide.domain_id, ide.user, "byoi-studio-app",
+        not_earlier_than_timestamp=time_stamp_before_app_created
+    )
 
-    studio_ids = ide.get_kernel_instance_ids("byoi-studio-app", timeout_in_sec=300)
-    studio_id = studio_ids[0]
-
-    with SSMProxy(10022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
+    with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
         services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
         services_running = services_running.decode('latin1')
 
@@ -256,12 +252,11 @@ def test_studio_multiple_users(request):
     # Give time for instance ID to propagate
     time.sleep(60)
 
-    studio_ids = ide_ds.get_kernel_instance_ids('ssh-test-user', timeout_in_sec=300)
-    studio_id = studio_ids[0]
+    ide_wrapper = SSHIDEWrapper.attach(
+        ide_ds.domain_id, ide_ds.user, "ssh-test-user"
+    )
 
-    with SSMProxy(10022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
-
+    with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
         user_profile_name = ssm_proxy.run_command_with_output("sm-ssh-ide get-user-profile-name")
         user_profile_name = user_profile_name.decode('latin1')
         logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
@@ -300,12 +295,11 @@ def test_studio_default_domain_multiple_users(request):
     time.sleep(60)
 
     # Empty domain "" to fetch the latest profile, useful when switching between many AWS accounts with the same profile
-    studio_ids = SSHIDE("", 'test-data-science').get_kernel_instance_ids('ssh-test-user', timeout_in_sec=300)
-    studio_id = studio_ids[0]
+    ide_wrapper = SSHIDEWrapper.attach(
+        "", 'test-data-science', "ssh-test-user"
+    )
 
-    with SSMProxy(10022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
-
+    with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
         user_profile_name = ssm_proxy.run_command_with_output("sm-ssh-ide get-user-profile-name")
         user_profile_name = user_profile_name.decode('latin1')
         logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
@@ -316,133 +310,78 @@ def test_studio_default_domain_multiple_users(request):
     assert "test-data-science" in user_profile_name
 
 
-def test_studio_notebook_in_firefox(request):
-    ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+@pytest.mark.parametrize('user_profile_name', ['test-firefox'])
+def test_studio_notebook_in_firefox(request, user_profile_name):
+    ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user_profile_name)
+    local_user_id = os.environ['LOCAL_USER_ID']
+    jb_server_host = os.environ['JB_LICENSE_SERVER_HOST']
 
-    # Get SageMaker Studio Presigned URL with API
-    sagemaker_client = boto3.client('sagemaker')
-    studio_pre_signed_url_response = sagemaker_client.create_presigned_domain_url(
-        DomainId=ide.domain_id,
-        UserProfileName=ide.user,
-    )
-    studio_pre_signed_url = studio_pre_signed_url_response['AuthorizedUrl']
+    options = Options()
+    options.set_preference("browser.download.folderList", 2)
+    options.set_preference("browser.download.manager.showWhenStarting", False)
+    options.set_preference("browser.download.dir", os.path.abspath("../dist/"))
+    firefox = webdriver.Firefox(options)
 
-    logging.info("Launching Firefox")
-    browser = webdriver.Firefox()
-
-    logging.info("Launching SageMaker Studio")
-    browser.get(studio_pre_signed_url)
-
-    logging.info("Waiting for SageMaker Studio to launch")
-    WebDriverWait(browser, 1200).until(
-        EC.presence_of_element_located((By.XPATH, "//div[@id='space-menu']"))
-    )
-    kernel_menu_item = browser.find_element(By.XPATH, "//div[@id='space-menu']")
-    logging.info(f"Found SageMaker Studio space menu item: {kernel_menu_item.text}")
-    assert kernel_menu_item.text == 'test-data-science / Personal Studio'
-
-    time.sleep(60)  # wait until obscurity of the menu items is gone and UI is fully loaded
-
-    logging.info("Checking the kernel name")
-    kernel_item = browser.find_element(
-        By.XPATH,
-        "//button[@class='bp3-button bp3-minimal jp-Toolbar-kernelName "
-        "jp-ToolbarButtonComponent minimal jp-Button']"
-    )
-    logging.info(f"Found Kernel name: {kernel_item.text}")
-    assert kernel_item.text == "Data Science 2.0\n|\nPython 3\n|\n2 vCPU + 8 GiB"
+    browser_automation = SageMakerStudioAutomation(ide, firefox)
+    browser_automation.launch_sagemaker_studio()
 
     dist_file_name_pattern = 'sagemaker_ssh_helper-.*-py3-none-any.whl'
     dist_file_name = [f for f in os.listdir('../dist') if re.match(dist_file_name_pattern, f)][0]
     logging.info(f"Found dist file: {dist_file_name}")
 
-    # TODO: File -> Reload notebook from Disk
-    # TODO: ide.add_new_cell([
-    #  f"%%sh"
-    #  f"pip3 install -U ./{dist_file_name}"
-    #  ])
+    notebook = JupyterNotebook(Path("../SageMaker_SSH_IDE.ipynb"))
+    notebook.insert_code_cell(0, [
+        f"%%sh\n",
+        f"pip3 install -U ./{dist_file_name}"
+    ])
+    notebook.insert_code_cell(0, [
+        f"%%sh\n",
+        f"echo '{jb_server_host}' > ~/.sm-jb-license-server"
+    ])
+    notebook.insert_code_cell(0, [
+        f"%%sh\n",
+        f"echo '{local_user_id}' > ~/.sm-ssh-owner"
+    ])
+    ide_notebook_path = Path("../dist/SageMaker_SSH_IDE-DS2-CPU.ipynb")
+    notebook.save_as(ide_notebook_path)
 
-    upload_file(browser, os.path.abspath("../SageMaker_SSH_IDE.ipynb"))
-    logging.info("IDE notebook uploaded")
-    upload_file(browser, os.path.abspath(Path("../dist/", dist_file_name)))
-    logging.info("Dist file uploaded")
+    browser_automation.upload_file_with_overwrite(ide_notebook_path)
+    browser_automation.upload_file_with_overwrite(Path("../dist/", dist_file_name))
 
-    kernel_menu_item = browser.find_element(
-        By.XPATH,
-        "//div[@class='lm-MenuBar-itemLabel p-MenuBar-itemLabel' "
-        "and text()='Kernel']"
-    )
-    logging.info(f"Found SageMaker Studio kernel menu item: {kernel_menu_item.text}")
-    kernel_menu_item.click()
+    # rename to keep original and to compare with the output later
+    os.rename("../dist/SageMaker_SSH_IDE-DS2-CPU.ipynb", "../dist/SageMaker_SSH_IDE-DS2-CPU-Original.ipynb")
 
-    logging.info("Restarting kernel and running all cells")
-    restart_menu_item = browser.find_element(
-        By.XPATH,
-        "//div[@class='lm-Menu-itemLabel p-Menu-itemLabel' "
-        "and text()='Restart Kernel and Run All Cells…']")
-    logging.info(f"Found SageMaker Studio restart kernel menu item: {restart_menu_item.text}")
-    restart_menu_item.click()
+    browser_automation.open_file_from_path("/SageMaker_SSH_IDE-DS2-CPU.ipynb", 'ml.m5.large')
 
-    # TODO: check banner if kernel is still starting, wait until banner disappears, then click restart
-    # <div class="css-a7sx0c-bannerContainer sagemaker-starting-banner" id="sagemaker-notebook-banner"><div class="css-1qyc1pu-kernelStartingBannerContainer"><div><div class="css-6wrpfe-bannerSpinDiv"></div></div><div><p class="css-g9mx5z-bannerPromptSpanTitle">Starting notebook kernel...</p></div></div></div>
+    for retries in range(0, 1):
+        current_time_stamp = int(time.time())
 
-    restart_button = browser.find_element(
-        By.XPATH,
-        "//div[@class='jp-Dialog-buttonLabel' "
-        "and text()='Restart']"
-    )
-    logging.info(f"Found SageMaker Studio restart button: {restart_button.text}")
-    restart_button.click()
+        browser_automation.restart_kernel_and_run_all_cells()
 
-    time.sleep(120)  # Give time to restart
+        data_science_kernel = "sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036"  # noqa
+        studio_id = ide.get_kernel_instance_id(
+            data_science_kernel,
+            timeout_in_sec=300,
+            not_earlier_than_timestamp=current_time_stamp
+        )
+        ssh_timestamp = SSMManager().get_ssh_instance_timestamp(studio_id)
 
-    studio_ids = ide.get_kernel_instance_ids("sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036",
-                                             timeout_in_sec=300)
-    studio_id = studio_ids[0]
+        assert ssh_timestamp > current_time_stamp
 
-    with SSMProxy(10022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
-        services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
-        services_running = services_running.decode('latin1')
+        time.sleep(120)  # Give time for agent to connect
 
-    # TODO: File -> Save Notebook
-    # TODO: ide.download_ssh("/root/SageMaker_SSH_IDE-DS2-CPU.ipynb",
-    #  "./output/SageMaker_SSH_IDE-DS2-CPU.ipynb")
-    # See: https://github.com/aws-samples/sagemaker-ssh-helper/issues/18
+        ide_wrapper = SSHIDEWrapper.attach(
+            ide.domain_id, ide.user, data_science_kernel
+        )
 
-    assert "127.0.0.1:8889" in services_running
-    assert "127.0.0.1:5901" in services_running
+        with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
+            services_running = ssm_proxy.run_command_with_output("sm-ssh-ide status")
+            services_running = services_running.decode('latin1')
 
-    # TODO: assert the services were restarted by the test, e.g., by checking the SSM timestamp
-    # TODO: check if the second restart also successful
+        assert "127.0.0.1:8889" in services_running
+        assert "127.0.0.1:5901" in services_running
 
-    # TODO: restart image (clean-up for the next run)
-    # <button type="button" class="bp3-button bp3-minimal jp-ToolbarButtonComponent minimal jp-Button" aria-disabled="false" title="Shut down">...</button>    """
+    browser_automation.save_current_file()
+    browser_automation.download_current_file()
 
-    logging.info("Closing Firefox")
-    browser.close()
-
-
-def upload_file(browser, file_abs_path):
-    file_drop_area = browser.find_element(
-        By.XPATH,
-        "//ul[@class='jp-DirListing-content']"
-    )
-    logging.info(f"Found file browser to drop the file to: {file_drop_area.text}")
-    time.sleep(2)
-    file_input = browser.execute_script(Path('js/drop_studio_file.js').read_text(), file_drop_area, 0, 0)
-    logging.info(f"Created a file upload item: {file_input}")
-    file_input.send_keys(file_abs_path)
-    time.sleep(5)  # Give time to overwrite dialog to apper
-    confirm_overwrite(browser)
-
-
-def confirm_overwrite(browser):
-    overwrite_button = browser.find_elements(
-        By.XPATH,
-        "//div[@class='jp-Dialog-buttonLabel' "
-        "and text()='Overwrite']"
-    )
-    if len(overwrite_button) > 0:
-        logging.info(f"Found overwrite dialog button: {overwrite_button[0].text}")
-        overwrite_button[0].click()
+    browser_automation.close_sagemaker_studio()

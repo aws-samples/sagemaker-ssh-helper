@@ -8,11 +8,16 @@
 # The role for SSM is not a full IAM ARN, but only the last part of it such as 'service-role/SageMakerRole'
 
 set -e
+set -o pipefail
 
 dir=$(dirname "$0")
 source "$dir"/sm-helper-functions
 
 CURRENT_REGION=$(aws configure get region || echo "$AWS_REGION")
+if [ -z "${CURRENT_REGION}" ]; then
+  echo "ERROR: AWS Region cannot be determined. Try to run 'aws configure get region' manually and check the output."
+  exit 1
+fi
 
 SSH_CREATOR=$(aws sts get-caller-identity | jq --raw-output '.UserId')
 SSH_TIMESTAMP=$(date +%s)
@@ -31,7 +36,7 @@ elif [[ "$TRAINING_JOB_NAME" != "" ]]; then
   RESOURCE_ARN=$TRAINING_JOB_ARN  # empty for local mode
 elif [[ "$TRANSFORM_JOB_ARN" != "" ]]; then
   # Transform job
-  RESOURCE_NAME=$(echo $TRANSFORM_JOB_ARN | awk -F/ '{print $2}')
+  RESOURCE_NAME=$(echo "$TRANSFORM_JOB_ARN" | awk -F/ '{print $2}')
   RESOURCE_ARN=$TRANSFORM_JOB_ARN
 else
   # Probably, endpoint

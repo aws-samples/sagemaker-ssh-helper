@@ -23,3 +23,5 @@ __pycache__
 /src_diff/
 /tests/geckodriver.log
 /tests/.sm-ssh-owner
+/tests/.pymon
+/.pymon

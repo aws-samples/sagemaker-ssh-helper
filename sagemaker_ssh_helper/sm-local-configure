@@ -1,16 +1,26 @@
 #!/bin/bash
 
+# Install locally AWS CLI and Session Manager Plugin
+# See: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+# See: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+
 set -e
+set -o pipefail
+
+_on_error() {
+  echo 'Error! Configuration is NOT complete.'
+}
+trap '_on_error' ERR
 
 dir=$(dirname "$0")
-source "$dir"/sm-helper-functions
+source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
 
 uname -a
-cat /etc/issue || :
-cat /etc/os-release || :
+cat /etc/issue 2>/dev/null || echo "No /etc/issue file is present on the system."
+cat /etc/os-release 2>/dev/null || echo "No /etc/os-release is file present on the system."
 
 # Smoke test - Python version
-python3 --version
+$(_python) --version || echo "Error: No python3 is present on the system."
 
 echo "sm-local-configure: Installing tools. The 'sudo' commands can ask for your password."
 
@@ -20,6 +30,21 @@ _install_aws_cli
 
 echo "AWS default region - $AWS_DEFAULT_REGION"
 echo "AWS region - $AWS_REGION"
-aws configure list
+
+if _is_windows; then
+  echo "WARNING: Running on Windows. Restart your terminal app (e.g., Git Bash) "\
+    "and run 'aws configure list' manually, to verify the install"
+else
+  aws configure list
+fi
 
 _install_session_manager_plugin
+
+if _is_windows; then
+  echo "WARNING: Running on Windows. Restart your terminal app (e.g., Git Bash) "\
+    "and run 'session-manager-plugin' manually, to verify the install"
+else
+  session-manager-plugin
+fi
+
+echo "Configuration is complete!"

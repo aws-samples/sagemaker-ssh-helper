@@ -5,9 +5,19 @@
 # to the instance via S3 by executing the remote SSM command
 
 # Syntax:
-# sm-connect-ssh-proxy <instance_id> <s3_ssh_authorized_keys_path> <extra_ssh_args>
+# sm-connect-ssh-proxy [--silent-setup-only] <instance_id> <s3_ssh_authorized_keys_path> <extra_ssh_args>
 
 set -e
+set -o pipefail
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
+
+silent_setup_only="false"
+if [[ "$1" == "--silent-setup-only" ]]; then
+  shift
+  silent_setup_only="true"
+fi
 
 INSTANCE_ID="$1"
 SSH_AUTHORIZED_KEYS_PATH="$2"
@@ -15,35 +25,56 @@ shift
 shift
 PORT_FWD_ARGS=$*
 
-echo "$(date -Iseconds) sm-connect-ssh-proxy: Connecting to: $INSTANCE_ID"
-echo "$(date -Iseconds) sm-connect-ssh-proxy: Extra args: $PORT_FWD_ARGS"
+s3_path_length=${#SSH_AUTHORIZED_KEYS_PATH}
+s3_path_last_char=${SSH_AUTHORIZED_KEYS_PATH:s3_path_length-1:1}
+[[ $s3_path_last_char != "/" ]] && SSH_AUTHORIZED_KEYS_PATH="$SSH_AUTHORIZED_KEYS_PATH/"
+
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Connecting to: $INSTANCE_ID"
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Extra args: $PORT_FWD_ARGS"
+fi
 
 instance_status=$(aws ssm describe-instance-information --filters Key=InstanceIds,Values="$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text)
 
-echo "Instance status: $instance_status"
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Instance status: $instance_status"
+fi
 
 if [[ "$instance_status" != "Online" ]]; then
-  echo "Error: Instance is offline."
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Error: Instance is offline."
   exit 1
 fi
 
-# TODO: make it possible to override the default (also helps avoid race conditions)
-SSH_KEY=~/.ssh/sagemaker-ssh-gw
+if [ -z "${SSH_KEY}" ]; then
+  SSH_KEY=~/.ssh/sagemaker-ssh-gw
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS_PATH"
+  echo 'yes' | ssh-keygen -t ecdsa -q -f "${SSH_KEY}" -N '' >/dev/null
+fi
 
-echo "Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS_PATH"
+SSH_KEY_NAME=$(basename "${SSH_KEY}")
+SSH_KEY_S3_PATH="${SSH_AUTHORIZED_KEYS_PATH}${SSH_KEY_NAME}"
 
-echo 'yes' | ssh-keygen -t ecdsa -q -f "${SSH_KEY}" -N '' >/dev/null
-aws s3 cp "${SSH_KEY}.pub" "${SSH_AUTHORIZED_KEYS_PATH}"
+if [[ "$silent_setup_only" == "false" ]]; then
+  aws s3 cp "${SSH_KEY}.pub" "${SSH_KEY_S3_PATH}.pub"
+else
+  aws s3 cp "${SSH_KEY}.pub" "${SSH_KEY_S3_PATH}.pub" >/dev/null
+fi
 
 CURRENT_REGION=$(aws configure list | grep region | awk '{print $2}')
-echo "Will use AWS Region: $CURRENT_REGION"
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Will use AWS Region: $CURRENT_REGION"
+fi
 
 AWS_CLI_VERSION=$(aws --version)
-echo "AWS CLI version (should be v2): $AWS_CLI_VERSION"
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: AWS CLI version (should be v2): $AWS_CLI_VERSION"
+fi
 
 # TODO: consider moving to start-session with AWS-StartNonInteractiveCommand
 
-echo "Running SSM commands at region ${CURRENT_REGION} to copy public key to ${INSTANCE_ID}"
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Running SSM commands at region ${CURRENT_REGION} to copy public key to ${INSTANCE_ID}"
+fi
 send_command=$(aws ssm send-command \
     --region "${CURRENT_REGION}" \
     --instance-ids "${INSTANCE_ID}" \
@@ -52,7 +83,7 @@ send_command=$(aws ssm send-command \
     --timeout-seconds 30 \
     --parameters "commands=[
         'mkdir -p /etc/ssh/authorized_keys.d/',
-        'aws s3 cp --recursive \"${SSH_AUTHORIZED_KEYS_PATH}\" /etc/ssh/authorized_keys.d/',
+        'aws s3 cp \"${SSH_KEY_S3_PATH}.pub\" /etc/ssh/authorized_keys.d/',
         'ls -la /etc/ssh/authorized_keys.d/',
         'cat /etc/ssh/authorized_keys.d/* > /etc/ssh/authorized_keys',
         'ls -la /etc/ssh/authorized_keys'
@@ -62,9 +93,11 @@ send_command=$(aws ssm send-command \
 
 json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
 
-send_command=$(echo "$send_command" | python -m json.tool)
+send_command=$(echo "$send_command" | $(_python) -m json.tool)
 command_id=$(echo "$send_command" | grep "CommandId" | sed -e "$json_value_regexp")
-echo "Got command ID: $command_id"
+if [[ "$silent_setup_only" == "false" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Got command ID: $command_id"
+fi
 
 # Wait a little bit to prevent strange InvocationDoesNotExist error
 sleep 5
@@ -77,16 +110,22 @@ for i in $(seq 1 15); do
       --command-id "${command_id}" \
       --no-cli-pager --no-paginate \
       --output json)
-  command_output=$(echo "$command_output" | python -m json.tool)
+  command_output=$(echo "$command_output" | $(_python) -m json.tool)
   command_status=$(echo "$command_output" | grep '"Status":' | sed -e "$json_value_regexp")
   output_content=$(echo "$command_output" | grep '"StandardOutputContent":' | sed -e "$json_value_regexp")
   error_content=$(echo "$command_output" | grep '"StandardErrorContent":' | sed -e "$json_value_regexp")
 
-  echo "Command status: $command_status"
+  if [[ "$silent_setup_only" == "false" ]]; then
+    echo "$(date -Iseconds) sm-connect-ssh-proxy: Command status: $command_status ($i)"
+  fi
   if [[ "$command_status" != "Pending" && "$command_status" != "InProgress" ]]; then
-    echo "Command output: $output_content"
+    if [[ "$silent_setup_only" == "false" ]]; then
+      echo "$(date -Iseconds) sm-connect-ssh-proxy: Command output: $output_content"
+    fi
     if [[ "$error_content" != "" ]]; then
-      echo "Command error: $error_content"
+      if [[ "$silent_setup_only" == "false" ]]; then
+        echo "$(date -Iseconds) sm-connect-ssh-proxy: Command error: $error_content"
+      fi
     fi
     break
   fi
@@ -94,8 +133,13 @@ for i in $(seq 1 15); do
 done
 
 if [[ "$command_status" != "Success" ]]; then
-  echo "Error: Command didn't finish successfully in time"
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Error: Command didn't finish successfully in time"
   exit 2
+fi
+
+if [[ "$silent_setup_only" == "true" ]]; then
+  # Silent setup complete
+  exit 0
 fi
 
 echo "$(date -Iseconds) sm-connect-ssh-proxy: Starting SSH over SSM proxy"
@@ -113,6 +157,7 @@ proxy_command="aws ssm start-session\
 # shellcheck disable=SC2086
 ssh -4 -o User=root -o IdentityFile="${SSH_KEY}" -o IdentitiesOnly=yes \
   -o ProxyCommand="$proxy_command" \
+  -o ConnectTimeout=90 \
   -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
   -o PasswordAuthentication=no \
   -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \

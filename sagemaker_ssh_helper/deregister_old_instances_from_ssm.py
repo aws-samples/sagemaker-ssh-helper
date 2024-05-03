@@ -38,7 +38,7 @@ def deregister(ssh_helper_instances):
 def main():
     print('This utility will deregister from SSM all SageMaker SSH Helper related managed instances.')
     print('WARNING: you should be careful NOT deregister managed instances that are not related to SageMaker SSH Helper.')
-    print('Usage: python deregister_old_instances_from_ssm.py [--preapproving-deregistration] [--delete-older-than-n-days <N>]')
+    print('Usage: sm-ssh-deregister-instances [--preapproving-deregistration] [--delete-older-than-n-days <N>]')
     print('--preapproving-deregistration: will automatically approve the deregistration of all instances found, without prompting.')
     print('--delete-older-than-n-days <N>: will only delete offline instances that are older than N days.')
     print('')

@@ -11,6 +11,7 @@
 # get-metadata
 
 set -e
+set -o pipefail
 
 dir=$(dirname "$0")
 source "$dir"/sm-helper-functions
@@ -93,8 +94,15 @@ elif [[ "$1" == "get-metadata" ]]; then
   echo "User profile name: $(_print_sm_user_profile_name)"
   echo "Domain: $(_print_sm_domain_id)"
   echo ""
-  echo "Connect from local machine (with GUI and Jupyter): sm-local-ssh-ide connect $(_print_sm_app_name)"
-  echo "To connect with SSH only: sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
+  echo "Connect from local machine (with GUI and Jupyter): "
+  echo "sm-local-ssh-ide connect $(_print_sm_app_name)"
+  echo "To connect with SSH only: "
+  echo "sm-local-ssh-ide connect $(_print_sm_app_name) --ssh-only"
+  echo ""
+  echo "Choose the domain (if you have multiple) on the local machine: "
+  echo "sm-local-ssh-ide set-domain-id $(_print_sm_domain_id)"
+  echo "To choose the user profile (if domain is shared): "
+  echo "sm-local-ssh-ide set-user-profile-name $(_print_sm_user_profile_name)"
 
 elif [[ "$1" == "set-jb-license-server" ]]; then
 

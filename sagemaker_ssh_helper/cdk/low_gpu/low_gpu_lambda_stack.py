@@ -52,6 +52,7 @@ class LowGPULambdaStack(Stack):
 
             },
             timeout=Duration.seconds(60),
+            memory_size=256,
         )
 
         low_gpu_rule = events.Rule(

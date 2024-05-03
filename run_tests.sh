@@ -7,9 +7,11 @@ echo "Keywords expression for pytest (PYTEST_KEYWORDS): -k '$PYTEST_KEYWORDS'"
 echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
 cat /etc/hosts
 bash ./compare_release_src.sh
+
 # Creating venv
 python -m venv ./venv
 source ./venv/bin/activate
+
 # Install the package
 mkdir -p pip_freeze/
 pip freeze --all | tee pip_freeze/before.txt
@@ -22,13 +24,17 @@ pip check
 pip freeze --all | tee pip_freeze/after_test.txt
 ( diff pip_freeze/before.txt pip_freeze/after.txt || : ) | tee pip_freeze/diff.txt
 ( diff pip_freeze/after.txt pip_freeze/after_test.txt || : ) | tee pip_freeze/diff_test.txt
+
 # Scanning sources
 bandit -r ./sagemaker_ssh_helper/ ./tests/ ./*.py --skip B603,B404,B101 2>&1 | tee bandit.txt
 flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ ./*.py | tee flake8.txt
+
 # Creating the build
 python -m build
+
 # Configure local env
 id
+export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y sudo
 sm-local-configure
@@ -38,14 +44,24 @@ source tests/generate_accelerate_config.sh
 if [ "$SKIP_CDK" == "true" ]; then
   echo "Skipping CDK changes"
 else
-  echo "Applying CDK changes"
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-  export DEBIAN_FRONTEND=noninteractive
+  echo "Installing Node"
+  # See https://github.com/nodesource/distributions#ubuntu-versions
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  NODE_MAJOR=20
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" \
+    | tee /etc/apt/sources.list.d/nodesource.list
+  apt-get update
   apt-get install -y nodejs
+
+  echo "Applying CDK changes"
   npm install -g aws-cdk
   cdk --version
   REGION=eu-west-1
   # See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
+  # See tests/iam/CDKBootstrapPolicy.json
+  # See tests/iam/CDKCloudFormationPolicy.json
   cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
     --require-approval never
   APP="python -m sagemaker_ssh_helper.cdk.tests_app"
@@ -73,22 +89,30 @@ else
 fi
 
 # Set bucket versioning to detect model repacking / dependencies overrides
+# See tests/iam/GitLabCIPolicy.json
 aws s3api put-bucket-versioning \
     --bucket "$(AWS_DEFAULT_REGION=eu-west-1 bash tests/get_sagemaker_bucket.sh)" \
     --versioning-configuration Status=Enabled
 aws s3api put-bucket-versioning \
     --bucket "$(AWS_DEFAULT_REGION=eu-west-2 bash tests/get_sagemaker_bucket.sh)" \
     --versioning-configuration Status=Enabled
+
 # Set default region for tests - need both to avoid confusion because one can override another
 export AWS_REGION=eu-west-1
 export AWS_DEFAULT_REGION=eu-west-1
 aws configure list
+
 # Assume CI/CD role
 # shellcheck disable=SC2207
 sts=( $(source tests/assume-user-role.sh) )
 export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
+
+# Smoke test of `sm-ssh` utility
+AWS_DEFAULT_REGION=eu-west-1 sm-ssh list
+AWS_DEFAULT_REGION=eu-west-2 sm-ssh list
+
 # Run tests
 cd tests
 apt-get install -y firefox-esr

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+function _python() {
+  if python3 --version 2>&1 | grep '^Python 3' >/dev/null 2>&1; then
+    echo "python3"
+  else
+    echo "python"
+  fi
+}
+
 function _silent_install() {
   install_path="/usr/local/bin"
 
@@ -34,13 +42,17 @@ function _is_macos() {
   uname | grep ^Darwin >/dev/null
 }
 
+function _is_windows() {
+  uname | grep ^MINGW >/dev/null
+}
+
 function _install_unzip() {
-  if _is_macos; then
+  if _is_macos || _is_windows; then
     :  # noop, should be already installed
   elif _is_centos; then
     sudo yum install -y unzip
   else
-    sudo apt-get install -y --no-install-recommends unzip
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip
   fi
 }
 
@@ -61,7 +73,9 @@ function _install_aws_cli() {
   which pip >/dev/null 2>&1 && pip uninstall -y awscli
 
   # See: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-  if _is_macos; then
+  if _is_windows; then
+    msiexec.exe //i https://awscli.amazonaws.com/AWSCLIV2.msi || echo "WARNING: msiexec.exe existed with non-zero code."
+  elif _is_macos; then
     _install_aws_cli_macos
   else
     _install_aws_cli_linux
@@ -107,22 +121,29 @@ function _install_session_manager_plugin_macos() {
   sudo ln -s /usr/local/sessionmanagerplugin/bin/session-manager-plugin /usr/local/bin/session-manager-plugin
 }
 
+function _install_session_manager_plugin_windows() {
+  curl -sS "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/windows/SessionManagerPluginSetup.exe" \
+    -o "/tmp/SessionManagerPluginSetup.exe"
+  /tmp/SessionManagerPluginSetup.exe || echo "Warning: SessionManagerPluginSetup.exe existed with non-zero code."
+}
+
 function _install_session_manager_plugin() {
   # See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
-  if _is_centos; then
+  if _is_windows; then
+    _install_session_manager_plugin_windows
+  elif _is_centos; then
     _install_session_manager_plugin_centos
   elif _is_macos; then
     _install_session_manager_plugin_macos
   else
     _install_session_manager_plugin_ubuntu
   fi
-  session-manager-plugin
 }
 
 
 
 function _install_curl_ubuntu() {
-  sudo apt-get install -y --no-install-recommends curl
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl
 }
 
 function _install_curl_centos() {
@@ -130,7 +151,7 @@ function _install_curl_centos() {
 }
 
 function _install_curl() {
-  if _is_macos; then
+  if _is_macos || _is_windows; then
     :  # noop, should be already installed
   elif _is_centos; then
     _install_curl_centos
@@ -169,6 +190,7 @@ function _print_sm_domain_id() {
 
 # shellcheck disable=SC2001
 function _print_sm_user_profile_name() {
+  # FIXME: Check for "SpaceName" - spaces are not supported yet
   sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
   echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"UserProfileName":\"\([^"]*\)\".*$/\1/'
 }
@@ -218,4 +240,47 @@ function _start_sshd() {
   else
     service ssh start || (echo "ERROR: Failed to start sshd service" && exit 255)
   fi
+}
+
+function _export_ssh_key_env_var() {
+  SM_SSH_HOST_NAME=$1
+  SSH_KEY=~/.ssh/${SM_SSH_HOST_NAME}
+  export SSH_KEY
+}
+
+function _check_ssh_proxy_host_name() {
+  SM_SSH_HOST_NAME=$1
+  SM_RESOURCE_TYPE=$2
+
+  if [[ "$SM_SSH_HOST_NAME" =~ ^.*\."$SM_RESOURCE_TYPE"\.sagemaker ]]; then
+    :
+  else
+    echo "sm-local-ssh-$SM_RESOURCE_TYPE: Error: Host name must end with '.$SM_RESOURCE_TYPE.sagemaker'"
+    exit 1
+  fi
+}
+
+function _generate_key_and_print_instance_id() {
+  SM_SSH_FQDN=$1
+  DOMAIN_ID=$2
+  USER_PROFILE_NAME=$3
+
+  if [[ -f $SSH_KEY ]]; then
+    # Don't generate again, or it will confuse SSH
+    # Only touch the file so it can be easily identified when you sort by last access timestamp
+    touch "$SSH_KEY"
+  else
+    # echo "Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS"
+    echo 'yes' | ssh-keygen -t ecdsa -q -f "${SSH_KEY}" -N '' >/dev/null
+  fi
+
+  # shellcheck disable=SC2091  # execute python location
+  $(_python) <<EOF
+import logging
+logging.basicConfig(level=logging.ERROR);
+logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
+import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper;
+print(SSHEnvironmentWrapper.attach_to_resource("$SM_SSH_FQDN", "$DOMAIN_ID", "$USER_PROFILE_NAME").get_instance_id(timeout_in_sec=0));
+EOF
+
 }

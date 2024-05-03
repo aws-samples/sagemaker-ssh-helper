@@ -3,6 +3,7 @@
 # When a user logs in with SSH or remote interpreter, we want env vars to be the same as set by SageMaker
 
 set -e
+set -o pipefail
 
 if [[ "$1" == "print-vars" ]]; then
   # Wrap all vars into single quotes, wrap single quotes into double quotes

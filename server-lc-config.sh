@@ -58,6 +58,6 @@ function start_ssh_ide() {
   sudo -E env "PATH=$PATH" nohup sm-ssh-ide ssm-agent &
 }
 
-# Uncomment the below two lines, if you plan to connect to the Jupyter Server with `sm-local-ssh-ide connect default`
+# Uncomment the below two lines, if you plan to connect to the Jupyter Server with `sm-ssh connect default.studio.sagemaker`
 #LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
 #start_ssh_ide

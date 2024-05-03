@@ -10,7 +10,7 @@ from sagemaker_ssh_helper.manager import SSMManager
 
 class IDEAppStatus:
 
-    def __init__(self, status, failure_reason) -> None:
+    def __init__(self, status, failure_reason=None) -> None:
         super().__init__()
         self.failure_reason = failure_reason
         self.status = status
@@ -74,11 +74,11 @@ class SSHIDE:
         """
         self.logger.info(f"Creating kernel app {app_name} with SSH lifecycle config {ssh_lifecycle_config}")
         self.log_urls(app_name)
-        status = self.get_kernel_app_status(app_name)
+        status = self.get_app_status(app_name)
         while status.is_in_transition():
             self.logger.info(f"Waiting for the final status. Current status: {status}")
             time.sleep(10)
-            status = self.get_kernel_app_status(app_name)
+            status = self.get_app_status(app_name)
 
         self.logger.info(f"Previous app status: {status}")
 
@@ -101,8 +101,9 @@ class SSHIDE:
 
         self.create_app(app_name, 'KernelGateway', instance_type, image_arn, lifecycle_arn)
 
-    def get_kernel_app_status(self, app_name: str) -> IDEAppStatus:
+    def get_app_status(self, app_name: str, app_type: str = 'KernelGateway') -> IDEAppStatus:
         """
+        :param app_type:
         :param app_name:
         :return: None | 'InService' | 'Deleted' | 'Deleting' | 'Failed' | 'Pending'
         """
@@ -110,7 +111,7 @@ class SSHIDE:
         try:
             response = self.client.describe_app(
                 DomainId=self.domain_id,
-                AppType='KernelGateway',
+                AppType=app_type,
                 UserProfileName=self.user,
                 AppName=app_name,
             )
@@ -152,11 +153,11 @@ class SSHIDE:
                 raise
             return
 
-        status = self.get_kernel_app_status(app_name)
+        status = self.get_app_status(app_name)
         while wait and status.is_deleting():
             self.logger.info(f"Waiting for the Deleted status. Current status: {status}")
             time.sleep(10)
-            status = self.get_kernel_app_status(app_name)
+            status = self.get_app_status(app_name)
         self.logger.info(f"Status after delete: {status}")
         if wait and not status.is_deleted():
             raise ValueError(f"Failed to delete app {app_name}. Status: {status}")
@@ -179,11 +180,11 @@ class SSHIDE:
             UserProfileName=self.user,
             ResourceSpec=resource_spec,
         )
-        status = self.get_kernel_app_status(app_name)
+        status = self.get_app_status(app_name)
         while status.is_pending():
             self.logger.info(f"Waiting for the InService status. Current status: {status}")
             time.sleep(10)
-            status = self.get_kernel_app_status(app_name)
+            status = self.get_app_status(app_name)
 
         self.logger.info(f"New app status: {status}")
 
@@ -199,23 +200,29 @@ class SSHIDE:
         return f"arn:aws:sagemaker:{self.current_region}:{sagemaker_account_id}:image/{image_name}"
 
     def print_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0):
-        print(self.get_kernel_instance_ids(app_name, timeout_in_sec)[index])
+        print(self.get_kernel_instance_id(app_name, timeout_in_sec, index))
 
-    def get_kernel_instance_ids(self, app_name, timeout_in_sec):
-        self.logger.info("Resolving IDE instance IDs through SSM tags")
+    def get_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0,
+                               not_earlier_than_timestamp: int = 0):
+        return self.get_kernel_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)[index]
+
+    def get_kernel_instance_ids(self, app_name: str, timeout_in_sec: int, not_earlier_than_timestamp: int = 0):
+        self.logger.info(f"Resolving IDE instance IDs for app '{app_name}' through SSM tags "
+                         f"in domain '{self.domain_id}' for user '{self.user}'")
         self.log_urls(app_name)
         if self.domain_id and self.user:
-            result = SSMManager().get_studio_user_kgw_instance_ids(self.domain_id, self.user, app_name, timeout_in_sec)
+            result = SSMManager().get_studio_user_kgw_instance_ids(self.domain_id, self.user, app_name,
+                                                                   timeout_in_sec, not_earlier_than_timestamp)
         elif self.user:
             self.logger.warning(f"Domain ID is not set. Will attempt to connect to the latest "
                                 f"active kernel gateway with the name {app_name} in the region {self.current_region} "
                                 f"for user profile {self.user}")
             result = SSMManager().get_studio_user_kgw_instance_ids("", self.user, app_name,
-                                                                   timeout_in_sec)
+                                                                   timeout_in_sec, not_earlier_than_timestamp)
         else:
             self.logger.warning(f"Domain ID or user profile name are not set. Will attempt to connect to the latest "
                                 f"active kernel gateway with the name {app_name} in the region {self.current_region}")
-            result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec)
+            result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
         return result
 
     def log_urls(self, app_name):
@@ -319,3 +326,23 @@ class SSHIDE:
             ImageName=image_name
         )
         self.logger.info(f"Image deleted: {image_name}")
+
+
+class NotebookInstance:
+    logger = logging.getLogger('sagemaker-ssh-helper:NotebookInstance')
+
+    def __init__(self, notebook_name, region_name: str = None):
+        self.notebook_name = notebook_name
+        self.current_region = region_name or boto3.session.Session().region_name
+        self.client = boto3.client('sagemaker', region_name=self.current_region)
+        self.ssh_log = SSHLog(region_name=self.current_region)
+
+    def get_instance_ids(self):
+        result = SSMManager().get_notebook_instance_ids(self.notebook_name)
+        return result
+
+    def get_cloudwatch_url(self):
+        raise ValueError("Not implemented")
+
+    def get_metadata_url(self):
+        raise ValueError("Not implemented")

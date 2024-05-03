@@ -1,8 +1,11 @@
 ## Flow Diagrams
 
+> *Note*: Below diagrams have to be updated for the latest major release, which introduced the `sm-ssh` tool and made redundant the additional SSH port forwarding tunnel created by `sm-connect-ssh-proxy`.
+
 - [Training job with SSM](#training-job-with-ssm)
 - [Training job with SSH](#training-job-with-ssh)
 - [Local IDE to SageMaker Studio to with SSH](#local-ide-to-sagemaker-studio-to-with-ssh)
+
 
 #### Training job with SSM
 

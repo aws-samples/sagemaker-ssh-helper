@@ -25,6 +25,8 @@ REGION=
 
 Note that if you connect to AWS from your local CLI as an IAM user, you will need to assume a `USER_ROLE_ARN` when connecting to SageMaker. 
 
+Roughly speaking, the SageMaker role is the role assumed by a cloud compute resource and the user role is the role assumed by you on your local laptop.
+
 b. Execute the following commands (you can copy-paste them as a whole script):
 
 ```shell
@@ -69,18 +71,18 @@ To understand more what CDK bootstrapping does, see [the documentation](https://
 
 ### Manual setup
 
-**1. Setup Systems Manager (SSM)**
+#### 1. Setup Systems Manager (SSM)
 
 a. Enable advanced instances tier to use managed instances (such as SageMaker managed containers): 
    
-Go to AWS Console -> Systems Manager -> Fleet Manager -> Settings -> Change instance tier settings -> Confirm change from Standard-Tier to Advanced-Tier.
+Go to AWS Console -> Systems Manager -> Fleet Manager -> Account management -> Instance tier settings -> Change account setting -> Confirm change from Standard-Tier to Advanced-Tier.
 
 Repeat for each AWS Region that you plan to use with SageMaker SSH Helper.
 
-*Note:* Advanced instances tier comes at small extra fee. Review [the pricing page](https://aws.amazon.com/systems-manager/pricing/#On-Premises_Instance_Management) for details.
+*Note:* You need to turn on advanced tier to make to use of Systems Manager Session Manager which is required for SSH Helper to work. Advanced instances tier comes at small extra fee. Review [the pricing page](https://aws.amazon.com/systems-manager/pricing/#On-Premises_Instance_Management) for details. 
 
 
-**2. Update your SageMaker IAM role (used with the `role` Estimator parameter)**
+#### 2. Update your SageMaker IAM role (used with the `role` Estimator parameter)
 
 a. Go to AWS Console -> IAM -> Roles -> your SageMaker execution role.
 
@@ -165,7 +167,7 @@ c. Add to the role a new inline policy named `SSHSageMakerServerPolicy` as follo
 *Note:* you can find your full SageMaker Role ARN at the "Summary" section of IAM console, when you look at your role. It may look like this: `arn:aws:iam::<<account_id>>:role/service-role/AmazonSageMaker-ExecutionRole-<<timestamp>>`.
 
 
-**3. Make sure that the local user role also has all necessary permissions**
+#### 3. Make sure that the local user role also has all necessary permissions
 
 a. Attach the inline policy named `SSHSageMakerClientPolicy`. Replace `<<ACCOUNT_ID>>` with your AWS account ID:
 
@@ -227,4 +229,8 @@ a. Attach the inline policy named `SSHSageMakerClientPolicy`. Replace `<<ACCOUNT
 
 For more details about these policies, see the question "[How SageMaker SSH Helper protects users from impersonating each other?](FAQ.md#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other)" in FAQ.
 
-*Note:* If you want to run and debug the SageMaker jobs from SageMaker Studio, and not from your local IDE, attach both `SSHSageMakerServerPolicy` and `SSHSageMakerClientPolicy` to the SageMaker execution role.
+#### 4. (Optional) Connecting from SageMaker Studio 
+
+If you want to run and debug the SageMaker jobs from SageMaker Studio, or connect from the JupyterServer to KernelGateway, instead of doing to from your local IDE, attach both `SSHSageMakerServerPolicy` and `SSHSageMakerClientPolicy` to the SageMaker execution role.
+
+In this case, SageMaker Studio, or Jupyter Server, becomes the client, which you connect from and run `sm-ssh` command at, and the remote job, or Kernel Gateway, respectively, becomes the server, which you `connect` to, by providing the resource name like `xxx.yyy.sagemaker` as an argument.

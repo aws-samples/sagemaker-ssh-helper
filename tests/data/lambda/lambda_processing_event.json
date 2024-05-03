@@ -1,0 +1,101 @@
+{
+  "version": "0",
+  "id": "639a4f02-4c82-8e04-a639-2a9f1ad9ced3",
+  "detail-type": "SageMaker Processing Job State Change",
+  "source": "aws.sagemaker",
+  "account": "555555555555",
+  "time": "2023-09-04T13:52:12Z",
+  "region": "eu-west-1",
+  "resources": [
+    "arn:aws:sagemaker:eu-west-1:555555555555:processing-job/ssh-training-low-gpu-2023--LowGPUUtilization-399d54a4"
+  ],
+  "detail": {
+    "SdkResponseMetadata": "",
+    "SdkHttpMetadata": "",
+    "ProcessingInputs": [
+      {
+        "InputName": "Profiler",
+        "AppManaged": "False",
+        "S3Input": {
+          "S3Uri": "s3://sagemaker-eu-west-1-555555555555/ssh-training-low-gpu-2023-09-04-13-48-16-522/profiler-output",
+          "LocalPath": "/opt/ml/processing/input/profiler",
+          "S3DataType": "S3_PREFIX",
+          "S3InputMode": "FILE",
+          "S3DataDistributionType": "FULLYREPLICATED",
+          "S3CompressionType": ""
+        },
+        "DatasetDefinition": ""
+      }
+    ],
+    "ProcessingOutputConfig": {
+      "Outputs": [
+        {
+          "OutputName": "RuleOutput",
+          "S3Output": {
+            "S3Uri": "s3://sagemaker-eu-west-1-555555555555/ssh-training-low-gpu-2023-09-04-13-48-16-522/rule-output/LowGPUUtilization",
+            "LocalPath": "/opt/ml/processing/output/rule",
+            "S3UploadMode": "CONTINUOUS"
+          },
+          "FeatureStoreOutput": "",
+          "AppManaged": "False"
+        }
+      ],
+      "KmsKeyId": ""
+    },
+    "ProcessingJobName": "ssh-training-low-gpu-2023--LowGPUUtilization-399d54a4",
+    "ProcessingResources": {
+      "ClusterConfig": {
+        "InstanceCount": 1,
+        "InstanceType": "ml.m5.2xlarge",
+        "VolumeSizeInGB": 30,
+        "VolumeKmsKeyId": ""
+      }
+    },
+    "StoppingCondition": {
+      "MaxRuntimeInSeconds": 900
+    },
+    "AppSpecification": {
+      "ImageUri": "929884845733.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-debugger-rules:latest",
+      "ContainerEntrypoint": "",
+      "ContainerArguments": ""
+    },
+    "Environment": {
+      "SAGEMAKER_ENV_RULE_STOP_SIGNAL_FILE": "/opt/ml/processing/input/profiler/signals/LowGPUUtilization",
+      "rule_to_invoke": "LowGPUUtilization",
+      "scan_interval_us": "60000000",
+      "SAGEMAKER_START_TIMESTAMP_OF_RULE": "1693835304",
+      "TRAINING_JOB_ARN": "arn:aws:sagemaker:eu-west-1:555555555555:training-job/ssh-training-low-gpu-2023-09-04-13-48-16-522",
+      "threshold_p95": "50",
+      "patience": "2",
+      "TRAINING_IMAGE": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-training:1.9.1-gpu-py38",
+      "window": "1200",
+      "threshold_p5": "0"
+    },
+    "NetworkConfig": {
+      "EnableInterContainerTrafficEncryption": "False",
+      "EnableNetworkIsolation": "False",
+      "VpcConfig": ""
+    },
+    "RoleArn": "arn:aws:iam::555555555555:role/service-role/AmazonSageMaker-ExecutionRole-20230209T131540",
+    "ExperimentConfig": {
+      "ExperimentName": "",
+      "TrialName": "",
+      "TrialComponentDisplayName": "",
+      "RunName": ""
+    },
+    "ProcessingJobArn": "arn:aws:sagemaker:eu-west-1:555555555555:processing-job/ssh-training-low-gpu-2023--LowGPUUtilization-399d54a4",
+    "ProcessingJobStatus": "Completed",
+    "ExitMessage": "RuleEvaluationConditionMet: Evaluation of the rule LowGPUUtilization at step 0 resulted in the condition being met\n",
+    "FailureReason": "",
+    "ProcessingEndTime": 1693835531000,
+    "ProcessingStartTime": 1693835510000,
+    "LastModifiedTime": 1693835532000,
+    "CreationTime": 1693835305000,
+    "LastModifiedBy": "",
+    "CreatedBy": "",
+    "MonitoringScheduleArn": "",
+    "AutoMLJobArn": "",
+    "TrainingJobArn": "arn:aws:sagemaker:eu-west-1:555555555555:training-job/ssh-training-low-gpu-2023-09-04-13-48-16-522",
+    "Tags": {}
+  }
+}

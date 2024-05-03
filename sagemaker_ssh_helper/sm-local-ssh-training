@@ -1,16 +1,37 @@
 #!/bin/bash
 
+# NOTE: This is a lower level interface to the SSH Helper.
+# Run `sm-ssh -h` for the high-level interface.
+
 # Commands:
 # connect <training_job_name> [<extra_ssh_args>]
 # stop-waiting
 # run-command <command> <args...>
 
+set -e
+set -o pipefail
+
+dir=$(dirname "$0")
+source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
+
 COMMAND=$1
 
-if [[ "$COMMAND" == "connect" ]]; then
+if [[ "$COMMAND" == "start-proxy" ]]; then
+  SM_SSH_HOST_NAME="$2"
+  SM_RESOURCE_TYPE="training"
+
+  _check_ssh_proxy_host_name "$SM_SSH_HOST_NAME" "$SM_RESOURCE_TYPE"
+  _export_ssh_key_env_var "$SM_SSH_HOST_NAME"
+
+  INSTANCE_ID=$(_generate_key_and_print_instance_id "$SM_SSH_HOST_NAME")
+
+  sm-local-start-ssh --proxy-setup-only "${INSTANCE_ID}"
+
+elif [[ "$COMMAND" == "connect" ]]; then
   JOB_NAME=$2
 
-  INSTANCE_ID=$(python <<EOF
+  # shellcheck disable=SC2091
+  INSTANCE_ID=$($(_python) <<EOF
 import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper;
 import logging; logging.basicConfig(level=logging.INFO);
 print(SSHEstimatorWrapper.attach("$JOB_NAME").get_instance_ids(timeout_in_sec=300)[0])

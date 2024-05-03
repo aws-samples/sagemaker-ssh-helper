@@ -78,9 +78,9 @@ def test_ssh_inference_hugging_face_pretrained_model():
     estimator = HuggingFace(
         entry_point=(p := Path('source_dir/training_clean/train_clean.py')).name,
         source_dir=str(p.parents[0]),
-        pytorch_version='1.10',
-        transformers_version='4.17',
-        py_version='py38',
+        pytorch_version='1.13',
+        transformers_version='4.26',
+        py_version='py39',
         instance_count=1,
         instance_type='ml.g4dn.xlarge',
         max_run=int(timedelta(minutes=15).total_seconds()),
@@ -95,7 +95,7 @@ def test_ssh_inference_hugging_face_pretrained_model():
 
     # noinspection PyCompatibility
     model = estimator.create_model(
-        entry_point=(p := Path('source_dir/inference/inference_hf.py')).name,
+        entry_point=(p := Path('source_dir/inference/inference_ssh.py')).name,
         source_dir=str(p.parents[0])
     )
 
@@ -112,9 +112,9 @@ def test_ssh_inference_hugging_face_pretrained_model():
         model_data=repacked_model_data,
         entry_point=model.entry_point,  # TODO: does it repack the entry point? What if I also use source_dir?
         role=estimator.role,  # TODO: should take the default
-        transformers_version='4.17.0',
-        pytorch_version='1.10.2',
-        py_version='py38',
+        pytorch_version='1.13',
+        transformers_version='4.26',
+        py_version='py39',
         dependencies=[SSHModelWrapper.dependency_dir()],  # NOTE: model will be repacked again with dependencies
     )
 
@@ -457,7 +457,7 @@ def test_clean_train_sklearn():
 
 
 @pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Temp issues with the dependencies in the container")
+                    reason="Temp issues with the dependencies in the container - D89685473")
 def test_train_sklearn_ssh():
     logging.info("Starting training")
 
@@ -503,7 +503,7 @@ def test_clean_train_xgboost():
 
 
 @pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Temp issues with the dependencies in the container")
+                    reason="Temp issues with the dependencies in the container - D89685473")
 def test_train_xgboost_ssh():
     logging.info("Starting training")
 
@@ -822,6 +822,7 @@ def test_hf_djl_accelerate_ssh():
         assert "'generated_text': 'What is" in str(result) or "'generated_text': \"What is" in str(result)
 
     except Exception as e:
+        logging.error("Exception occurred during the test. Cleaning up the resources.")
         if predictor:
             try:
                 predictor.delete_endpoint(delete_endpoint_config=False)
@@ -841,7 +842,7 @@ def test_hf_djl_accelerate_ssh():
 # noinspection DuplicatedCode
 @mock.patch.object(sys, 'argv', ['launch', 'source_dir/training_clean/train_clean.py'])
 def test_accelerate_training_clean():
-    """
+    f"""
     See https://huggingface.co/docs/accelerate/usage_guides/sagemaker .
 
     Below code is equal to executing the following command:
@@ -851,8 +852,10 @@ def test_accelerate_training_clean():
     See: https://github.com/huggingface/accelerate/blob/main/src/accelerate/commands/launch.py#L787-L804
       and https://github.com/huggingface/accelerate/blob/main/src/accelerate/utils/launch.py#L383-L491 .
 
+    See also: {Path("generate_accelerate_config.sh")} .
+
     """
-    import accelerate.commands.launch as launch
+    import accelerate.commands.launch as launch  # This is identical to using `accelerate launch` from command line
     import accelerate.utils.launch as utils_launch
     parser = launch.launch_command_parser()
     args = parser.parse_args()
@@ -875,6 +878,9 @@ def test_accelerate_training_clean():
 # noinspection DuplicatedCode
 @mock.patch.object(sys, 'argv', ['launch', 'source_dir/training/train.py'])
 def test_accelerate_training_ssh():
+    f"""
+    See: {Path("generate_accelerate_config.sh")} .
+    """
     import accelerate.commands.launch as launch
     import accelerate.utils.launch as utils_launch
     parser = launch.launch_command_parser()

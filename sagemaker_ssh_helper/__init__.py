@@ -1,5 +1,6 @@
 import subprocess
 import os
+import time
 from datetime import datetime, timedelta
 
 import sagemaker_ssh_helper.env
@@ -22,10 +23,21 @@ def setup_and_start_ssh():
     script = sagemaker_ssh_helper.env.get_caller_script_name(2)
     if start_ssh == "true" and node_rank < ssh_instance_count:
         print(f"[sagemaker-ssh-helper] Starting SSH Helper setup from {script}")
+        start_time = datetime.now()
         sm_setup_ssh_absolute_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sm-setup-ssh")
-        subprocess.check_call(["bash", sm_setup_ssh_absolute_path])  # nosec B607  # absolute path is calculated
+        setup_successful = False
+        try:
+            subprocess.check_call(["bash", sm_setup_ssh_absolute_path])  # nosec B607  # absolute path is calculated
+            setup_successful = True
+        finally:
+            if not setup_successful:
+                # give time for all logs and errors to apper in CloudWatch to avoid throttling
+                time.sleep(60)
+            print(f"[sagemaker-ssh-helper] SSH Helper setup is "
+                  f"{'SUCCESSFUL' if setup_successful else 'FAILED with errors'}. "
+                  f"Elapsed time: {str(datetime.now() - start_time)}")
     else:
-        print(f"[sagemaker-ssh-helper] Skipping SageMaker SSH Helper setup from {script}")
+        print(f"[sagemaker-ssh-helper] Skipping SageMaker SSH Helper setup from {script} due to startup params")
 
 
 def is_last_session_timeout(time_delta: timedelta):

@@ -6,32 +6,41 @@ documentation, we greatly value feedback and contributions from our community.
 Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
 information to effectively respond to your bug report or contribution.
 
-## Adding new features to the SageMaker SSH Helper
+## Adding new features to SageMaker SSH Helper
 
 SageMaker SSH helper uses Test Driven Development (TDD) methodology to implement its features.
 
 Before implementing new features, check existing [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues). The contributors are either working already on these features or planning to implement them in the future.
 
-To start development, install the library on your local machine (for macOS, you may also add `dev-macos` to the extras):
+To start development, install the library on your local machine. For macOS, you may also add `dev-macos` to the extras, in addition to `dev`:
 ```shell
 pip install '.[cdk,test,dev]'
 ```
 
 Configure SageMaker execution role through [defaults](https://sagemaker.readthedocs.io/en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk) config.
 
-Make sure all tests are working (you need to manually create resources that are passed through environment):
+Make sure all tests are working. You need to manually create resources that are passed through environment variables:
 ```shell
-export ACCOUNT_ID = ...
-export AWS_ACCESS_KEY_ID = ...
-export AWS_SECRET_ACCESS_KEY = ...
-export SAGEMAKER_ROLE = ...
-export USER_ROLE = ...
-export SAGEMAKER_STUDIO_DOMAIN = ...
-export SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN = ...
-export SNS_NOTIFICATION_TOPIC_ARN = ...
-export VPC_ONLY_SECURITY_GROUP = ...
-export VPC_ONLY_SUBNET = ...
-export PYTEST_EXTRA_ARGS = " "
+export ACCOUNT_ID="..."
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+
+export SAGEMAKER_ROLE="..."
+export USER_ROLE="..."
+export SAGEMAKER_STUDIO_DOMAIN="..."
+export SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN="..."
+export VPC_ONLY_SECURITY_GROUP="..."
+export VPC_ONLY_SUBNET="..."
+export SNS_NOTIFICATION_TOPIC_ARN="..."
+export LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
+export JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
+
+export SKIP_CDK="false"
+export SKIP_PROFILE_TESTS="false"
+
+export PYTEST_EXTRA_ARGS=" "
+export PYTEST_IGNORE_SKIPS="false"
+export PYTEST_KEYWORDS=" "
 
 bash run_tests.sh
 ```

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+set -e
+set -o pipefail
+
+# Uncomment below option for debugging
+#set -x
+
 SLEEP=$1
 
 if [[ "$SLEEP" == "" ]]; then
@@ -43,7 +49,7 @@ do
       exit 0
     fi
     sleep 1
-    SSM_PID=$(pgrep -f amazon-ssm-agent)
+    SSM_PID=$(pgrep -f amazon-ssm-agent || echo "")
     if [[ "$SSM_PID" == "" ]]; then
       AGENT_INFO="SSM Agent has NOT been started yet."
     else

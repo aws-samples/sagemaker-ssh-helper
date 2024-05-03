@@ -6,9 +6,21 @@
 # from training / processing / inference script, e. g. with subprocess.check_call()
 
 set -e
+set -o pipefail
+
+# Uncomment below option for debugging
+#set -x
 
 dir=$(dirname "$0")
 source "$dir"/sm-helper-functions
+
+terminate() {
+    echo "sm-setup-ssh: Terminated."
+    exit 2
+}
+
+trap terminate SIGTERM
+trap terminate SIGINT
 
 # This script can be called simultaneously multiple times in a distributed training or inference job
 # To avoid race conditions, we install helper scripts under an exclusive lock
@@ -28,16 +40,20 @@ if [[ "$1" == "configure" ]]; then
   mkdir -p ~/.ssh
   [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1
 
-  echo "Installing SSH server and auxiliary tools"
   if _is_centos; then
+    echo "Installing SSH server and auxiliary tools on CentOS"
     yum install -y openssh-server net-tools procps less jq vim rsync perl rsyslog
   else
     export DEBIAN_FRONTEND=noninteractive
+    echo 'Retrieving the new lists of Debian packages'
     apt-get -qq update || echo 'sm-ssh-ide: WARNING - issues with retrieving new lists of packages'
+    echo 'Installing Debian package manager utilities'
     apt-get -qq -y install apt-utils
-    apt-get -qq -y install ssh net-tools procps less jq vim rsync locales rsyslog
+    echo "Installing SSH server and auxiliary tools"
+    apt-mark hold python3-distro ssh-import-id  # workaround to make installation work on Trn1
+    apt-get -y install ssh net-tools procps less jq vim rsync locales rsyslog
 
-    # Install some locales to work with UTF-8 charsets
+    echo 'Installing locales to work with UTF-8 charsets'
     echo "C.UTF-8 UTF-8" >> /etc/locale.gen
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
   fi
@@ -105,6 +121,9 @@ if [[ "$1" == "start-ssh" ]]; then
   # Log IP addresses of the container (useful only in training in combination with VPC + VPN)
   echo "SSH Helper Log IP: $(hostname -I)"
 
+  # Log OS version
+  head -2 /etc/os-release || :
+
   # Save and dump SageMaker environment for SSH sessions
   sm-save-env
 
@@ -124,6 +143,11 @@ if [[ "$1" == "start-ssh" ]]; then
   exit 1  # should never reach this line
 fi
 
+# All subprocesses should have access to helper scripts, so each one needs to wait until they are fully installed
+# But we don't know which subprocess will start and finish first
+# flock prevents from race condition during installation
+# Useful for distributed training on multiple GPUs
+echo "[sagemaker-ssh-helper][sm-setup-ssh] Acquiring an exclusive blocking lock and installing scripts."
 flock /tmp/sm-install-lock bash "$0" install-helper-scripts \
   | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh][install-helper-scripts] /'
 
@@ -132,6 +156,7 @@ flock /tmp/sm-install-lock bash "$0" install-helper-scripts \
 # redirection to /proc/1/fd/1 will write logs to CloudWatch
 # sed will prepend log output with SSH Helper prefix
 if [[ ! -f /tmp/sm-start-ssh-lock ]]; then
+  echo "[sagemaker-ssh-helper][sm-setup-ssh] Acquiring a non-blocking lock and starting SSH setup process in background."
   if [[ "$SSH_LOG_TO_STDOUT" == "true" ]]; then
     flock -n /tmp/sm-start-ssh-lock bash "$0" start-ssh &
   else
@@ -140,6 +165,9 @@ if [[ ! -f /tmp/sm-start-ssh-lock ]]; then
         | sed -u 's/^/[sagemaker-ssh-helper][sm-setup-ssh][start-ssh] /' \
         >/proc/1/fd/1 2>&1 &
   fi
+  echo "[sagemaker-ssh-helper][sm-setup-ssh] SSH setup process is running in background."
+else
+  echo "[sagemaker-ssh-helper][sm-setup-ssh] Lock already exists, SSH setup process should be already running in background."
 fi
 
 sm-wait "${SSH_WAIT_TIME_SECONDS:-60}" \

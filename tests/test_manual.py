@@ -1,7 +1,9 @@
 import logging
 import os
 from datetime import timedelta
+from pathlib import Path
 
+import boto3
 import pytest
 import sagemaker
 from sagemaker import Predictor
@@ -11,6 +13,8 @@ from sagemaker.utils import name_from_base
 
 from sagemaker_ssh_helper.log import SSHLog
 from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper, SSHProcessorWrapper, SSHModelWrapper
+
+import json
 
 
 # noinspection DuplicatedCode
@@ -30,7 +34,7 @@ def test_train_placeholder_manual():
         framework_version='1.9.1',
         py_version='py38',
         instance_count=1,
-        instance_type='ml.m5.xlarge',
+        instance_type='ml.g4dn.xlarge',
         max_run=60 * 60 * 3,
         keep_alive_period_in_seconds=1800,
         container_log_level=logging.INFO,
@@ -41,10 +45,7 @@ def test_train_placeholder_manual():
 
     estimator.fit(wait=False)
 
-    instance_ids = ssh_wrapper.get_instance_ids(timeout_in_sec=600)  # <--NEW--
-
-    logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
-    logging.info(f"To connect over SSH run: sm-local-ssh-training connect {ssh_wrapper.training_job_name()}")
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_training_job()
 
@@ -73,9 +74,7 @@ def test_processing_framework_manual():
         wait=False
     )
 
-    instance_ids = ssh_wrapper.get_instance_ids(60)
-
-    logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_processing_job()
 
@@ -98,9 +97,7 @@ def test_inference_manual():
                                 endpoint_name=endpoint_name,
                                 wait=True)
 
-    instance_ids = ssh_wrapper.get_instance_ids(60)
-
-    logging.info(f"To connect over SSM run: aws ssm start-session --target {instance_ids[0]}")
+    ssh_wrapper.print_ssh_info()
 
     ssh_wrapper.wait_for_endpoint()
 
@@ -132,6 +129,30 @@ def test_subprocess():
 
 @pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
                     reason="Manual test")
+def test_sns_publish(request):
+    sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
+    logging.info(f"Send notification email and/or SMS through Amazon SNS topic {sns_notification_topic_arn}")
+    sns_resource = boto3.resource('sns')
+    sns_notification_topic = sns_resource.Topic(sns_notification_topic_arn)
+    response = sns_notification_topic.publish(
+        Subject='Manual test subject',
+        Message='Manual test message'
+    )
+    logging.info(f"SNS response: {response}")
+
+
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
+def test_low_gpu_lambda():
+    from sagemaker_ssh_helper.cdk.low_gpu.low_gpu_lambda import handler
+    with open(str(Path('data/lambda/lambda_processing_event.json')), 'r') as f:
+        event = f.read()
+        event = json.loads(event)
+    handler(event, None)
+
+
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
 def test_cloudwatch_metrics_sns(request):
     sns_notification_topic_arn = request.config.getini('sns_notification_topic_arn')
     topic_name = sns_notification_topic_arn.split(':')[-1]
@@ -141,3 +162,20 @@ def test_cloudwatch_metrics_sns(request):
     logging.info(metrics_count)
 
     assert metrics_count > 0
+
+
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
+def test_can_attach_to_endpoint():
+    boto3_session = boto3.session.Session(region_name="us-east-2")
+    session = sagemaker.session.Session(boto_session=boto3_session)
+    wrapper = SSHModelWrapper.attach('sd-inf2-ml-inf2-2023-11-07-13-33-05-254', session)
+    assert 'sd-inf2-ml-inf2-2023-11-07-13-33-05-254' in wrapper.get_cloudwatch_url()
+    assert wrapper.get_instance_id(timeout_in_sec=0) is not None
+
+
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test")
+def test_get_ssh_instance_timestamp():
+    from sagemaker_ssh_helper.manager import SSMManager
+    print(SSMManager().get_ssh_instance_timestamp('mi-0c5a1be17a45c83bf'))

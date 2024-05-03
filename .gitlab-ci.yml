@@ -3,6 +3,7 @@ image: public.ecr.aws/docker/library/python:3.8
 stages:
   - test
   - profile
+  - pypi
 
 run_tests:
   stage: test
@@ -26,13 +27,17 @@ run_tests:
       - tests/htmlcov/
       - tests/coverage.xml
       - tests/.coverage
+      - tests/.pymon
       - tests/output/
       - bandit.txt
       - flake8.txt
 
 profile_tests:
   stage: profile
+  when: manual
   resource_group: ssh-helper-tests
+  rules:
+    - if: $SKIP_PROFILE_TESTS == "false"
   script:
     - bash profile_tests.sh
   artifacts:
@@ -40,3 +45,12 @@ profile_tests:
     paths:
       - tests/prof/
 
+publish_testpypi:
+  stage: pypi
+  when: manual
+  dependencies:
+    - run_tests
+  script:
+    - sed -e "s~__password__~$PyPI_Test_API_token~" .pypirc > $HOME/.pypirc
+    - pip install -U twine
+    - python -m twine upload --verbose --repository testpypi dist/*

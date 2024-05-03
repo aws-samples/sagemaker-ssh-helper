@@ -70,16 +70,21 @@ class SSHLog(SSMManagerBase):
 
     def get_studio_kgw_ssm_instance_ids(self, kgw_name, timeout_in_sec=0):
         self.logger.warning("SSMManager#get_studio_kgw_instance_ids() is faster and more stable")
-        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway {kgw_name}")
+        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway: '{kgw_name}'")
         return self.get_ssm_instance_ids(f'/aws/sagemaker/studio', f"KernelGateway/{kgw_name}",
                                          timeout_in_sec=timeout_in_sec)
 
-    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter_regex: str = None):
+    def get_instance_ids_once(self, arn_resource_type, arn_resource_name, arn_filter_regex: str = None,
+                              not_earlier_than_timestamp: int = 0):
         if arn_filter_regex:
             raise ValueError("Not supported for SSHLog")
-        return self.get_ssm_instance_ids_once(log_group=arn_resource_type, stream_name=arn_resource_name)
+        return self.get_ssm_instance_ids_once(log_group=arn_resource_type, stream_name=arn_resource_name,
+                                              not_earlier_than_timestamp=not_earlier_than_timestamp)
 
-    def get_ssm_instance_ids_once(self, log_group, stream_name):
+    def get_ssm_instance_ids_once(self, log_group, stream_name,
+                                  not_earlier_than_timestamp: int = 0):
+        if not_earlier_than_timestamp > 0:
+            raise ValueError("Not implemented for SSHLog yet")
         query = "fields @timestamp, @logStream, @message" \
                 f"| filter @logStream like '{stream_name}'" \
                 "| filter @message like /Successfully registered the instance with AWS SSM using Managed instance-id/" \

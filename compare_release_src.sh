@@ -16,12 +16,13 @@ latest_release_json=$(curl -sS 'https://api.github.com/repos/aws-samples/sagemak
 latest=$(echo "$latest_release_json" | grep "tag_name" | sed -e "$json_value_regexp")
 
 for branch in "main" "$latest"; do
-  rm -rf "/tmp/sagemaker-ssh-helper-$latest/" || :
+  clone_dir="/tmp/sagemaker-ssh-helper-$branch/"
+  rm -rf "$clone_dir" || :
 
   git clone -c advice.detachedHead=false --depth 1 --branch "$branch" \
-    https://github.com/aws-samples/sagemaker-ssh-helper.git \
-    "/tmp/sagemaker-ssh-helper-$branch/"
-  diff -r -X /tmp/diff_exclude.txt "/tmp/sagemaker-ssh-helper-$branch/" ./ >"src_diff/$branch.txt" || :
+    https://github.com/aws-samples/sagemaker-ssh-helper.git "$clone_dir"
+  git -C "$clone_dir" rev-parse --short "$branch"
+  diff -r -X /tmp/diff_exclude.txt "$clone_dir" ./ >"src_diff/$branch.txt" || :
 done
 
 echo "compare_release_src.sh: Begin differences with main branch:"

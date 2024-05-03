@@ -69,7 +69,7 @@ def test_processing_different_region_ssh():
 def test_caller_script():
     from sagemaker_ssh_helper.env import get_caller_script_name
     assert get_caller_script_name() == 'test_environment.py'
-    assert get_caller_script_name(2) == 'python.py'
+    assert get_caller_script_name(2) == 'pytest_monitor.py'
 
 
 def test_aws_config():
