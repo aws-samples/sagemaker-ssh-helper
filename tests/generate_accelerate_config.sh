@@ -17,4 +17,5 @@ pytorch_version: 1.10.2
 region: eu-west-1
 transformers_version: 4.17.0
 use_cpu: false
+enable_cpu_affinity: false
 EOF
