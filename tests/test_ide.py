@@ -31,7 +31,7 @@ SSH_TEST_IMAGES = [
      'datascience-1.0', 'ml.m5.large', 'Python 3.7.10'),
     # 1 - Data Science 2.0
     ('test-data-science', 'ssh-test-ds2-cpu',
-     'sagemaker-data-science-38', 'ml.m5.large', 'Python 3.8.13'),
+     'sagemaker-data-science-38', 'ml.m5.large', 'Python 3.8.18'),
     # 2 - Data Science 3.0
     ('test-data-science', 'ssh-test-ds3-cpu',
      'sagemaker-data-science-310-v1', 'ml.m5.large', 'Python 3.10.6'),
