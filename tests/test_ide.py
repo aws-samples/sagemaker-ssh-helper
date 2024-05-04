@@ -43,9 +43,9 @@ SSH_TEST_IMAGES = [
     ('test-base-python', 'ssh-test-bp3-cpu',
      'sagemaker-base-python-310-v1', 'ml.m5.large', 'Python 3.10.8'),
 
-    # 5 - SparkMagic
+    # 5 - SparkMagic (deprecated)
     ('test-spark', 'ssh-test-magic-cpu',
-     'sagemaker-sparkmagic', 'ml.m5.large', 'Python 3.7.10'),
+     'sagemaker-sparkmagic', 'ml.m5.large', '** Deprecated **'),
     # 6 - SparkAnalytics 1.0
     ('test-spark', 'ssh-test-analytics-cpu',
      'sagemaker-sparkanalytics-v1', 'ml.m5.large', 'Python 3.8.13'),  # noqa
@@ -85,12 +85,19 @@ SSH_TEST_IMAGES = [
     # 17 - TensorFlow 2.12.0 Python 3.10 GPU Optimized
     ('test-tensorflow', 'ssh-test-tf212-gpu',
      'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3.10.10'),
+
+    # 18 - SageMaker Distribution v0 CPU - TODO
+
+    # 19 - SageMaker Distribution v0 GPU - TODO
 ]
 
 
 @pytest.mark.parametrize('instances', SSH_TEST_IMAGES)
 def test_sagemaker_studio(instances, request):
     user, app_name, image_name, instance_type, expected_version = instances
+
+    if 'Deprecated' in expected_version:
+        return
 
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user)
 
