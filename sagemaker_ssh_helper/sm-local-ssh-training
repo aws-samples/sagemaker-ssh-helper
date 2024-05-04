@@ -11,7 +11,8 @@
 set -e
 set -o pipefail
 
-dir=$(dirname "$0")
+self=$(realpath "${BASH_SOURCE[0]}")
+dir=$(dirname "$self")
 source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
 
 COMMAND=$1
