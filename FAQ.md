@@ -589,9 +589,11 @@ or this one:
 An error occurred (InvalidInstanceId) when calling the SendCommand operation: Instances [[mi-1234567890abcdef0]] not in a valid state for account 555555555555
 ```
 
+* Check the AWS region that you connect to with `aws configure list` and set both `AWS_REGION` and `AWS_DEFAULT_REGION` to the same value as mentioned [in the FAQ](FAQ.md#how-to-start-a-job-with-sagemaker-ssh-helper-in-an-aws-region-different-from-my-default-one).
+
 * Turn on Session Manager [logging](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-logging.html) and inspect the session logs.
 
-* Try `sm-ssh list` to see if instance is `Online` or offline (will be marked with `-`).
+* Try `sm-ssh list` to see if instance is `Online` or offline (will be marked with `-`). Pay attention to what the output says about the AWS region that you connect to.
 
 * If you have issues with SSH, but you can connect successfully from AWS Console, make sure you can run the both below SSM commands successfully on your local machine:
 
