@@ -111,7 +111,7 @@ class SageMakerNotebookInstance(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else "-",
             "NotebookInstance",
             self.status,
             self.name,
