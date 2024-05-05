@@ -144,6 +144,10 @@ class SageMakerStudioAutomation:
         time.sleep(2)
 
     def save_current_file(self):
+        self.logger.info("Closing possible dialogs (e.g. lost connection)")
+        ActionChains(self.browser).send_keys(Keys.ESCAPE).perform()
+        ActionChains(self.browser).send_keys(Keys.ESCAPE).perform()
+        time.sleep(2)
         self._click_file_menu()
         time.sleep(2)
         self._click_save()
