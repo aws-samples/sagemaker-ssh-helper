@@ -35,7 +35,7 @@ extras = {
         "sagemaker-studio-image-build",
         "sagemaker-training",
         "selenium",
-        "accelerate[sagemaker]",
+        "accelerate[sagemaker]<0.29",  # TODO: see https://github.com/huggingface/accelerate/issues/2744
     ],
     "dev": [
         "sagemaker-pytorch-training",
@@ -80,7 +80,6 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/aws-samples/sagemaker-ssh-helper',
     packages=setuptools.find_packages(),
-    #  FIXME: _Warning: Package 'sagemaker_ssh_helper.js' is absent from the `packages` configuration.
     data_files=[
         ('notebooks', [str(Path('SageMaker_SSH_IDE.ipynb')), str(Path('SageMaker_SSH_Notebook.ipynb'))]),
         ('js', [str(Path('./sagemaker_ssh_helper/js/drop_studio_file.js'))]),
