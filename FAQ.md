@@ -575,6 +575,8 @@ Yes, of course, you can use SSH Helper inside [Deep Learning Containers for LMI]
 
 Below are the generic tips to start with:
 
+* **Important:** Make sure you read the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
+
 * Check that the managed instance in AWS Console in Systems Manager -> Fleet Manager section appears as "Online". Check that you're able to connect to the node from the Console by selecting Node actions -> Start terminal session. 
 
 If instance is "Offline", you might see this error message when calling an `sm-ssh connect` command:
