@@ -112,6 +112,10 @@ export AWS_SESSION_TOKEN=${sts[2]}
 # Smoke test of `sm-ssh` utility
 AWS_DEFAULT_REGION=eu-west-1 sm-ssh list
 AWS_DEFAULT_REGION=eu-west-2 sm-ssh list
+mkdir -p /root/.ssh
+cat ssh_config_template.txt >>/root/.ssh/config
+ssh -o StrictHostKeyChecking=no sagemaker-ssh-helper.notebook.sagemaker \
+  python --version
 
 # Run tests
 cd tests

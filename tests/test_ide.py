@@ -28,7 +28,7 @@ logger = logging.getLogger('sagemaker-ssh-helper:test_ide')
 SSH_TEST_IMAGES = [
     # 0 - Data Science
     ('test-data-science', 'ssh-test-ds1-cpu',
-     'datascience-1.0', 'ml.m5.large', 'Python 3.7.10'),
+     'datascience-1.0', 'ml.m5.large', '** Deprecated **'),
     # 1 - Data Science 2.0
     ('test-data-science', 'ssh-test-ds2-cpu',
      'sagemaker-data-science-38', 'ml.m5.large', 'Python 3.8.18'),
@@ -55,10 +55,10 @@ SSH_TEST_IMAGES = [
 
     # 8 - MXNet 1.9 Python 3.8 CPU Optimized
     ('test-mxnet', 'ssh-test-mx19-cpu',
-     'mxnet-1.9-cpu-py38-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', 'Python 3.8.10'),
+     'mxnet-1.9-cpu-py38-ubuntu20.04-sagemaker-v1.0', 'ml.m5.large', '** Deprecated **'),
     # 9 - MXNet 1.9 Python 3.8 GPU Optimized
     ('test-mxnet', 'ssh-test-mx19-gpu',
-     'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3'),
+     'mxnet-1.9-gpu-py38-cu112-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', '** Deprecated **'),
 
     # 10 - PyTorch 1.12 Python 3.8 CPU Optimized
     ('test-pytorch', 'ssh-test-pt112-cpu',
