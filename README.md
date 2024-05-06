@@ -72,6 +72,8 @@ If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.
 ### Step 1: Install the library
 Before starting the whole procedure, check that both `pip` and `python` commands point to Python version 3.7 or higher with `python --version` command. 
 
+> **Important:** Make sure you read the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
+
 Install the latest stable version of library from the [PyPI repository](https://pypi.org/project/sagemaker-ssh-helper/):
 
 ```shell
@@ -286,6 +288,15 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 
 *Note:* adding `lib` dir to Python path is required, because SageMaker inference is putting dependencies 
 into the `code/lib` directory, while SageMaker training put libs directly to `code`. 
+
+On the following screenshot you see the sample code for the inference code running in SageMaker endpoint on AWS Inferentia chip.
+The user has connected to the endpoint with the `sm-ssh connect` command and executed the `neuron-ls` [command](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-ls.html):
+
+![](images/sm_ssh_inf2.png)
+
+You can find this sample code in the notebook [Deploy SD2.1 to Inferentia2 + SageMaker + HF Optimum Neuron + SageMaker SSH Helper](https://github.com/aws-samples/ml-specialized-hardware/blob/main/tutorials/04_ImageGenerationWithStableDiffusion/SDOnInf2AndHFOptimumNeuron_SMSSH.ipynb).
+
+You can also notice on the screenshot that the user configured the remote Python interpreter that connects to SageMaker Studio, so the user also executes the notebook itself remotely inside SageMaker. This setup is further described in the section for [Local IDE Integration with SageMaker Studio](#studio).
 
 ### Multi-model endpoints
 
@@ -571,9 +582,15 @@ Make sure you've configured your ssh config as mentioned in the [~/.ssh/config](
 
 A. Follow the [instructions in the PyCharm docs](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter), to configure the remote interpreter in PyCharm.
 
-In the field for host name, put the same value as for `fqdn` in the [`sm-ssh` command](#sm-ssh), e.g., `ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker`, and use `root` as the username.
+In the field for host name, put the same value as for `fqdn` in the [`sm-ssh` command](#sm-ssh), e.g., `ssh-training-manual-2023-10-02-14-38-56-744.training.sagemaker`, and use `root` as the username.
 
 ![](images/pycharm_training.png)
+
+When PyCharm asks for the SSH key, point to the `~/.ssh/<fqdn>` private key file that was automatically generated for you by SSH Helper:
+
+![](images/pycharm_training_ssh.png)
+
+*Note:* If PyCharm says connection refused, it can be due to timeout. Check that you can connect to this host from your system terminal with `ssh` and `sm-ssh` and try configuring the remote interpreter again.
 
 *Tip:* When you configure Python interpreter in PyCharm, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/root/project_name` instead of default `/tmp/pycharm_project_123`. This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir. 
 
@@ -723,6 +740,12 @@ sm-ssh list studio.sagemaker
 ```
 
 3. Using the remote Jupyter Notebook
+
+In recent versions of PyCharm, Jupyter Notebook is tunnelled automatically through remote interpreter connection. You might need to add `--allow-root` argument to the command line, when your remote interpreter runs under root:
+
+![](images/remote_jupyter.png)
+
+If you wish to connect to the existing notebook server started by SSH Helper or don't use PyCharm, proceed with the next configuration steps.
 
 To make the remote Jupyter Server port `8889` forwarded to the local machine, use SSH:
 
