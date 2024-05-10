@@ -326,7 +326,7 @@ def test_studio_notebook_in_firefox(request, user_profile_name):
     options = Options()
     options.set_preference("browser.download.folderList", 2)
     options.set_preference("browser.download.manager.showWhenStarting", False)
-    options.set_preference("browser.download.dir", os.path.abspath("../dist/"))
+    options.set_preference("browser.download.dir", os.path.abspath("../tests/output/"))
     firefox = webdriver.Firefox(options)
 
     browser_automation = SageMakerStudioAutomation(ide, firefox)
@@ -349,14 +349,15 @@ def test_studio_notebook_in_firefox(request, user_profile_name):
         f"%%sh\n",
         f"echo '{local_user_id}' > ~/.sm-ssh-owner"
     ])
-    ide_notebook_path = Path("../dist/SageMaker_SSH_IDE-DS2-CPU.ipynb")
+    ide_notebook_path = Path("../tests/output/SageMaker_SSH_IDE-DS2-CPU.ipynb")
     notebook.save_as(ide_notebook_path)
 
     browser_automation.upload_file_with_overwrite(ide_notebook_path)
     browser_automation.upload_file_with_overwrite(Path("../dist/", dist_file_name))
 
     # rename to keep original and to compare with the output later
-    os.rename("../dist/SageMaker_SSH_IDE-DS2-CPU.ipynb", "../dist/SageMaker_SSH_IDE-DS2-CPU-Original.ipynb")
+    os.rename("../tests/output/SageMaker_SSH_IDE-DS2-CPU.ipynb",
+              "../tests/output/SageMaker_SSH_IDE-DS2-CPU-Original.ipynb")
 
     browser_automation.open_file_from_path("/SageMaker_SSH_IDE-DS2-CPU.ipynb", 'ml.m5.large')
 

@@ -118,6 +118,7 @@ ssh -o StrictHostKeyChecking=no sagemaker-ssh-helper.notebook.sagemaker \
   python --version
 
 # Run tests
+mkdir -p tests/output
 cd tests
 apt-get install -y firefox-esr
 export MOZ_HEADLESS=1

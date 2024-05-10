@@ -51,6 +51,7 @@ publish_testpypi:
   dependencies:
     - run_tests
   script:
+    - ls dist/
     - sed -e "s~__password__~$PyPI_Test_API_token~" .pypirc > $HOME/.pypirc
     - pip install -U twine
     - python -m twine upload --verbose --repository testpypi dist/*
