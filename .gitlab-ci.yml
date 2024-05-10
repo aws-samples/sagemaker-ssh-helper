@@ -35,6 +35,8 @@ run_tests:
 profile_tests:
   stage: profile
   when: manual
+  dependencies:
+    - run_tests
   resource_group: ssh-helper-tests
   rules:
     - if: $SKIP_PROFILE_TESTS == "false"
