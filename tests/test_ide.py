@@ -234,10 +234,10 @@ def test_studio_internet_free_mode(request):
 
 # noinspection DuplicatedCode
 def test_studio_multiple_users(request):
-    ide_ds = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+    ide_tf = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-tensorflow')
     ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
 
-    ide_ds.create_ssh_kernel_app(
+    ide_tf.create_ssh_kernel_app(
         'ssh-test-user',
         image_name_or_arn='sagemaker-data-science-310-v1',
         instance_type='ml.m5.large',
@@ -260,7 +260,7 @@ def test_studio_multiple_users(request):
     time.sleep(60)
 
     ide_wrapper = SSHIDEWrapper.attach(
-        ide_ds.domain_id, ide_ds.user, "ssh-test-user"
+        ide_tf.domain_id, ide_tf.user, "ssh-test-user"
     )
 
     with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
@@ -268,18 +268,18 @@ def test_studio_multiple_users(request):
         user_profile_name = user_profile_name.decode('latin1')
         logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
 
-    ide_ds.delete_kernel_app('ssh-test-user', wait=False)
+    ide_tf.delete_kernel_app('ssh-test-user', wait=False)
     ide_pt.delete_kernel_app('ssh-test-user', wait=False)
 
-    assert "test-data-science" in user_profile_name
+    assert "test-tensorflow" in user_profile_name
 
 
 # noinspection DuplicatedCode
 def test_studio_default_domain_multiple_users(request):
-    ide_ds = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-data-science')
+    ide_tf = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-tensorflow')
     ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
 
-    ide_ds.create_ssh_kernel_app(
+    ide_tf.create_ssh_kernel_app(
         'ssh-test-user',
         image_name_or_arn='sagemaker-data-science-310-v1',
         instance_type='ml.m5.large',
@@ -303,7 +303,7 @@ def test_studio_default_domain_multiple_users(request):
 
     # Empty domain "" to fetch the latest profile, useful when switching between many AWS accounts with the same profile
     ide_wrapper = SSHIDEWrapper.attach(
-        "", 'test-data-science', "ssh-test-user"
+        "", ide_tf.user, "ssh-test-user"
     )
 
     with ide_wrapper.start_ssm_connection(10022, timeout=timedelta(minutes=5)) as ssm_proxy:
@@ -311,10 +311,10 @@ def test_studio_default_domain_multiple_users(request):
         user_profile_name = user_profile_name.decode('latin1')
         logger.info(f"Collected SageMaker Studio profile name: {user_profile_name}")
 
-    ide_ds.delete_kernel_app('ssh-test-user', wait=False)
+    ide_tf.delete_kernel_app('ssh-test-user', wait=False)
     ide_pt.delete_kernel_app('ssh-test-user', wait=False)
 
-    assert "test-data-science" in user_profile_name
+    assert "test-tensorflow" in user_profile_name
 
 
 @pytest.mark.parametrize('user_profile_name', ['test-firefox'])
