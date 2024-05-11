@@ -53,7 +53,6 @@ sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"
 
 sm-ssh-ide init-ssm
 
-sm-ssh-ide stop
-sm-ssh-ide start
+nohup sm-ssh-ide start &
 
 nohup sm-ssh-ide ssm-agent &
