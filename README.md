@@ -289,12 +289,10 @@ sagemaker_ssh_helper.setup_and_start_ssh()
 *Note:* adding `lib` dir to Python path is required, because SageMaker inference is putting dependencies 
 into the `code/lib` directory, while SageMaker training put libs directly to `code`. 
 
-On the following screenshot you see the sample code for the inference code running in SageMaker endpoint on AWS Inferentia chip.
-The user has connected to the endpoint with the `sm-ssh connect` command and executed the `neuron-ls` [command](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-ls.html):
+On the following screenshot you see the sample code for the notebook [Deploy SD2.1 to Inferentia2 + SageMaker + HF Optimum Neuron + SageMaker SSH Helper](https://github.com/aws-samples/ml-specialized-hardware/blob/main/tutorials/04_ImageGenerationWithStableDiffusion/SDOnInf2AndHFOptimumNeuron_SMSSH.ipynb) that has the inference code running in SageMaker endpoint on AWS Inferentia accelerator chip.
+The user has connected to the endpoint with the `sm-ssh connect` command and executed the `neuron-ls` command to list the currently utilized Inferentia cores:
 
 ![](images/sm_ssh_inf2.png)
-
-You can find this sample code in the notebook [Deploy SD2.1 to Inferentia2 + SageMaker + HF Optimum Neuron + SageMaker SSH Helper](https://github.com/aws-samples/ml-specialized-hardware/blob/main/tutorials/04_ImageGenerationWithStableDiffusion/SDOnInf2AndHFOptimumNeuron_SMSSH.ipynb).
 
 You can also notice on the screenshot that the user configured the remote Python interpreter that connects to SageMaker Studio, so the user also executes the notebook itself remotely inside SageMaker. This setup is further described in the section for [Local IDE Integration with SageMaker Studio](#studio).
 
