@@ -727,6 +727,8 @@ Alternatively, [attach](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-l
 Once configured, from the Launcher choose the environment, pick up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
 
+You might want to change the `LOCAL_USER_ID` variable upon the first run, to prevent users from impersonating each other. For more details see the FAQ on [How SageMaker SSH Helper protects users from impersonating each other?](FAQ.md#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other).
+
 > Note that the `main` branch of this repo can contain changes that are not compatible with the version of `sagemaker-ssh-helper` that you installed from pip. To ensure the stable performance, check the version with `pip freeze | grep sagemaker-ssh-helper` and take the notebook and the lifecycle script from [the corresponding tag](https://github.com/aws-samples/sagemaker-ssh-helper/tags).  
 
 2. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio

@@ -156,7 +156,7 @@ for a policy example.
 It works as follows: the SageMaker SSH Helper assigns on behalf of the user the tag `SSHOwner`
 with the value that equals a local user ID (see [the source code for SSH wrappers](https://github.com/aws-samples/sagemaker-ssh-helper/blob/57b1f6369ce9e523a7951d23753a9f7f5a6a2022/sagemaker_ssh_helper/wrapper.py#L62)).
 For integration with SageMaker Studio the user ID is passed in [the notebook](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/SageMaker_SSH_IDE.ipynb) as the argument to 
-`sm-ssh-ide init-ssm` command. 
+`sm-ssh-ide init-ssm` command and configured by the `LOCAL_USER_ID` variable.
 
 When a user attempts to connect to an instance, IAM will authorize the user based 
 on their ID and the value of the `SSHOwner` tag. The user will be denied to access the instance 
