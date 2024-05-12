@@ -76,8 +76,8 @@ setuptools.setup(
                      "for fast interactive experimentation, remote debugging, and advanced troubleshooting."
                      "\n\n"
                      f"For the documentation, see the repo "
-                     f"[https://github.com/aws-samples/sagemaker-ssh-helper/tree/{read_version()}]"
-                     f"(https://github.com/aws-samples/sagemaker-ssh-helper/tree/{read_version()}).",
+                     f"[https://github.com/aws-samples/sagemaker-ssh-helper/tree/v{read_version()}]"
+                     f"(https://github.com/aws-samples/sagemaker-ssh-helper/tree/v{read_version()}).",
     long_description_content_type='text/markdown',
     url='https://github.com/aws-samples/sagemaker-ssh-helper',
     packages=setuptools.find_packages(),
