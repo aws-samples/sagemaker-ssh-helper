@@ -23,6 +23,8 @@ if [[ "$1" == "configure" ]]; then
         exit 0
     fi
 
+    echo "sm-ssh-ide: Configuring services..."
+
     OPTIONS=$2
     mkdir -p /opt/sagemaker-ssh-helper/
     echo "$OPTIONS" > /opt/sagemaker-ssh-helper/.sm-ssh-ide-options
@@ -75,7 +77,7 @@ EOF
 
     touch /opt/sagemaker-ssh-helper/.ssh-ide-configured
 
-    echo "sm-ssh-ide: Configuration complete."
+    echo "sm-ssh-ide: Finished configuration. Done"
 
 elif [[ "$1" == "get-user-profile-name" ]]; then
   _assert_is_ssh_ide_inside_studio
@@ -156,6 +158,8 @@ elif [[ "$1" == "set-local-user-id" ]]; then
     fi
 
 elif [[ "$1" == "init-ssm" ]]; then
+    echo "sm-ssh-ide: Initializing SSM..."
+
     LOCAL_USER_ID="$(cat ~/.sm-ssh-owner)"
     echo "sm-ssh-ide: Will use local user ID: $LOCAL_USER_ID"
 
@@ -190,7 +194,11 @@ elif [[ "$1" == "init-ssm" ]]; then
 
     sm-init-ssm
 
+    echo "sm-ssh-ide: SSM initialized. Done"
+
 elif [[ "$1" == "start" ]]; then
+    echo "sm-ssh-ide: Starting services..."
+
     OPTIONS=$(cat /opt/sagemaker-ssh-helper/.sm-ssh-ide-options || echo "")
 
     if [[ -f /tmp/.ssh-ide-local-lock ]]; then
@@ -247,7 +255,7 @@ elif [[ "$1" == "start" ]]; then
       echo "sm-ssh-ide: Skipping VNC and Jupyter start"
     fi
 
-    echo "sm-ssh-ide: Started all services"
+    echo "sm-ssh-ide: Started all services. Done"
 
 elif [[ "$1" == "ssm-agent" ]]; then
 
@@ -291,6 +299,8 @@ elif [[ "$1" == "env-diagnostics" ]]; then
     find "$JUPYTER_PATH" -name 'kernel.json' -print0 | xargs -0 cat
 
 elif [[ "$1" == "stop" ]]; then
+    echo "sm-ssh-ide: Stopping services..."
+
     OPTIONS=$(cat /opt/sagemaker-ssh-helper/.sm-ssh-ide-options || echo "")
 
     echo "sm-ssh-ide: Stopping SSM agent"
@@ -341,7 +351,7 @@ elif [[ "$1" == "stop" ]]; then
         echo "sm-ssh-ide: Local lock is missing, was not not running on this instance?"
     fi
 
-    echo "sm-ssh-ide: Stopped all services"
+    echo "sm-ssh-ide: Stopped all services. Done"
 
 else
 
