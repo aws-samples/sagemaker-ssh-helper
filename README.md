@@ -41,6 +41,8 @@ in [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md
 > as appropriate for production grade use based on your specific business requirements, including any quality control 
 practices and standards.
 
+Also make sure that the documentation you are reading corresponds the version you are installing. The best way to do that is to access the repository from the [Releases](https://github.com/aws-samples/sagemaker-ssh-helper/releases) page. In this case the URL in the address bar should look like [sagemaker-ssh-helper/tree/vX.Y.Z](https://github.com/aws-samples/sagemaker-ssh-helper/tree/vX.Y.Z).
+
 
 ## Use Cases
 SageMaker SSH Helper supports a variety of use cases:
@@ -70,7 +72,7 @@ If you want to add a new use case or a feature, see [CONTRIBUTING](CONTRIBUTING.
 > **Note**: This demo is recorded with a previous version of SSH Helper and may be not up-to-date with the recent features. Check the below documentation for the most up-to-date steps.
 
 ### Step 1: Install the library
-Before starting the whole procedure, check that both `pip` and `python` commands point to Python version 3.7 or higher with `python --version` command. 
+Before starting the whole procedure, check that both `pip` and `python` commands point to Python version 3.8 or higher with `python --version` command. Check all supported Python versions [in the PyPI repo](https://pypi.org/project/sagemaker-ssh-helper/) under "Programming Language" list.
 
 > **Important:** Make sure you read the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
 

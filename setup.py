@@ -70,13 +70,14 @@ setuptools.setup(
     version=read_version(),
     author="Amazon Web Services",
     description="A helper library to connect into Amazon SageMaker with AWS Systems Manager and SSH (Secure Shell)",
-    long_description="SageMaker SSH Helper is a library that allows you to \"SSH into SageMaker\", "
-                     "i.e., securely connect to Amazon SageMaker training jobs, processing jobs, "
-                     "and realtime inference endpoints as well as SageMaker Studio notebook containers "
-                     "for fast interactive experimentation, remote debugging, and advanced troubleshooting."
-                     "\n\n"
-                     "For the documentation, see the repo [https://github.com/aws-samples/sagemaker-ssh-helper/]"
-                     "(https://github.com/aws-samples/sagemaker-ssh-helper/).",
+    long_description=
+    "SageMaker SSH Helper is a library that allows you to \"SSH into SageMaker\", "
+    "i.e., securely connect to Amazon SageMaker training jobs, processing jobs, "
+    "and realtime inference endpoints as well as SageMaker Studio notebook containers "
+    "for fast interactive experimentation, remote debugging, and advanced troubleshooting."
+    "\n\n"
+    f"For the documentation, see the repo [https://github.com/aws-samples/sagemaker-ssh-helper/tree/{read_version()}]"
+    f"(https://github.com/aws-samples/sagemaker-ssh-helper/tree/{read_version()}).",
     long_description_content_type='text/markdown',
     url='https://github.com/aws-samples/sagemaker-ssh-helper',
     packages=setuptools.find_packages(),
@@ -108,7 +109,7 @@ setuptools.setup(
             "sm-ssh-deregister-instances=sagemaker_ssh_helper.deregister_old_instances_from_ssm:main"
         ]
     },
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=required_packages,
     extras_require=extras,
     classifiers=[
@@ -118,12 +119,11 @@ setuptools.setup(
         "License :: OSI Approved :: MIT No Attribution License (MIT-0)",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        # "Programming Language :: Python :: 3.12",  # TODO: doesn't work on Windows, SageMaker Python SDK supports 3.10
-        # "Programming Language :: Python :: 3.13",  # TODO: not tested yet, test with tox
+        # "Programming Language :: Python :: 3.12",  # TODO: SageMaker Python SDK doesn't support it yet
+        # "Programming Language :: Python :: 3.13",  # TODO: not tested, test with tox
     ]
 )

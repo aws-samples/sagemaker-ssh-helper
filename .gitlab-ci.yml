@@ -20,6 +20,7 @@ run_tests:
         path: tests/coverage.xml
     paths:
       - dist/
+      - .pypirc
       - src_diff/
       - pip_freeze/
       - tests/pytest_report.xml
