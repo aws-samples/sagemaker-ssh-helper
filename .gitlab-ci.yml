@@ -64,6 +64,8 @@ publish_prodpypi:
   when: manual
   dependencies:
     - run_tests
+  rules:
+    - if: $PyPI_API_token != null
   script:
     - ls dist/
     - sed -e "s~__password__~$PyPI_API_token~" .pypirc > $HOME/.pypirc
