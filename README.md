@@ -29,7 +29,6 @@ If you want to understand deeper how both the SageMaker service and the SageMake
 
 Make sure you also looked at our [Frequently Asked Questions](FAQ.md), especially at the [troubleshooting section](FAQ.md#troubleshooting), as well as at the existing both open and resolved [issues](https://github.com/aws-samples/sagemaker-ssh-helper/issues?q=is%3Aissue).
 
-
 ## Getting started
 
 To get started, your AWS system administrator must configure IAM and SSM in your AWS account as shown 
@@ -42,6 +41,16 @@ in [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md
 practices and standards.
 
 Also make sure that the documentation you are reading corresponds the version you are installing. The best way to do that is to access the repository from the [Releases](https://github.com/aws-samples/sagemaker-ssh-helper/releases) page. In this case the URL in the address bar should look like [sagemaker-ssh-helper/tree/vX.Y.Z](https://github.com/aws-samples/sagemaker-ssh-helper/tree/vX.Y.Z).
+
+## Costs
+
+You are responsible for the cost of the AWS services used while running this guidance. If you haven't used Systems Manager Session Manager in your AWS account before, it will be the only additional cost associated with using SageMaker SSH Helper. The costs of [SageMaker resources](https://aws.amazon.com/sagemaker/pricing/) do not change and you pay only for the resources that you use.  
+
+As explained in the [IAM and SSM configuration](IAM_SSM_Setup.md), you need to enable Advanced instances tier in Systems Manager because this is the only way to enable Session Manager and access remote instances interactively with SSM and SSH. As of June 2024, the advanced instances tier comes at [a small fee](https://aws.amazon.com/systems-manager/pricing/#Session_Manager), which is $0.00695 per advanced on-premises instance per hour. 
+
+See [the sample cost breakdown table](Sample_Costs.md) for SageMaker and Systems Manager for AWS account that runs the routine [CI/CD tests](tests/) for this guidance in the EU (Ireland) Region.
+
+We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this guidance.
 
 
 ## Use Cases
