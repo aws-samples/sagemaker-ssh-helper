@@ -616,6 +616,10 @@ Put the `root@fqdn` as the hostname to connect to, e.g., `root@ssh-training-exam
 
 > **NOTE:**  The **Remote SSH** extension described in the above instructions is only for the [Visual Studio Code native app](https://code.visualstudio.com/). Code Editor in SageMaker Studio and web apps based on [Code Server](https://github.com/coder/code-server) that use extensions from [Open VSX Registry](https://open-vsx.org/) might look and work differently. SageMaker SSH Helper **DOES NOT** support browser-based implementations and haven't been tested with any of Open VSX extensions. If you prefer to use the browser for development, take a look at the [Web VNC](#web-vnc) option. 
 
+You might also need to increase "Remote.SSH: Connect Timeout" option to `90` in VS Code. See [the StackOverflow post](https://stackoverflow.com/questions/59978826/why-ssh-connection-timed-out-in-vscode) for details. 
+
+If you see the error `tar: code: Cannot change ownership to uid 1000, gid 1000: Operation not permitted` when connecting, then try to set "Remote.SSH: Use Exec server" to `false`, as mentioned in [#58 - vscode connect fails](https://github.com/aws-samples/sagemaker-ssh-helper/issues/58).
+
 4. Connect to the instance and stop the waiting loop
 
 When you set `connection_wait_time_seconds` to non-zero value, SSH Helper will run a waiting loop inside your training script, until waiting time is passed, or you manually terminate the loop.
