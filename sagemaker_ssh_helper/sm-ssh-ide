@@ -168,7 +168,7 @@ elif [[ "$1" == "init-ssm" ]]; then
       --user-profile-name "$(_print_sm_user_profile_name)" \
       --output json \
       | tr -d "\n")
-    execution_role=$(echo "$user_profile_json" | grep "ExecutionRole" \
+    execution_role=$(echo "$user_profile_json" |  { grep "ExecutionRole" || true; } \
       | sed -e 's/^.*"ExecutionRole": \"\([^"]*\)\".*$/\1/')
 
     SSH_SSM_ROLE=$(echo "$execution_role" | sed -e 's/^.*:role\/\(.*\)/\1/')
@@ -177,7 +177,7 @@ elif [[ "$1" == "init-ssm" ]]; then
       domain_json=$(aws sagemaker describe-domain \
         --domain-id "$(_print_sm_domain_id)" \
         | tr -d "\n")
-      execution_role=$(echo "$domain_json" | grep "ExecutionRole" \
+      execution_role=$(echo "$domain_json" | { grep "ExecutionRole" || true; } \
         | sed -e 's/^.*"ExecutionRole": \"\([^"]*\)\".*$/\1/')
 
       SSH_SSM_ROLE=$(echo "$execution_role" | sed -e 's/^.*:role\/\(.*\)/\1/')
