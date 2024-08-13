@@ -34,13 +34,13 @@ pip install 'sagemaker-ssh-helper[cdk]'
 
 cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION"
 
-APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
+APP="python3 -m sagemaker_ssh_helper.cdk.iam_ssm_app"
 
 AWS_REGION="$REGION" cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
   -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
   -c user_role="$USER_ROLE_ARN"
 
-APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
+APP="python3 -m sagemaker_ssh_helper.cdk.advanced_tier_app"
 
 AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack
 ```
