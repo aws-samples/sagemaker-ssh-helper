@@ -49,6 +49,10 @@ sm-ssh-ide set-jb-license-server "$JB_LICENSE_SERVER_HOST"
 # If configured with --ssh-only flag, will not take any effect (safe to keep the default):
 sm-ssh-ide set-vnc-password "$VNC_PASSWORD"
 
+# (Optional) Uncomment to reset the local user ID and to override the value configured by the user:
+# rm ~/.sm-ssh-owner 2>/dev/null || echo "OK. Local user not configured"
+
+# Set the local user ID. Will not override the existing value, if already configured:
 sm-ssh-ide set-local-user-id "$LOCAL_USER_ID"
 
 sm-ssh-ide init-ssm
