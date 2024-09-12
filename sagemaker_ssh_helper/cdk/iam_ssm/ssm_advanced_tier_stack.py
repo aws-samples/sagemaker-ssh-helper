@@ -28,7 +28,7 @@ class SsmAdvancedTierStack(Stack):
                         ])})
 
         triggers.TriggerFunction(self, "SSMAdvancedTierTrigger",
-                                 runtime=lambda_.Runtime.PYTHON_3_7,
+                                 runtime=lambda_.Runtime.PYTHON_3_9,
                                  role=role,
                                  handler="index.handler",
                                  code=lambda_.Code.from_inline(code))

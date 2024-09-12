@@ -10,13 +10,14 @@ import setuptools
 
 required_packages = [
     "sagemaker>=2.145.0",
+    "boto3>=1.34.153",
+    "botocore>=1.34.153",
     "psutil",
 ]
 
 extras = {
     "cdk": [
-        "aws-cdk-lib==2.64.0",
-        "constructs>=10.0.0,<11.0.0",
+        "aws-cdk-lib",
     ],
     "test": [
         "build",
@@ -30,8 +31,7 @@ extras = {
         "pytest-profiling",
         "pytest-monitor",
         "bandit",
-        "aws-cdk-lib==2.64.0",
-        "constructs>=10.0.0,<11.0.0",
+        "aws-cdk-lib",
         "sagemaker-studio-image-build",
         "sagemaker-training",
         "selenium",
@@ -82,9 +82,14 @@ setuptools.setup(
     url='https://github.com/aws-samples/sagemaker-ssh-helper',
     packages=setuptools.find_packages(),
     data_files=[
-        ('notebooks', [str(Path('SageMaker_SSH_IDE.ipynb')), str(Path('SageMaker_SSH_Notebook.ipynb'))]),
-        ('js', [str(Path('./sagemaker_ssh_helper/js/drop_studio_file.js'))]),
-        ('version', [str(Path('sagemaker_ssh_helper/VERSION'))])
+        ('sm_ssh', [str(Path('SageMaker_SSH_IDE.ipynb')),
+                    str(Path('SageMaker_SSH_Notebook.ipynb')),
+                    str(Path('sagemaker_ssh_helper/js/drop_studio_file.js')),
+                    str(Path('sagemaker_ssh_helper/VERSION')),
+                    str(Path('kernel-lc-config.sh')),
+                    str(Path('server-lc-config.sh')),
+                    str(Path('ssh_config_template.txt')),
+                    ]),
     ],
     include_package_data=True,
     scripts=['sagemaker_ssh_helper/sm-helper-functions',
