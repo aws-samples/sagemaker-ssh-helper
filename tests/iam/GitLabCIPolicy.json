@@ -6,6 +6,7 @@
             "Effect": "Allow",
             "Action": [
                 "s3:ListBucket",
+                "s3:CreateBucket",
                 "s3:PutBucketVersioning"
             ],
             "Resource": "arn:aws:s3:::*sagemaker*"

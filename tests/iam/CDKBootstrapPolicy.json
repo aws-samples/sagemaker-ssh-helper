@@ -1,92 +1,63 @@
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "Statement1",
-            "Effect": "Allow",
-            "Action": "sts:AssumeRole",
-            "Resource": [
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-deploy-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-deploy-role-555555555555-eu-west-2",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-file-publishing-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-file-publishing-role-555555555555-eu-west-2"
-            ]
-        },
-        {
-            "Sid": "Statement2",
-            "Effect": "Allow",
-            "Action": [
-                "iam:GetRole",
-                "iam:CreateRole",
-                "iam:DeleteRole",
-                "iam:DeleteRolePolicy",
-                "iam:DetachRolePolicy",
-                "iam:AttachRolePolicy",
-                "iam:PutRolePolicy",
-                "iam:GetRolePolicy"
-            ],
-            "Resource": [
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-deploy-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-deploy-role-555555555555-eu-west-2",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-image-publishing-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-image-publishing-role-555555555555-eu-west-2",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-lookup-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-lookup-role-555555555555-eu-west-2",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-file-publishing-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-file-publishing-role-555555555555-eu-west-2",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-cfn-exec-role-555555555555-eu-west-1",
-                "arn:aws:iam::555555555555:role/cdk-hnb659fds-cfn-exec-role-555555555555-eu-west-2"
-            ]
-        },
-        {
-            "Sid": "Statement3",
-            "Effect": "Allow",
-            "Action": [
-                "s3:CreateBucket",
-                "s3:PutLifecycleConfiguration",
-                "s3:PutEncryptionConfiguration",
-                "s3:PutBucketVersioning",
-                "s3:PutBucketPublicAccessBlock",
-                "s3:PutBucketPolicy",
-                "s3:PutBucketAcl",
-                "s3:DeleteBucketPolicy"
-            ],
-            "Resource": [
-                "arn:aws:s3:::cdk-hnb659fds-assets-555555555555-eu-west-1",
-                "arn:aws:s3:::cdk-hnb659fds-assets-555555555555-eu-west-2"
-            ]
-        },
-        {
-            "Sid": "Statement4",
-            "Effect": "Allow",
-            "Action": [
-                "ssm:GetParameter",
-                "ssm:PutParameter",
-                "ssm:GetParameters",
-                "ssm:DeleteParameter"
-            ],
-            "Resource": [
-                "arn:aws:ssm:eu-west-1:555555555555:parameter/cdk-bootstrap/hnb659fds/version",
-                "arn:aws:ssm:eu-west-2:555555555555:parameter/cdk-bootstrap/hnb659fds/version"
-            ]
-        },
-        {
-            "Sid": "Statement5",
-            "Effect": "Allow",
-            "Action": [
-                "ecr:CreateRepository",
-                "ecr:DeleteRepository",
-                "ecr:SetRepositoryPolicy",
-                "ecr:GetLifecyclePolicy",
-                "ecr:PutLifecyclePolicy",
-                "ecr:PutImageTagMutability",
-                "ecr:DescribeRepositories",
-                "ecr:ListTagsForResource"
-            ],
-            "Resource": [
-                "arn:aws:ecr:eu-west-1:555555555555:repository/cdk-hnb659fds-container-assets-555555555555-eu-west-1",
-                "arn:aws:ecr:eu-west-2:555555555555:repository/cdk-hnb659fds-container-assets-555555555555-eu-west-2"
-            ]
-        }
+"Version": "2012-10-17",
+"Statement": [
+{
+    "Sid": "Statement0",
+    "Effect": "Allow",
+    "Action": [
+        "cloudformation:DescribeStacks", "cloudformation:CreateChangeSet", "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet", "cloudformation:DeleteChangeSet", "cloudformation:GetTemplate",
+        "cloudformation:DescribeStackEvents", "cloudformation:DeleteStack"
+    ],
+    "Resource": [
+        "arn:aws:cloudformation:*:*:stack/CDKToolkit/*"
     ]
+},
+{
+    "Sid": "Statement2",
+    "Effect": "Allow",
+    "Action": [
+        "sts:AssumeRole", "iam:GetRole", "iam:CreateRole", "iam:TagRole", "iam:DeleteRole",
+        "iam:DeleteRolePolicy", "iam:DetachRolePolicy", "iam:AttachRolePolicy", "iam:PutRolePolicy",
+        "iam:GetRolePolicy"
+    ],
+    "Resource": [
+        "arn:aws:iam::*:role/cdk-hnb659fds-*-role-*-eu-west-*"
+    ]
+},
+{
+    "Sid": "Statement3",
+    "Effect": "Allow",
+    "Action": [
+        "s3:CreateBucket", "s3:PutLifecycleConfiguration", "s3:PutEncryptionConfiguration",
+        "s3:PutBucketVersioning", "s3:PutBucketPublicAccessBlock", "s3:PutBucketPolicy", "s3:PutBucketAcl",
+        "s3:DeleteBucketPolicy"
+    ],
+    "Resource": [
+        "arn:aws:s3:::cdk-hnb659fds-assets-*-eu-west-*"
+    ]
+},
+{
+    "Sid": "Statement4",
+    "Effect": "Allow",
+    "Action": [
+        "ssm:GetParameter", "ssm:PutParameter", "ssm:GetParameters", "ssm:DeleteParameter"
+    ],
+    "Resource": [
+        "arn:aws:ssm:eu-west-*:*:parameter/cdk-bootstrap/hnb659fds/version"
+    ]
+},
+{
+    "Sid": "Statement5",
+    "Effect": "Allow",
+    "Action": [
+        "ecr:CreateRepository", "ecr:DeleteRepository", "ecr:SetRepositoryPolicy", "ecr:GetLifecyclePolicy",
+        "ecr:PutLifecyclePolicy", "ecr:PutImageTagMutability", "ecr:DescribeRepositories",
+        "ecr:ListTagsForResource"
+    ],
+    "Resource": [
+        "arn:aws:ecr:eu-west-*:*:repository/cdk-hnb659fds-container-assets-*-eu-west-*"
+    ]
+}
+]
 }
