@@ -48,6 +48,7 @@ class SageMakerStudioAutomation:
         studio_pre_signed_url_response = self.sagemaker_client.create_presigned_domain_url(
             DomainId=self.ide.domain_id,
             UserProfileName=self.ide.user,
+            LandingUri='app:JupyterServer:/'
         )
         studio_pre_signed_url = studio_pre_signed_url_response['AuthorizedUrl']
 
@@ -72,7 +73,7 @@ class SageMakerStudioAutomation:
                 "Time out waiting for SageMaker Studio UI to load. Elapsed time: %s seconds",
                 int(time.time() - start_time)
             )
-            raise e
+            raise ValueError("Time out waiting for SageMaker Studio") from e
 
         self.logger.info("Waiting for possible dialogs to appear and closing them")
         time.sleep(10)
