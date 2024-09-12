@@ -150,8 +150,11 @@ def test_sagemaker_studio_cleanup(instances, request):
     ide.delete_kernel_app(app_name, wait=False)
 
 
-def test_notebook_instance():
-    notebook_ids = SSMManager().get_notebook_instance_ids("sagemaker-ssh-helper", timeout_in_sec=300)
+def test_notebook_instance(request):
+    notebook_instance = request.config.getini('sagemaker_notebook_instance')
+    notebook_ids = SSMManager().get_notebook_instance_ids(notebook_instance, timeout_in_sec=300)
+    if not notebook_ids:
+        raise ValueError(f"No notebook instance found with name {notebook_instance}")
     studio_id = notebook_ids[0]
 
     with SSMProxy(17022) as ssm_proxy:
@@ -214,6 +217,7 @@ def test_studio_internet_free_mode(request):
         "byoi-studio-app",
         image.arn,
         "ml.m5.large",
+        ssh_lifecycle_config='sagemaker-ssh-helper-dev',
         recreate=True
     )
 

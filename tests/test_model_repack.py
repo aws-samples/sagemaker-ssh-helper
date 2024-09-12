@@ -28,6 +28,8 @@ def test_model_repacking_from_scratch():
     # FIXME: SAGEMAKER_SUBMIT_DIRECTORY = file://source_dir/inference_hf_accelerate instead of /opt/ml/model/code
 
 
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Manual test so far, because needs existing model")
 def test_model_repacking_with_existing_model():
     model = Model(
         model_data="s3://sagemaker-eu-west-1-169264033083/data/acc_model.tar.gz",

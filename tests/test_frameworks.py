@@ -13,7 +13,7 @@ from botocore.exceptions import ClientError
 from mock import mock
 from sagemaker import Predictor, Model
 from sagemaker.deserializers import CSVDeserializer, JSONDeserializer
-from sagemaker.djl_inference import DJLPredictor, DeepSpeedModel
+from sagemaker.djl_inference import DJLPredictor, DJLModel
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.serializers import CSVSerializer, JSONSerializer
 from sagemaker.utils import name_from_base
@@ -456,8 +456,6 @@ def test_clean_train_sklearn():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Temp issues with the dependencies in the container - D89685473")
 def test_train_sklearn_ssh():
     logging.info("Starting training")
 
@@ -502,8 +500,6 @@ def test_clean_train_xgboost():
     assert estimator.model_data.find("model.tar.gz") != -1
 
 
-@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
-                    reason="Temp issues with the dependencies in the container - D89685473")
 def test_train_xgboost_ssh():
     logging.info("Starting training")
 
@@ -670,13 +666,17 @@ def test_train_mxnet_ssh():
 
 
 # noinspection PyCompatibility
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Need API fix - D149720393")
 def test_hf_djl_deepspeed_inference_ssh():
     """
     Based on https://github.com/aws/amazon-sagemaker-examples/blob/main/advanced_functionality/pytorch_deploy_large_GPT_model/GPT-J-6B-model-parallel-inference-DJL.ipynb  # noqa
     """
-    model = DeepSpeedModel(
+    model = DJLModel(
         "EleutherAI/gpt-j-6B",
-        role=sagemaker.Session().sagemaker_config['SageMaker']['ProcessingJob']['RoleArn'],  # TODO: resolve
+        djl_framework='djl-deepspeed',
+        djl_version='0.27.0',
+        role=sagemaker.Session().sagemaker_config['SageMaker']['ProcessingJob']['RoleArn'],
         tensor_parallel_degree=4,
         entry_point=(p := Path('source_dir/inference/inference_djl.py')).name,
         source_dir=str(p.parents[0]),
@@ -692,6 +692,7 @@ def test_hf_djl_deepspeed_inference_ssh():
     try:
         predictor = model.deploy(
             instance_type="ml.g4dn.12xlarge",
+            initial_instance_count=1,
             endpoint_name=endpoint_name,
             wait=False)
         ssh_wrapper.start_ssm_connection_and_continue(12022)
