@@ -4,7 +4,8 @@
 # Run `sm-ssh -h` for the high-level interface.
 
 # Commands:
-# connect <notebook-instance-name> [<extra_ssh_args>]
+# connect-notebook <notebook-instance-name> [<extra_ssh_args>]
+# proxy-host <fqdn>
 # run-command <command> <args...>
 
 set -e
@@ -14,9 +15,11 @@ self=$(realpath "${BASH_SOURCE[0]}")
 dir=$(dirname "$self")
 source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
 
+echo "sm-local-ssh-notebook: Starting in $dir"
+
 COMMAND=$1
 
-if [[ "$COMMAND" == "start-proxy" ]]; then
+if [[ "$COMMAND" == "proxy-host" ]]; then
   SM_SSH_HOST_NAME="$2"
   SM_RESOURCE_TYPE="notebook"
 
@@ -27,7 +30,7 @@ if [[ "$COMMAND" == "start-proxy" ]]; then
 
   sm-local-start-ssh --proxy-setup-only "${INSTANCE_ID}"
 
-elif [[ "$COMMAND" == "connect" ]]; then
+elif [[ "$COMMAND" == "connect-notebook" ]]; then
 
   NOTEBOOK_INSTANCE_NAME="$2"
 
@@ -56,5 +59,6 @@ elif [[ "$COMMAND" == "run-command" ]]; then
     $ARGS
 
 else
-    echo "Unknown command: $COMMAND"
+    echo "ERROR: Unknown command: '$COMMAND'"
+    exit 1
 fi

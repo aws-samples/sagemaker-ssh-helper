@@ -4,7 +4,8 @@
 # Run `sm-ssh -h` for the high-level interface.
 
 # Commands:
-# connect <endpoint_name> [<extra_ssh_args>]
+# connect-endpoint <endpoint_name> [<extra_ssh_args>]
+# proxy-host <fqdn>
 # stop-waiting
 # run-command <command> <args...>
 
@@ -15,9 +16,12 @@ self=$(realpath "${BASH_SOURCE[0]}")
 dir=$(dirname "$self")
 source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
 
+echo "sm-local-ssh-inference: Starting in $dir"
+
+
 COMMAND=$1
 
-if [[ "$COMMAND" == "start-proxy" ]]; then
+if [[ "$COMMAND" == "proxy-host" ]]; then
   SM_SSH_HOST_NAME="$2"
   SM_RESOURCE_TYPE="inference"
 
@@ -28,7 +32,7 @@ if [[ "$COMMAND" == "start-proxy" ]]; then
 
   sm-local-start-ssh --proxy-setup-only "${INSTANCE_ID}"
 
-elif [[ "$COMMAND" == "connect" ]]; then
+elif [[ "$COMMAND" == "connect-endpoint" ]]; then
   ENDPOINT_NAME=$2
 
   # shellcheck disable=SC2091
@@ -62,5 +66,6 @@ elif [[ "$COMMAND" == "run-command" ]]; then
     $ARGS
 
 else
-    echo "Unknown command: $COMMAND"
+    echo "ERROR: Unknown command: '$COMMAND'"
+    exit 1
 fi

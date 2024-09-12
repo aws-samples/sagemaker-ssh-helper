@@ -11,6 +11,8 @@ from sagemaker_ssh_helper.manager import SSMManager
 
 
 class SageMakerCoreApp:
+    NO_SSH_FLAG = "ssh:NotFound"
+
     def __init__(self):
         self.ssh_owner = None
         self.ssm_instance_id = None
@@ -41,7 +43,7 @@ class SageMakerStudioApp(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {5}.{4}.{3}.{6}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             self.app_type,
             str(self.app_status),
             self.domain_id,
@@ -60,7 +62,7 @@ class SageMakerEndpoint(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             "InferenceEndpoint",
             str(self.endpoint_status),
             self.name,
@@ -77,7 +79,7 @@ class SageMakerTrainingJob(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             "TrainingJob",
             self.training_job_status,
             self.training_job_name,
@@ -94,7 +96,7 @@ class SageMakerProcessingJob(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             "ProcessingJob",
             self.processing_job_status,
             self.processing_job_name,
@@ -111,7 +113,7 @@ class SageMakerNotebookInstance(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             "NotebookInstance",
             self.status,
             self.name,
@@ -128,7 +130,7 @@ class SageMakerTransformJob(SageMakerCoreApp):
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {3}.{4}".format(
-            self.ping_status if self.ssm_instance_id else "-",
+            self.ping_status if self.ssm_instance_id else self.NO_SSH_FLAG,
             "InferenceJob",
             self.transform_job_status,
             self.transform_job_name,

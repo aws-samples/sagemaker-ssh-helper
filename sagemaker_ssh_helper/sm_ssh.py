@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT-0
 import argparse
 import os
 import subprocess
+import sys
 
 from boto3 import Session
 
@@ -75,8 +76,8 @@ class SageMakerSecureShellHelper:
         else:
             return ''
 
-    @staticmethod
-    def _get_arguments(fqdn, resource):
+    @classmethod
+    def _get_arguments(cls, fqdn, resource, command):
         domain_id = ""
         user_profile_name = ""
         if resource == "ide":
@@ -87,7 +88,32 @@ class SageMakerSecureShellHelper:
                          "--domain-id", domain_id, "--user-profile-name", user_profile_name]
         else:
             arguments = ["bash", f"sm-local-ssh-{resource}"]
+
+        if resource == "ide":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "app"))
+        elif resource == "notebook":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "notebook"))
+        elif resource == "training":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "job"))
+        elif resource == "processing":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "job"))
+        elif resource == "transform":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "job"))
+        elif resource == "inference":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "endpoint"))
+        else:
+            raise ValueError(f"ERROR: unknown resource type: {resource}")
+
         return arguments
+
+    @staticmethod
+    def _sm_ssh_command_to_local_ssh_command(command, name_type):
+        if command == "start-proxy":
+            return f"proxy-host"
+        elif command == "connect":
+            return f"connect-{name_type}"
+        else:
+            raise ValueError(f"ERROR: unknown name type: {name_type}")
 
     def list(self, fqdn):
         self.print_version()
@@ -126,7 +152,7 @@ class SageMakerSecureShellHelper:
                 elif resource == "inference":
                     interactive_sagemaker.print_endpoints()
                 else:
-                    print(f"ERROR: unknown resource type: {resource}")
+                    raise ValueError(f"ERROR: unknown resource type: {resource}")
 
     @staticmethod
     def print_version():
@@ -142,12 +168,11 @@ class SageMakerSecureShellHelper:
         if resource_name == "":
             print("ERROR: empty resource type is only valid for 'list' command")
             return
-        arguments = SageMakerSecureShellHelper._get_arguments(fqdn, resource_type)
-        arguments.append("start-proxy")
+        arguments = SageMakerSecureShellHelper._get_arguments(fqdn, resource_type, "start-proxy")
         arguments.append(fqdn)
-        subprocess.check_call(arguments)
+        subprocess.check_call(arguments, env=os.environ, bufsize=0)
 
-    def connect_ports(self, fqdn):
+    def connect_ports(self, fqdn, extra_args):
         self.print_version()
         print(f"Connecting to SageMaker containers for {fqdn} using SSH")
         resource_type = SageMakerSecureShellHelper.fqdn_to_type(fqdn)
@@ -165,10 +190,9 @@ class SageMakerSecureShellHelper:
             print("ERROR: empty resource type is only valid for 'list' command")
             return
 
-        arguments = self._get_arguments(fqdn, resource_type)
-        arguments.append("connect")
+        arguments = self._get_arguments(fqdn, resource_type, "connect")
         arguments.append(resource_name)
-        subprocess.check_call(arguments)
+        subprocess.check_call(arguments + extra_args, env=os.environ, bufsize=0)
 
 
 def read_version():
@@ -189,14 +213,16 @@ def main():
     parser.add_argument('fqdn', nargs='?', default='sagemaker',
                         help='fully qualified domain name, e.g., ssh-training-job.training.sagemaker, '
                              'studio.sagemaker, etc. (default: sagemaker)')
-    args = parser.parse_args()
+    args, extra_args = parser.parse_known_args()
+
+    os.environ["SM_SSH_PYTHON"] = sys.executable
 
     if args.command == 'list':
         SageMakerSecureShellHelper().list(args.fqdn)
     elif args.command == 'start-proxy':
         SageMakerSecureShellHelper.start_proxy(args.fqdn)
     elif args.command == 'connect':
-        SageMakerSecureShellHelper().connect_ports(args.fqdn)
+        SageMakerSecureShellHelper().connect_ports(args.fqdn, extra_args)
 
 
 if __name__ == '__main__':

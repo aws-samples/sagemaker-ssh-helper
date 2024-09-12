@@ -4,8 +4,8 @@
 # Run `sm-ssh -h` for the high-level interface.
 
 # Commands:
-# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] connect <app_name> [--ssh-only] [<extra_ssh_args>]
-# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] start-proxy <app_name>
+# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] connect-app <app_name> [--ssh-only] [<extra_ssh_args>]
+# [--domain-id <domain-id>] [--user-profile-name <user-profile-name>] proxy-host <fqdn>
 # run-command <command> <args...>
 # set-domain-id <domain_id>
 # set-user-profile-name <user_profile_name>
@@ -34,6 +34,8 @@ trap '_on_error' ERR
 self=$(realpath "${BASH_SOURCE[0]}")
 dir=$(dirname "$self")
 source "$dir"/sm-helper-functions 2>/dev/null || source sm-helper-functions
+
+echo "sm-local-ssh-ide: Starting in $dir"
 
 DOMAIN_ID=""
 USER_PROFILE_NAME=""
@@ -68,7 +70,7 @@ if [[ "$COMMAND" != "set-user-profile-name" && "$COMMAND" != "set-domain-id" \
   fi
 fi
 
-if [[ "$COMMAND" == "start-proxy" ]]; then
+if [[ "$COMMAND" == "proxy-host" ]]; then
   SM_SSH_HOST_NAME="$2"
   SM_RESOURCE_TYPE="studio"
 
@@ -79,7 +81,7 @@ if [[ "$COMMAND" == "start-proxy" ]]; then
 
   sm-local-start-ssh --proxy-setup-only "${INSTANCE_ID}"
 
-elif [[ "$COMMAND" == "connect" ]]; then
+elif [[ "$COMMAND" == "connect-app" ]]; then
 
   SM_STUDIO_KGW_NAME="$2"
   OPTIONS="$3"
@@ -150,9 +152,6 @@ elif [[ "$COMMAND" == "run-command" ]]; then
     $ARGS
 
 else
-    echo "Deprecated warning: sm-local-ssh-ide <kernel_gateway_name> is deprecated and will be removed in future versions, use sm-local-ssh-ide connect <kernel_gateway_name> instead"
-    echo "Re-trying with the 'connect' argument:"
-    echo "sm-local-ssh-ide connect $*"
-    # shellcheck disable=SC2048
-    $0 connect $*
+    echo "ERROR: Unknown command: '$COMMAND'"
+    exit 1
 fi

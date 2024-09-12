@@ -1,10 +1,14 @@
 #!/bin/bash
 
 function _python() {
-  if python3 --version 2>&1 | grep '^Python 3' >/dev/null 2>&1; then
-    echo "python3"
+  if [ -z "${SM_SSH_PYTHON}" ]; then
+    if python3 --version 2>&1 | grep '^Python 3' >/dev/null 2>&1; then
+      echo "python3"
+    else
+      echo "python"
+    fi
   else
-    echo "python"
+    echo "${SM_SSH_PYTHON}"
   fi
 }
 
@@ -147,7 +151,7 @@ function _install_curl_ubuntu() {
 }
 
 function _install_curl_centos() {
-  sudo yum install -y curl
+  which curl || sudo yum install -y curl
 }
 
 function _install_curl() {
