@@ -204,7 +204,10 @@ class SSHIDE:
 
     def get_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0,
                                not_earlier_than_timestamp: int = 0):
-        return self.get_kernel_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)[index]
+        ids = self.get_kernel_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
+        if len(ids) == 0:
+            raise ValueError(f"No kernel instances found for app {app_name}")
+        return ids[index]
 
     def get_kernel_instance_ids(self, app_name: str, timeout_in_sec: int, not_earlier_than_timestamp: int = 0):
         self.logger.info(f"Resolving IDE instance IDs for app '{app_name}' through SSM tags "
@@ -274,7 +277,14 @@ class SSHIDE:
 
         self.wait_for_image_version_creation(image_name)
 
-        self.client.delete_app_image_config(AppImageConfigName=app_image_config_name)
+        try:
+            self.client.delete_app_image_config(AppImageConfigName=app_image_config_name)
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == 'ResourceNotFound':
+                pass  # doesn't exist, it's OK
+            else:
+                raise
 
         sagemaker_image_config_dict = self.client.create_app_image_config(
             AppImageConfigName=app_image_config_name,
@@ -314,9 +324,13 @@ class SSHIDE:
     def wait_for_image_version_creation(self, image_name):
         self.logger.info(f"Waiting for the latest version creation of SageMaker image: {image_name}")
         waiter = self.client.get_waiter('image_version_created')
-        waiter.wait(
-            ImageName=image_name
-        )
+        try:
+            waiter.wait(
+                ImageName=image_name
+            )
+        except WaiterError as e:
+            self.logger.error("SageMaker image version creation failed", exc_info=1)
+            raise ValueError("SageMaker image version creation failed") from e
         self.logger.info(f"Image version created for image: {image_name}")
 
     def wait_for_image_deletion(self, image_name):
