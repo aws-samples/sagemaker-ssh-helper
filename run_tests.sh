@@ -41,6 +41,9 @@ sm-local-configure
 source tests/generate_sagemaker_config.sh
 source tests/generate_accelerate_config.sh
 
+# The user should have CDK Bootstrap permissions:
+aws sts get-caller-identity
+
 if [ "$SKIP_CDK" == "true" ]; then
   echo "Skipping CDK changes"
 else
@@ -61,7 +64,6 @@ else
   REGION=eu-west-1
   # See https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html
   # See tests/iam/CDKBootstrapPolicy.json
-  # See tests/iam/CDKCloudFormationPolicy.json
   cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION" \
     --require-approval never
   APP="python -m sagemaker_ssh_helper.cdk.tests_app"
@@ -88,7 +90,7 @@ else
   unset REGION
 fi
 
-# Set bucket versioning to detect model repacking / dependencies overrides
+echo "Set bucket versioning to detect model repacking / dependencies overrides"
 # See tests/iam/GitLabCIPolicy.json
 aws s3api put-bucket-versioning \
     --bucket "$(AWS_DEFAULT_REGION=eu-west-1 bash tests/get_sagemaker_bucket.sh)" \
@@ -102,20 +104,23 @@ export AWS_REGION=eu-west-1
 export AWS_DEFAULT_REGION=eu-west-1
 aws configure list
 
-# Assume CI/CD role
+# Assume USER_ROLE for CI/CD tests:
 # shellcheck disable=SC2207
 sts=( $(source tests/assume-user-role.sh) )
 export AWS_ACCESS_KEY_ID=${sts[0]}
 export AWS_SECRET_ACCESS_KEY=${sts[1]}
 export AWS_SESSION_TOKEN=${sts[2]}
 
+# To fetch UserId for LOCAL_USER_ID:
+aws sts get-caller-identity
+
 # Smoke test of `sm-ssh` utility
 AWS_DEFAULT_REGION=eu-west-1 sm-ssh list
 AWS_DEFAULT_REGION=eu-west-2 sm-ssh list
 mkdir -p /root/.ssh
 cat ssh_config_template.txt >>/root/.ssh/config
-ssh -o StrictHostKeyChecking=no sagemaker-ssh-helper.notebook.sagemaker \
-  python --version
+ssh -o StrictHostKeyChecking=no ssh-helper-notebook.notebook.sagemaker \
+  python --version || echo "ERROR: cannot connect to notebook"
 
 # Run tests
 mkdir -p tests/output
@@ -131,6 +136,7 @@ coverage run -m pytest \
   -o vpc_only_security_group="$VPC_ONLY_SECURITY_GROUP" \
   -o sagemaker_role="$SAGEMAKER_ROLE" \
   -o sns_notification_topic_arn="$SNS_NOTIFICATION_TOPIC_ARN" \
+  -o sagemaker_notebook_instance="$SAGEMAKER_NOTEBOOK_INSTANCE" \
   -k "$PYTEST_KEYWORDS" $PYTEST_EXTRA_ARGS || EXIT_CODE=$?
 coverage xml
 coverage html --show-contexts

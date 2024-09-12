@@ -6,3 +6,4 @@ def pytest_addoption(parser):
     parser.addini('vpc_only_security_group', '')
     parser.addini('sagemaker_role', '')
     parser.addini('sns_notification_topic_arn', '')
+    parser.addini('sagemaker_notebook_instance', '')

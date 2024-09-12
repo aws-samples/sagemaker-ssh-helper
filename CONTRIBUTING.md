@@ -21,21 +21,30 @@ Configure SageMaker execution role through [defaults](https://sagemaker.readthed
 
 Make sure all tests are working. You need to manually create resources that are passed through environment variables:
 ```shell
-export ACCOUNT_ID="..."
-export AWS_ACCESS_KEY_ID="..."
+export ACCOUNT_ID="..."  # Obviously, you need AWS account
+export AWS_ACCESS_KEY_ID="..."  # The IAM user should be powerful enough to assume USER_ROLE and to bootstrap CDK
 export AWS_SECRET_ACCESS_KEY="..."
 
-export SAGEMAKER_ROLE="..."
-export USER_ROLE="..."
-export SAGEMAKER_STUDIO_DOMAIN="..."
-export SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN="..."
-export VPC_ONLY_SECURITY_GROUP="..."
-export VPC_ONLY_SUBNET="..."
-export SNS_NOTIFICATION_TOPIC_ARN="..."
-export LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
+export SAGEMAKER_ROLE="..."  # You can create it automatically by creating SageMaker Domain
+export USER_ROLE="..."  # AWS_ACCESS_KEY role should be allowed to assume (be trusted by) this role for at least 10 h.
+                        # User role should trust `codebuild.amazonaws.com`, to call sm-docker.
+export SAGEMAKER_STUDIO_DOMAIN="d-..."  # You need to create domain manually and create users: test-base-python,  
+                                        # test-data-science, test-tensorflow, test-pytorch, test-spark, test-firefox.
+                                        # Create Studio Classic lifecycle config for KernelGateway apps named 
+                                        # `sagemaker-ssh-helper-dev` from kernel-lc-config.sh. Add it to the domain.
+                                        # For `test-firefox` user, open SageMaker Studio Classic and 'Run' the app.
+export VPC_ONLY_SUBNET="subnet-..."  # Create in the default VPC. Don't add Internet gateway or NAT to this subnet.
+                                     # Configure VPC endpoints for STS, SSM, S3 and SageMaker.
+export VPC_ONLY_SECURITY_GROUP="sg-..."  # Can be default VPC security group
+export SAGEMAKER_STUDIO_VPC_ONLY_DOMAIN="d-..."  # Create manually, too. Create `internet-free-user` in the domain.
+                                                 # Attach `sagemaker-ssh-helper-dev` lifecycle config to 
+                                                 # KernelGateway apps.
+export SNS_NOTIFICATION_TOPIC_ARN="..."  # Create SNS topic manually, subscribe to it your e-mail
+export LOCAL_USER_ID="AROATCKARONAGFEXAMPLE:gitlab-ci"  # AWS_ACCESS_KEY UserId from `aws sts get-caller-identity` 
 export JB_LICENSE_SERVER_HOST="jetbrains-license-server.example.com"
+export SAGEMAKER_NOTEBOOK_INSTANCE="ssh-helper-notebook"  # Create manually, run SageMaker_SSH_Notebook.ipynb
 
-export SKIP_CDK="false"
+export SKIP_CDK="false" 
 export SKIP_PROFILE_TESTS="false"
 
 export PYTEST_EXTRA_ARGS=" "
@@ -45,7 +54,15 @@ export PYTEST_KEYWORDS=" "
 bash run_tests.sh
 ```
 
-Now write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression.
+*Note:* You can find example CDK bootstrap policy for the AWS access key role in [tests/iam/CDKBootstrapPolicy.json](tests/iam/CDKBootstrapPolicy.json). This role should be also able to access SageMaker default buckets, see [tests/iam/GitLabCIPolicy.json](tests/iam/GitLabCIPolicy.json).
+
+Now write a failing test, put code to make it pass, and make sure other tests are still working to avoid any regression. See [.gitlab-ci.yml](.gitlab-ci.yml) and [run_tests.sh](run_tests.sh) to learn how to do that.
+
+For the full run of all tests, at the moment of writing, you need ~9 hours. The user role should allow [session duration](https://docs.aws.amazon.com/IAM/latest/UserGuide/roles-managingrole-editing-console.html#roles-modify_max-session-duration) for at least 10 hours. We recommend setting the max duration through AWS Console to 12 hours. 
+
+**TODO** (for developers): Because IAM role chaining doesn't allow to assume the chained role for more than 1 hour, ACCESS_KEY (for now) should be the IAM user. We should reverse the assume role logic so that tests run under USER_ROLE which in turn assumes the CDK bootstrap role. Now the logic in [run_tests.sh](run_tests.sh) is the opposite.
+
+**TODO** (for developers): We should create CDK to set up domains, users and VPCs.
 
 ### Code formatting
 
