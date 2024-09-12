@@ -10,7 +10,7 @@ remote debugging, and advanced troubleshooting.
 
 Three most common tasks that motivated to create the library, sometimes referred as "SSH into SageMaker", are:
 1. A terminal session into a container running in SageMaker to diagnose a stuck training job, use CLI commands 
-like nvidia-smi, or iteratively fix and re-execute your training script within seconds. 
+like nvidia-smi and neuron-ls, or iteratively fix and re-execute your training script within seconds. 
 2. Remote debugging of a code running in SageMaker from your local favorite IDE like 
 PyCharm Professional Edition or Visual Studio Code.
 3. Port forwarding to access auxiliary tools running inside SageMaker, e.g., Dask dashboard, Streamlit apps, TensorBoard or Spark Web UI.
@@ -90,7 +90,9 @@ Install the latest stable version of library from the [PyPI repository](https://
 ```shell
 pip install sagemaker-ssh-helper
 ```
-**Caution:** It's always recommended to install the library into a Python venv, not into the system env.
+**Caution:** It's always recommended to install the library into a Python venv, not into the system env. If you want to use later the SSH plugins of your IDE that will use the system env and system Python, you should add the venv into the system PATH, as described in the section [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter).
+
+If you're working on Windows, see [FAQ](FAQ.md#is-windows-supported).
 
 ### Step 2: Modify your start training job code
 1. Add import for `SSHEstimatorWrapper`
@@ -499,7 +501,7 @@ This low-level script takes the managed instance ID as a parameter. Next section
 The syntax for the SSH Helper CLI command `sm-ssh` is the following:
 
 ```bash
-sm-ssh [-h] [-v] {list,start-proxy,connect} [fqdn]
+sm-ssh [-h] [-v] {list,start-proxy,connect} [fqdn] [extra-connect-args]*
 ```
 
 where `fqdn` is the resource name with `.sagemaker` suffix, respectively:
@@ -529,12 +531,19 @@ sm-ssh list sagemaker
 
 – will list all resources of all types.
 
-The instances with SSH Helper will be marked `Online` while other instances will be marked with `-`.
+The instances with SSH Helper will be marked `Online` or `ConnectionLost` while the instances not registered with SSM be marked with `ssh:NotFound`.
 
 The `connect` command starts interactive SSH session into container, e.g.:
 
 ```bash
 sm-ssh connect ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker
+```
+
+It's possible to pass additional arguments and forward ports together with the `connect` command, e.g., to forward [SSH Agent](https://linux.die.net/man/1/ssh-agent)  and Streamlit web app port:
+
+```bash
+ssh-add
+sm-ssh connect ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker -A -L 8501:localhost:8501
 ```
 
 #### ~/.ssh/config
@@ -577,7 +586,14 @@ Follow the steps in the next section for the IDE configuration, to prepare the `
 sm-local-configure
 ```
 
-**Caution**: If you plan to use `sm-ssh` tool from the IDE, which you run inside your system Python env, you should install SSH Helper into your system Python env, too.
+**Caution**: You will use SSH plugins from the IDE running inside your system env with system Python, therefore you should add SSH Helper into your system PATH, e.g., on macOS:
+```bash
+sudo bash -c "echo '/Users/janedoe/PycharmProjects/sagemaker-ssh-helper-dev-venv/bin' > /etc/paths.d/42-sm-ssh"
+```
+
+You might need restart the Terminal and the IDE for changes to take an effect.
+
+Alternatively, use the trick with port forwarding - start the `sm-ssh` or `ssh` with `-L` option inside venv, and then use `localhost` as the host to connect to from IDE. This trick is used to make SSH Helper work on Windows, and it's described in [FAQ - Is Windows Supported?](FAQ.md#is-windows-supported).
 
 2. Submit your code to SageMaker with SSH Helper as described in previous sections, e.g. as a [training job](#step-1-install-the-library).
 
@@ -589,13 +605,19 @@ Instead of using SSM to connect to the container from command line, proceed to t
 
 Make sure you've configured your ssh config as mentioned in the [~/.ssh/config](#sshconfig) section and your IDE can access `sm-ssh` command from the system env.
 
+If you connect to your host for the first time, check that `ssh` command is working from CLI:
+
+```bash
+ssh sh-training-manual-2023-10-02-14-38-56-744.training.sagemaker
+```
+
 A. Follow the [instructions in the PyCharm docs](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter), to configure the remote interpreter in PyCharm.
 
 In the field for host name, put the same value as for `fqdn` in the [`sm-ssh` command](#sm-ssh), e.g., `ssh-training-manual-2023-10-02-14-38-56-744.training.sagemaker`, and use `root` as the username.
 
 ![](images/pycharm_training.png)
 
-When PyCharm asks for the SSH key, point to the `~/.ssh/<fqdn>` private key file that was automatically generated for you by SSH Helper:
+If PyCharm asks for the SSH key, point to the `~/.ssh/<fqdn>` private key file that was automatically generated for you by SSH Helper:
 
 ![](images/pycharm_training_ssh.png)
 
@@ -614,11 +636,15 @@ Put the `root@fqdn` as the hostname to connect to, e.g., `root@ssh-training-exam
 
 ![](images/vscode_training.png)
 
-> **NOTE:**  The **Remote SSH** extension described in the above instructions is only for the [Visual Studio Code native app](https://code.visualstudio.com/). Code Editor in SageMaker Studio and web apps based on [Code Server](https://github.com/coder/code-server) that use extensions from [Open VSX Registry](https://open-vsx.org/) might look and work differently. SageMaker SSH Helper **DOES NOT** support browser-based implementations and haven't been tested with any of Open VSX extensions. If you prefer to use the browser for development, take a look at the [Web VNC](#web-vnc) option. 
+> **NOTE:**  The **Remote SSH** extension described in the above instructions is only for the [Visual Studio Code native app](https://code.visualstudio.com/). Code Editor in SageMaker Studio and other web apps based on [Code - OSS](https://github.com/microsoft/vscode#visual-studio-code---open-source-code---oss) such as [Code Server](https://github.com/coder/code-server) that use extensions from [Open VSX Registry](https://open-vsx.org/) might look and work differently from the native app that has Microsoft-specific customizations. SageMaker SSH Helper **DOES NOT** support browser-based implementations of VS Code and haven't been tested with any of Open VSX extensions. If you prefer to use the browser for development, take a look at the [Web VNC](#web-vnc) option. 
 
-You might also need to increase "Remote.SSH: Connect Timeout" option to `90` in VS Code. See [the StackOverflow post](https://stackoverflow.com/questions/59978826/why-ssh-connection-timed-out-in-vscode) for details. 
+There are few extension options that you might want to change for VS Code to work properly with SageMaker containers:
 
-If you see the error `tar: code: Cannot change ownership to uid 1000, gid 1000: Operation not permitted` when connecting, then try to set "Remote.SSH: Use Exec server" to `false`, as mentioned in [#58 - vscode connect fails](https://github.com/aws-samples/sagemaker-ssh-helper/issues/58).
+* You might need to increase "Remote.SSH: Connect Timeout" option to `120` in VS Code. See [the StackOverflow post](https://stackoverflow.com/questions/59978826/why-ssh-connection-timed-out-in-vscode) for details. 
+
+* If you see the error `tar: code: Cannot change ownership to uid 1000, gid 1000: Operation not permitted` when connecting, then try to set "Remote.SSH: Use Exec server" to `false`, as mentioned in [#58 - vscode connect fails](https://github.com/aws-samples/sagemaker-ssh-helper/issues/58).
+
+* You might also need to set "Remote.SSH: Use Local Server" to `false` and "Remote.SSH: Lockfiles In Tmp" to `true`, if you still have connection problems.
 
 4. Connect to the instance and stop the waiting loop
 
@@ -735,14 +761,22 @@ For your local IDE integration with SageMaker Studio, follow the same steps as f
 
 1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
 
+Note that the `main` branch of this repo can contain changes that are not compatible with the version of `sagemaker-ssh-helper` that you installed from pip.
+
+To be completely sure that you're using the version of the notebook that corresponds to the installed library, take a copy of the notebook from your filesystem after you install SSH Helper package, e.g.:
+
+```bash
+cp /opt/conda/sm_ssh/SageMaker_SSH_IDE.ipynb /root/
+```
+
+You can also check the version with `pip freeze | grep sagemaker-ssh-helper` and take the notebook from [the corresponding release tag](https://github.com/aws-samples/sagemaker-ssh-helper/tags).
+
 Alternatively, [attach](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc-create.html) to a domain the KernelGateway lifecycle config script [kernel-lc-config.sh](kernel-lc-config.sh) 
 (you may need to ask your administrator to do this).
 Once configured, from the Launcher choose the environment, pick up the lifecycle script and choose 
 'Open image terminal' (so, you don't even need to create a notebook).
 
 You might want to change the `LOCAL_USER_ID` variable upon the first run, to prevent users from impersonating each other. For more details see the FAQ on [How SageMaker SSH Helper protects users from impersonating each other?](FAQ.md#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other).
-
-> Note that the `main` branch of this repo can contain changes that are not compatible with the version of `sagemaker-ssh-helper` that you installed from pip. To ensure the stable performance, check the version with `pip freeze | grep sagemaker-ssh-helper` and take the notebook and the lifecycle script from [the corresponding tag](https://github.com/aws-samples/sagemaker-ssh-helper/tags).  
 
 2. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio
 
@@ -753,6 +787,8 @@ To see available apps to connect to, you may run the `list` command:
 ```
 sm-ssh list studio.sagemaker
 ```
+
+*Note:* If you're using Windows, see [the FAQ](FAQ.md#is-windows-supported).
 
 3. Using the remote Jupyter Notebook
 

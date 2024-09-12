@@ -41,9 +41,12 @@ RUN \
 # Pre-configure the container with packages, which should be installed from Internet
 # Consider adding `--ssh-only` flag and commenting the first RUN command, if you don't plan to connect
 # to the VNC server or to the Jupyter notebook
+
+# Option 1: With GUI
 RUN \
     sm-ssh-ide configure && \
     pip3 --no-cache-dir install notebook && \
     yum install --assumeyes xterm
 
+# Option 2: SSH Only
 #RUN sm-ssh-ide configure --ssh-only

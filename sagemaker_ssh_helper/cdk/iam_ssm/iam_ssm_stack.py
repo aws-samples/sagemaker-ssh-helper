@@ -62,7 +62,10 @@ class IamSsmStack(Stack):
                                   actions=[
                                       "ssm:StartSession",
                                   ],
-                                  resources=[f"arn:{Aws.PARTITION}:ssm:*::document/AWS-StartSSHSession"]
+                                  resources=[
+                                      f"arn:{Aws.PARTITION}:ssm:*::document/AWS-StartSSHSession",
+                                      f"arn:{Aws.PARTITION}:ssm:*:{Aws.ACCOUNT_ID}:document/SSM-SessionManagerRunShell"
+                                  ]
                               ),
                               PolicyStatement(
                                   effect=Effect.ALLOW,

@@ -45,10 +45,10 @@ We often see a lot of questions that surface repeatedly. This repository is an a
 The solution was primarily designed for developers who are using Linux and macOS.
 
 Basic scenarios, which require only SSM without SSH, work on Windows without 
-any additional configuration.
+any additional configuration, i.e., you only need to install the library with pip.
 
 To be able to connect from your local machine with SSH and start port forwarding with the script `sm-ssh`, please consider that 
-you need Bash interpreter and Python to execute them. They don't work in PowerShell or in the default Command Prompt.
+you need Bash interpreter and Python to execute them. They don't work in PowerShell or in the default Command Prompt that have no Bash.
 
 However, it's possible also to make it working on Windows, with some limitations on use from IDEs that use the Command Prompt.
 
@@ -106,6 +106,18 @@ export AWS_DEFAULT_REGION=eu-west-1
 ```bash
 sm-ssh list
 ```
+
+9. When configuring the remote interpreter in your IDE on Windows, you cannot use `ssh fqdn` directly, because SSH needs to call Bash somehow. 
+
+But there's a trick (A). Inside GitBash run `sm-ssh connect` and it will forward you the remote SSH port to `localhost` on port `10022`.
+
+Alternatively (B), configure [~/.ssh/config](README.md#sshconfig) inside GitBash and forward the port manually:
+
+```bash
+ssh -L localhost:10022:localhost:22 fqdn
+```
+
+Now use `localhost:10022` in your IDE to connect to remote interpreter and when the IDE asks for the private key, use either (A) `~/.ssh/fqdn` or (B) `~/.ssh/sagemaker-ssh-gw` respectively.
 
 ### Are SageMaker notebook instances supported?
 
@@ -187,7 +199,7 @@ During the container build, execute `sm-setup-ssh configure` and `sm-ssh-ide con
 
 See the examples of such containers [byoc/Dockerfile.internet_free](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/byoc/Dockerfile.internet_free) and [byoi_studio/Dockerfile.internet_free](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/tests/byoi_studio/Dockerfile.internet_free) in the tests.
 
-You will also need to configure AWS PrivateLink for [Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html) and for [STS endpoints](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_sts_vpce.html).
+You will also need to configure AWS PrivateLink for [Session Manager endpoints](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-privatelink.html) and for [STS endpoints](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_sts_vpce.html), in addition to your already existing endpoints for SageMaker and S3.
 
 *Note:* If you are using the [Network Isolation](https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html) mode, i.e., set the `enable_network_isolation` parameter of the `Estimator` to `True`, you won't be able to connect to your containers, because they will have no access to the Amazon Systems Manager.
 
@@ -577,6 +589,11 @@ Below are the generic tips to start with:
 
 * **Important:** Make sure you fully read and understood the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
 
+* Find all instances of SSH Helper installation. They might conflict with each other if both are in the system `PATH`. Switch into each Python environment and uninstall old versions with `pip uninstall`:
+```bash
+find / -name 'sagemaker_ssh_helper' 2>/dev/null
+```
+
 * Check that the managed instance in AWS Console in Systems Manager -> Fleet Manager section appears as "Online". Check that you're able to connect to the node from the Console by selecting Node actions -> Start terminal session. 
 
 If instance is "Offline", you might see this error message when calling an `sm-ssh connect` command:
@@ -595,7 +612,7 @@ An error occurred (InvalidInstanceId) when calling the SendCommand operation: In
 
 * Turn on Session Manager [logging](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-logging.html) and inspect the session logs.
 
-* Try `sm-ssh list` to see if instance is `Online` or offline (will be marked with `-`). Pay attention to what the output says about the AWS region that you connect to.
+* Try `sm-ssh list` to see if instance is `Online` or offline (will be marked with `ConnectionLost` or `ssh:NotFound`). Pay attention to what the output says about the AWS region that you connect to.
 
 * If you have issues with SSH, but you can connect successfully from AWS Console, make sure you can run the both below SSM commands successfully on your local machine:
 
@@ -604,6 +621,8 @@ aws ssm start-session --target mi-01234567890abcdef
 aws ssm start-session --target mi-01234567890abcdef \
   --document-name AWS-StartSSHSession --parameters portNumber=22
 ```
+
+* Use `ssh -v` for additional log output
 
 * (SageMaker Studio) Check SSM agent logs. From the image terminal run:
 ```text
@@ -626,6 +645,17 @@ Check carefully the notebook output in SageMaker Studio to see if there are any 
 
 * (SageMaker Studio) Try to re-initialize the instance by restarting the notebook: Kernel -> Restart Kernel and Run All Cells.
 
+* (PyCharm) Check the IDE log:
+
+```bash
+tail -f ~/Library/Logs/JetBrains/PyCharm2024.1/idea.log
+```
+
+* Enable Session Manager session logs as described [in the AWS Systems Manager documentation]((https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-logging.html)). You might need to create a new CloudWatch log group, e.g. `/ssm/logs` and / or S3 bucket like `ssm-logs-555555555555`. Note that according to the documentation, *"Logging isn't available for Session Manager sessions that connect through port forwarding or SSH"*, so it will only help you when you connect directly to the `mi-*` instance with [AWS CLI or AWS Console](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html).
+
+* Set locally the environment variable `SM_SSH_DEBUG=true` and check the file `/tmp/sm-ssh-debug.log`
+
+* Check that the remote host is not overloaded with tasks and has enough memory to execute SSM and SSH commands, e.g., by running `top` from SageMaker Studio image terminal.
 
 ### I’m getting an API throttling error in the logs
 
