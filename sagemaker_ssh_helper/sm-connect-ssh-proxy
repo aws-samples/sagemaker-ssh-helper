@@ -48,7 +48,9 @@ fi
 
 if [ -z "${SSH_KEY}" ]; then
   SSH_KEY=~/.ssh/sagemaker-ssh-gw
-  echo "$(date -Iseconds) sm-connect-ssh-proxy: Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS_PATH"
+  if [[ "$silent_setup_only" == "false" ]]; then
+    echo "$(date -Iseconds) sm-connect-ssh-proxy: Generating $SSH_KEY keypair with ECDSA and uploading public key to $SSH_AUTHORIZED_KEYS_PATH"
+  fi
   echo 'yes' | ssh-keygen -t ecdsa -q -f "${SSH_KEY}" -N '' >/dev/null
 fi
 
@@ -75,6 +77,9 @@ fi
 
 if [[ "$silent_setup_only" == "false" ]]; then
   echo "$(date -Iseconds) sm-connect-ssh-proxy: Running SSM commands at region ${CURRENT_REGION} to copy public key to ${INSTANCE_ID}"
+fi
+if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Running SSM commands at region ${CURRENT_REGION} to copy public key to ${INSTANCE_ID}" >>/tmp/sm-ssh-debug.log
 fi
 send_command=$(aws ssm send-command \
     --region "${CURRENT_REGION}" \
@@ -134,8 +139,13 @@ for i in $(seq 1 15); do
 done
 
 if [[ "$command_status" != "Success" ]]; then
-  echo "$(date -Iseconds) sm-connect-ssh-proxy: Error: Command didn't finish successfully in time"
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: ERROR: Command didn't finish successfully in time. Check SSM logs and Command history for more details."
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Command status: $command_status. Command ID: $command_id. Region: ${CURRENT_REGION}"
   exit 2
+fi
+
+if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+  echo "$(date -Iseconds) sm-connect-ssh-proxy: Silent setup complete." >>/tmp/sm-ssh-debug.log
 fi
 
 if [[ "$silent_setup_only" == "true" ]]; then
@@ -143,7 +153,7 @@ if [[ "$silent_setup_only" == "true" ]]; then
   exit 0
 fi
 
-echo "$(date -Iseconds) sm-connect-ssh-proxy: Starting SSH over SSM proxy"
+echo "$(date -Iseconds) sm-connect-ssh-proxy: Starting SSH over SSM proxy (interactive session)"
 
 # We don't use AWS-StartPortForwardingSession feature of SSM here, because we need port forwarding in both directions
 #  with -L and -R parameters of SSH. This is useful for forwarding the PyCharm license server, which needs -R option.

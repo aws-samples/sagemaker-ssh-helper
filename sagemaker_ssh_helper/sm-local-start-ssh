@@ -19,6 +19,26 @@ if [[ "$1" == "--proxy-setup-only" ]]; then
   proxy_setup_only="true"
 fi
 
+if [[ "$proxy_setup_only" == "false" ]]; then
+  echo "sm-local-start-ssh: Starting in $dir"
+
+  if [ -z "${SM_SSH_PYTHON}" ]; then
+    echo "sm-local-start-ssh: WARNING: Using system Python. This can cause unexpected behavior. Please, use sm-ssh tool."
+  else
+    echo "sm-local-start-ssh: Using Python from ${SM_SSH_PYTHON}"
+  fi
+fi
+
+if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+  echo "$(date -Iseconds) sm-local-start-ssh: Starting in $dir" >>/tmp/sm-ssh-debug.log
+  echo "$(date -Iseconds) sm-local-start-ssh: Executed with args: $*" >>/tmp/sm-ssh-debug.log
+
+  if [ -z "${SM_SSH_PYTHON}" ]; then
+    echo "$(date -Iseconds) sm-local-start-ssh: WARNING: Using system Python. This can cause unexpected behavior. Please, use sm-ssh tool." >>/tmp/sm-ssh-debug.log
+  else
+    echo "$(date -Iseconds) sm-local-start-ssh: Using Python from ${SM_SSH_PYTHON}" >>/tmp/sm-ssh-debug.log
+  fi
+fi
 
 INSTANCE_ID=$1
 shift
@@ -32,6 +52,9 @@ fi
 
 if [[ "$proxy_setup_only" == "false" ]]; then
   echo "sm-local-start-ssh: Got instance ID: '$INSTANCE_ID'"
+fi
+if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+  echo "$(date -Iseconds) sm-local-start-ssh: Got instance ID: '$INSTANCE_ID'" >>/tmp/sm-ssh-debug.log
 fi
 
 # Useful for port forwarding and debugging, eg. passing -vvv option
@@ -58,23 +81,39 @@ if [[ "$proxy_setup_only" == "false" ]]; then
   echo "NOTE: to override the default S3 path, run 'export SSH_AUTHORIZED_KEYS_PATH=s3://DOC-EXAMPLE-BUCKET/ssh-public-keys-jane-doe/' without quotes before attempting to connect."
 fi
 
+
 if [[ "$proxy_setup_only" == "false" ]]; then
   # shellcheck disable=SC2086  # extra args have to be unquoted to be parsed from the inner script
   sm-connect-ssh-proxy "${INSTANCE_ID}" \
       "${SSH_AUTHORIZED_KEYS_PATH}" \
       $EXTRA_SSH_ARGS
 else
-  # shellcheck disable=SC2086
-  sm-connect-ssh-proxy --silent-setup-only "${INSTANCE_ID}" \
-      "${SSH_AUTHORIZED_KEYS_PATH}" \
-      $EXTRA_SSH_ARGS
+  if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+    # shellcheck disable=SC2086
+    echo "$(date -Iseconds) sm-local-start-ssh: Setting up proxy with args: $EXTRA_SSH_ARGS" >>/tmp/sm-ssh-debug.log
+    sm-connect-ssh-proxy --silent-setup-only "${INSTANCE_ID}" \
+        "${SSH_AUTHORIZED_KEYS_PATH}" \
+        $EXTRA_SSH_ARGS >>/tmp/sm-ssh-debug.log 2>&1
+  else
+    # shellcheck disable=SC2086
+    sm-connect-ssh-proxy --silent-setup-only "${INSTANCE_ID}" \
+        "${SSH_AUTHORIZED_KEYS_PATH}" \
+        $EXTRA_SSH_ARGS
+  fi
 
   CURRENT_REGION=$(aws configure list | grep region | awk '{print $2}')
 
+  if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+    echo "$(date -Iseconds) sm-local-start-ssh: Starting SSM session in ${CURRENT_REGION}" >>/tmp/sm-ssh-debug.log
+  fi
   aws ssm start-session\
    --reason 'Local user started SSH with SageMaker SSH Helper proxy'\
    --region "${CURRENT_REGION}"\
    --target "${INSTANCE_ID}"\
    --document-name AWS-StartSSHSession\
    --parameters portNumber=22
+fi
+
+if [[ "$SM_SSH_DEBUG" == "true" ]]; then
+  echo "$(date -Iseconds) sm-local-start-ssh: Done." >>/tmp/sm-ssh-debug.log
 fi
