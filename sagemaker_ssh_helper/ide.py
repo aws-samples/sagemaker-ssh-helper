@@ -46,7 +46,7 @@ class Image:
 class SSHIDE:
     logger = logging.getLogger('sagemaker-ssh-helper:SSHIDE')
 
-    def __init__(self, domain_id: str, user: str, region_name: str = None, space: str = None):
+    def __init__(self, domain_id: str, user: str = None, region_name: str = None, space: str = None):
         self.user = user
         self.domain_id = domain_id
         self.space = space
@@ -109,13 +109,17 @@ class SSHIDE:
         :return: None | 'InService' | 'Deleted' | 'Deleting' | 'Failed' | 'Pending'
         """
         response = None
+
+        describe_app_params = {
+            "DomainId": self.domain_id,
+            "AppType": app_type,
+            "AppName": app_name,
+        }
+
+        describe_app_params.update({"UserProfileName": self.user} if self.user else {"SpaceName": self.space})
+
         try:
-            response = self.client.describe_app(
-                DomainId=self.domain_id,
-                AppType=app_type,
-                UserProfileName=self.user,
-                AppName=app_name,
-            )
+            response = self.client.describe_app(**describe_app_params)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code == 'ResourceNotFound':
@@ -138,12 +142,15 @@ class SSHIDE:
         self.logger.info(f"Deleting app {app_name}")
 
         try:
-            _ = self.client.delete_app(
-                DomainId=self.domain_id,
-                AppType=app_type,
-                UserProfileName=self.user,
-                AppName=app_name,
-            )
+            delete_app_params = {
+                "DomainId": self.domain_id,
+                "AppType": app_type,
+                "AppName": app_name,
+            }
+
+            delete_app_params.update({"UserProfileName": self.user} if self.user else {"SpaceName": self.space})
+
+            _ = self.client.delete_app(**delete_app_params)
         except ClientError as e:
             # probably, already deleted
             code = e.response.get("Error", {}).get("Code")
@@ -174,13 +181,16 @@ class SSHIDE:
         if lifecycle_arn:
             resource_spec['LifecycleConfigArn'] = lifecycle_arn
 
-        _ = self.client.create_app(
-            DomainId=self.domain_id,
-            AppType=app_type,
-            AppName=app_name,
-            UserProfileName=self.user,
-            ResourceSpec=resource_spec,
-        )
+        create_app_params = {
+            "DomainId": self.domain_id,
+            "AppType": app_type,
+            "AppName": app_name,
+            "ResourceSpec": resource_spec,
+        }
+
+        create_app_params.update({"UserProfileName": self.user} if self.user else {"SpaceName": self.space})
+
+        _ = self.client.create_app(**create_app_params)
         status = self.get_app_status(app_name)
         while status.is_pending():
             self.logger.info(f"Waiting for the InService status. Current status: {status}")

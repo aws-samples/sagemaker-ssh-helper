@@ -21,6 +21,8 @@ class SageMakerSecureShellHelper:
     def fqdn_to_type(fqdn: str) -> str:
         if fqdn.endswith(".studio.sagemaker") or fqdn == "studio.sagemaker":
             return "ide"
+        elif fqdn.endswith(".space.sagemaker") or fqdn == "space.sagemaker":
+            return "ide-space"
         elif fqdn.endswith(".notebook.sagemaker") or fqdn == "notebook.sagemaker":
             return "notebook"
         elif fqdn.endswith(".training.sagemaker") or fqdn == "training.sagemaker":
@@ -38,6 +40,8 @@ class SageMakerSecureShellHelper:
     def type_to_fqdn(cls, resource_type):
         if resource_type == "ide":
             return "studio.sagemaker"
+        elif resource_type == "ide-space":
+            return "space.sagemaker"
         elif resource_type == "notebook":
             return "notebook.sagemaker"
         elif resource_type == "training":
@@ -76,20 +80,30 @@ class SageMakerSecureShellHelper:
         else:
             return ''
 
+    fqdn_to_studio_space_name = fqdn_to_studio_user_name
+
     @classmethod
     def _get_arguments(cls, fqdn, resource, command):
-        domain_id = ""
         user_profile_name = ""
-        if resource == "ide":
+        space_name = ""
+
+        if resource.startswith("ide"):
             domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
-            user_profile_name = SageMakerSecureShellHelper.fqdn_to_studio_user_name(fqdn)
-        if domain_id and user_profile_name:
-            arguments = ["bash", f"sm-local-ssh-{resource}",
-                         "--domain-id", domain_id, "--user-profile-name", user_profile_name]
+            if resource.endswith("space"):
+                space_name = SageMakerSecureShellHelper.fqdn_to_studio_space_name(fqdn)
+            else:
+                user_profile_name = SageMakerSecureShellHelper.fqdn_to_studio_user_name(fqdn)
+
+            arguments = ["bash", "sm-local-ssh-ide", "--domain-id", domain_id]
+
+            if domain_id and user_profile_name:
+                arguments.extend(["--user-profile-name", user_profile_name])
+            elif domain_id and space_name:
+                arguments.extend(["--space-name", space_name])
         else:
             arguments = ["bash", f"sm-local-ssh-{resource}"]
 
-        if resource == "ide":
+        if resource.startswith("ide"):
             arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "app"))
         elif resource == "notebook":
             arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "notebook"))
@@ -137,7 +151,7 @@ class SageMakerSecureShellHelper:
         for resource in self.resources:
             if resource_type == resource or resource_type == "all":
                 # if-then-else branch for every resource type:
-                if resource == "ide":
+                if resource.startswith("ide"):
                     domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
                     user_profile_name = SageMakerSecureShellHelper.fqdn_to_studio_user_name(fqdn)
                     interactive_sagemaker.print_studio_ide_apps_for_user_and_domain(domain_id, user_profile_name)

@@ -31,15 +31,16 @@ class SageMakerCoreApp:
 
 
 class SageMakerStudioApp(SageMakerCoreApp):
-    def __init__(self, domain_id: str, user_profile_name: str, app_name: str, app_type: str,
-                 app_status: IDEAppStatus) -> None:
+    def __init__(self, domain_id: str, app_name: str, app_type: str, app_status: IDEAppStatus, user_profile_name: str = None,
+                 space_name: str = None) -> None:
         super().__init__()
         self.app_status = app_status
         self.app_type = app_type
         self.app_name = app_name
         self.user_profile_name = user_profile_name
+        self.space_name = space_name
         self.domain_id = domain_id
-        self.resource_type = "ide"
+        self.resource_type = "ide" if user_profile_name else "ide-space"
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {5}.{4}.{3}.{6}".format(
@@ -47,7 +48,7 @@ class SageMakerStudioApp(SageMakerCoreApp):
             self.app_type,
             str(self.app_status),
             self.domain_id,
-            self.user_profile_name,
+            self.user_profile_name if self.user_profile_name else self.space_name,
             self.app_name,
             SageMakerSecureShellHelper.type_to_fqdn(self.resource_type)
         )
@@ -160,17 +161,15 @@ class SageMaker:
                 app_name = app_dict['AppName']
                 app_type = app_dict['AppType']
                 if 'SpaceName' in app_dict:
-                    logging.info("Don't support spaces: skipping app %s of type %s" % (app_name, app_type))
-                    pass
+                    space_name = app_dict['SpaceName']
+                    logging.info("Found app %s of type %s for space %s" % (app_name, app_type, space_name))
+                    app_status = SSHIDE(domain_id, None, self.region, space_name).get_app_status(app_name, app_type)
+                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, space_name=space_name))
                 elif app_type in ['JupyterServer', 'KernelGateway']:
                     user_profile_name = app_dict['UserProfileName']
                     logging.info("Found app %s of type %s for user %s" % (app_name, app_type, user_profile_name))
                     app_status = SSHIDE(domain_id, user_profile_name, self.region).get_app_status(app_name, app_type)
-                    result.append(SageMakerStudioApp(
-                        domain_id, user_profile_name,
-                        app_dict['AppName'], app_dict['AppType'],
-                        app_status
-                    ))
+                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_name=user_profile_name))
                 else:
                     logging.info("Unsupported app type %s" % app_type)
                     pass  # We don't support other types like 'DetailedProfiler'
@@ -342,7 +341,8 @@ class InteractiveSageMaker:
             arn = tags['SSHResourceArn'] if 'SSHResourceArn' in tags else ''
             timestamp = int(tags['SSHTimestamp']) if 'SSHTimestamp' in tags else 0
             if (':app/' in arn and arn.endswith(f"/{sagemaker_app.app_name}")
-                    and f"/{sagemaker_app.user_profile_name}/" in arn
+                    and (f"/{sagemaker_app.user_profile_name}/" in arn or
+                         f"/{sagemaker_app.space_name}/" in arn)
                     and f"/{sagemaker_app.domain_id}/" in arn
                     and timestamp > max_timestamp):
                 result = managed_instance_id

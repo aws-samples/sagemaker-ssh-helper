@@ -53,6 +53,12 @@ if [[ "$1" == "--user-profile-name" ]]; then
     shift
 fi
 
+if [[ "$1" == "--space-name" ]]; then
+    SPACE_NAME=$2
+    shift
+    shift
+fi
+
 COMMAND=$1
 
 if [[ "$COMMAND" != "set-user-profile-name" && "$COMMAND" != "set-domain-id" \
@@ -95,18 +101,18 @@ elif [[ "$COMMAND" == "connect-app" ]]; then
 
   # shellcheck disable=SC2091
   if [ -z "$SPACE_NAME" ]; then
-      INSTANCE_ID=$(python <<EOF
-  import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
-  import logging; logging.basicConfig(level=logging.INFO);
-  SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
-  EOF
+    INSTANCE_ID=$(python <<EOF
+import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
+import logging; logging.basicConfig(level=logging.INFO);
+SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
+EOF
     )
     else
-      INSTANCE_ID=$(python <<EOF
-  import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
-  import logging; logging.basicConfig(level=logging.INFO);
-  SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME", space="$SPACE_NAME").print_space_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
-  EOF
+    INSTANCE_ID=$(python <<EOF
+import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
+import logging; logging.basicConfig(level=logging.INFO);
+SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME", space="$SPACE_NAME").print_space_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
+EOF
     )
   fi
 
