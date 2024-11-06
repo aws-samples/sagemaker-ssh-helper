@@ -113,6 +113,15 @@ class SSMManager(SSMManagerBase):
         self.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
         return self.get_instance_ids('transform-job', transform_job_name, timeout_in_sec)
 
+    def get_studio_space_app_instance_ids(self, domain_id, space_name, app_name, timeout_in_sec=0):
+        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio space {app_name}")
+        if not domain_id:
+            arn_filter = f":app/.*/{space_name}/"
+        else:
+            arn_filter = f":app/{domain_id}/{space_name}/"
+        return self.get_instance_ids('app', f"{app_name}", timeout_in_sec,
+                                     arn_filter_regex=arn_filter)
+
     def get_studio_user_kgw_instance_ids(self, domain_id, user_profile_name, kgw_name, timeout_in_sec=0,
                                          not_earlier_than_timestamp: int = 0):
         self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway: '{kgw_name}'")
@@ -128,6 +137,10 @@ class SSMManager(SSMManagerBase):
         self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway: '{kgw_name}'")
         return self.get_instance_ids('app', f"{kgw_name}", timeout_in_sec,
                                      not_earlier_than_timestamp)
+
+    def get_studio_app_instance_ids(self, app_name, timeout_in_sec=0):
+        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio space {app_name}")
+        return self.get_instance_ids('app', f"{app_name}", timeout_in_sec)
 
     def get_notebook_instance_ids(self, instance_name, timeout_in_sec=0):
         self.logger.info(f"Querying SSM instance IDs for SageMaker notebook instance {instance_name}")

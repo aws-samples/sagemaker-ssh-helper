@@ -39,6 +39,7 @@ echo "sm-local-ssh-ide: Starting in $dir"
 
 DOMAIN_ID=""
 USER_PROFILE_NAME=""
+SPACE_NAME=""
 
 if [[ "$1" == "--domain-id" ]]; then
     DOMAIN_ID=$2
@@ -68,6 +69,12 @@ if [[ "$COMMAND" != "set-user-profile-name" && "$COMMAND" != "set-domain-id" \
     echo "sm-local-ssh-ide: WARNING: SageMaker Studio user profile name is not set."\
       "Run 'sm-local-ssh-ide set-user-profile-name' to override."
   fi
+  if [ -f ~/.sm-studio-space-name ]; then
+    SPACE_NAME="$(cat ~/.sm-studio-space-name)"
+  else
+    echo "sm-local-ssh-ide: WARNING: SageMaker Studio space name is not set."\
+      "Run 'sm-local-ssh-ide set-space-name' to override."
+  fi
 fi
 
 if [[ "$COMMAND" == "proxy-host" ]]; then
@@ -87,12 +94,21 @@ elif [[ "$COMMAND" == "connect-app" ]]; then
   OPTIONS="$3"
 
   # shellcheck disable=SC2091
-  INSTANCE_ID=$($(_python) <<EOF
-import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
-import logging; logging.basicConfig(level=logging.INFO);
-SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
-EOF
-  )
+  if [ -z "$SPACE_NAME" ]; then
+      INSTANCE_ID=$(python <<EOF
+  import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
+  import logging; logging.basicConfig(level=logging.INFO);
+  SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
+  EOF
+    )
+    else
+      INSTANCE_ID=$(python <<EOF
+  import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
+  import logging; logging.basicConfig(level=logging.INFO);
+  SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME", space="$SPACE_NAME").print_space_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
+  EOF
+    )
+  fi
 
   if [[ "$OPTIONS" == "--ssh-only" ]]; then
     echo "sm-local-ssh-ide: Connecting only SSH to local port 10022 (got the flag --ssh-only)"
@@ -140,6 +156,15 @@ elif [[ "$COMMAND" == "set-user-profile-name" ]]; then
     fi
     echo "sm-local-ssh-ide: Saving SageMaker Studio user profile name into ~/.sm-studio-user-profile-name"
     echo "$USER_PROFILE_NAME" > ~/.sm-studio-user-profile-name
+
+elif [[ "$COMMAND" == "set-space-name" ]]; then
+    SPACE_NAME="$(echo "$2" | tr '[:upper:]' '[:lower:]')"
+    if [[ "$SPACE_NAME" == "" ]]; then
+      echo "sm-local-ssh-ide: ERROR: <space-name> argument is expected"
+      exit 1
+    fi
+    echo "sm-local-ssh-ide: Saving SageMaker Studio user profile name into ~/.sm-studio-space-name"
+    echo "$SPACE_NAME" > ~/.sm-studio-space-name
 
 elif [[ "$COMMAND" == "run-command" ]]; then
 

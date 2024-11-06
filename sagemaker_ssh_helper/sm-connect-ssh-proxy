@@ -94,7 +94,7 @@ send_command=$(aws ssm send-command \
         'cat /etc/ssh/authorized_keys.d/* > /etc/ssh/authorized_keys',
         'ls -la /etc/ssh/authorized_keys'
       ]" \
-    --no-cli-pager --no-paginate \
+    --no-paginate \
     --output json)
 
 json_value_regexp='s/^[^"]*".*": \"\(.*\)\"[^"]*/\1/'
@@ -114,7 +114,7 @@ for i in $(seq 1 15); do
   command_output=$(aws ssm get-command-invocation \
       --instance-id "${INSTANCE_ID}" \
       --command-id "${command_id}" \
-      --no-cli-pager --no-paginate \
+      --no-paginate \
       --output json)
   command_output=$(echo "$command_output" | $(_python) -m json.tool)
   command_status=$(echo "$command_output" | grep '"Status":' | sed -e "$json_value_regexp")
@@ -166,7 +166,7 @@ proxy_command="aws ssm start-session\
  --parameters portNumber=%p"
 
 # shellcheck disable=SC2086
-ssh -4 -o User=root -o IdentityFile="${SSH_KEY}" -o IdentitiesOnly=yes \
+ssh -4 -o User=sagemaker-user -o IdentityFile="${SSH_KEY}" -o IdentitiesOnly=yes \
   -o ProxyCommand="$proxy_command" \
   -o ConnectTimeout=90 \
   -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
