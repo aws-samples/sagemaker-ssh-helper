@@ -323,7 +323,7 @@ def test_studio_default_domain_multiple_users(request):
 
 @pytest.mark.parametrize('user_profile_name', ['test-firefox'])
 def test_studio_notebook_in_firefox(request, user_profile_name):
-    ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user_profile_name)
+    ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user_profile_name, is_user_profile=True)
     local_user_id = os.environ['LOCAL_USER_ID']
     jb_server_host = os.environ['JB_LICENSE_SERVER_HOST']
 
@@ -371,7 +371,7 @@ def test_studio_notebook_in_firefox(request, user_profile_name):
         browser_automation.restart_kernel_and_run_all_cells()
 
         data_science_kernel = "sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036"  # noqa
-        studio_id = ide.get_kernel_instance_id(
+        studio_id = ide.get_instance_id(
             data_science_kernel,
             timeout_in_sec=300,
             not_earlier_than_timestamp=current_time_stamp

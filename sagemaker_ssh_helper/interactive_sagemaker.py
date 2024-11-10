@@ -31,16 +31,15 @@ class SageMakerCoreApp:
 
 
 class SageMakerStudioApp(SageMakerCoreApp):
-    def __init__(self, domain_id: str, app_name: str, app_type: str, app_status: IDEAppStatus, user_profile_name: str = None,
-                 space_name: str = None) -> None:
+    def __init__(self, domain_id: str, app_name: str, app_type: str, app_status: IDEAppStatus, user_profile_or_space_name: str,
+                 is_user_profile: bool = True) -> None:
         super().__init__()
         self.app_status = app_status
         self.app_type = app_type
         self.app_name = app_name
-        self.user_profile_name = user_profile_name
-        self.space_name = space_name
+        self.user_profile_or_space_name = user_profile_or_space_name
         self.domain_id = domain_id
-        self.resource_type = "ide" if user_profile_name else "ide-space"
+        self.resource_type = "ide" if is_user_profile else "ide-space"
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {5}.{4}.{3}.{6}".format(
@@ -48,7 +47,7 @@ class SageMakerStudioApp(SageMakerCoreApp):
             self.app_type,
             str(self.app_status),
             self.domain_id,
-            self.user_profile_name if self.user_profile_name else self.space_name,
+            self.user_profile_or_space_name,
             self.app_name,
             SageMakerSecureShellHelper.type_to_fqdn(self.resource_type)
         )
@@ -163,13 +162,13 @@ class SageMaker:
                 if 'SpaceName' in app_dict:
                     space_name = app_dict['SpaceName']
                     logging.info("Found app %s of type %s for space %s" % (app_name, app_type, space_name))
-                    app_status = SSHIDE(domain_id, None, self.region, space_name).get_app_status(app_name, app_type)
-                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, space_name=space_name))
+                    app_status = SSHIDE(domain_id, space_name, self.region, is_user_profile=False).get_app_status(app_name, app_type)
+                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_or_space_name=space_name, is_user_profile=False))
                 elif app_type in ['JupyterServer', 'KernelGateway']:
                     user_profile_name = app_dict['UserProfileName']
                     logging.info("Found app %s of type %s for user %s" % (app_name, app_type, user_profile_name))
-                    app_status = SSHIDE(domain_id, user_profile_name, self.region).get_app_status(app_name, app_type)
-                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_name=user_profile_name))
+                    app_status = SSHIDE(domain_id, user_profile_name, self.region, is_user_profile=True).get_app_status(app_name, app_type)
+                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_or_space_name=user_profile_name, is_user_profile=True))
                 else:
                     logging.info("Unsupported app type %s" % app_type)
                     pass  # We don't support other types like 'DetailedProfiler'
@@ -289,14 +288,14 @@ class InteractiveSageMaker:
         self.manager = manager
         self.log = log
 
-    def list_studio_ide_apps_for_user_and_domain(self, domain_id: Optional[str], user_profile_name: Optional[str]):
+    def list_studio_ide_apps_for_user_or_space_and_domain(self, domain_id: Optional[str], user_profile_or_space_name: Optional[str]):
         managed_instances = self.manager.list_all_instances_and_fetch_tags()
         sagemaker_apps = self.sagemaker.list_ide_apps()
         result = []
         for sagemaker_app in sagemaker_apps:
             if (sagemaker_app.domain_id == domain_id or domain_id is None or domain_id == "") \
-                    and (sagemaker_app.user_profile_name == user_profile_name or user_profile_name is None
-                         or user_profile_name == ""):
+                    and (sagemaker_app.user_profile_or_space_name == user_profile_or_space_name or user_profile_or_space_name is None
+                         or user_profile_or_space_name == ""):
                 instance_id = self._find_latest_app_instance_id(managed_instances, sagemaker_app)
                 if instance_id:
                     tags = managed_instances[instance_id]
@@ -307,15 +306,15 @@ class InteractiveSageMaker:
         return result
 
     def print_studio_ide_apps_for_user_and_domain(self, domain_id: str, user_profile_name: str):
-        apps: List[SageMakerStudioApp] = self.list_studio_ide_apps_for_user_and_domain(domain_id, user_profile_name)
+        apps: List[SageMakerStudioApp] = self.list_studio_ide_apps_for_user_or_space_and_domain(domain_id, user_profile_name)
         for app in apps:
             print(app)
 
-    def list_studio_ide_apps_for_user(self, user_profile_name: str):
-        return self.list_studio_ide_apps_for_user_and_domain(None, user_profile_name)
+    def list_studio_ide_apps_for_user_or_space(self, user_profile_or_space_name: str):
+        return self.list_studio_ide_apps_for_user_or_space_and_domain(None, user_profile_or_space_name)
 
     def list_studio_ide_apps(self):
-        return self.list_studio_ide_apps_for_user_and_domain(None, None)
+        return self.list_studio_ide_apps_for_user_or_space_and_domain(None, None)
 
     @staticmethod
     def _find_latest_instance_id(managed_instances: Dict[str, Dict[str, str]],
@@ -341,8 +340,7 @@ class InteractiveSageMaker:
             arn = tags['SSHResourceArn'] if 'SSHResourceArn' in tags else ''
             timestamp = int(tags['SSHTimestamp']) if 'SSHTimestamp' in tags else 0
             if (':app/' in arn and arn.endswith(f"/{sagemaker_app.app_name}")
-                    and (f"/{sagemaker_app.user_profile_name}/" in arn or
-                         f"/{sagemaker_app.space_name}/" in arn)
+                    and f"/{sagemaker_app.user_profile_or_space_name}/" in arn
                     and f"/{sagemaker_app.domain_id}/" in arn
                     and timestamp > max_timestamp):
                 result = managed_instance_id

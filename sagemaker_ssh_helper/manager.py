@@ -113,23 +113,14 @@ class SSMManager(SSMManagerBase):
         self.logger.info(f"Querying SSM instance IDs for transform job {transform_job_name}")
         return self.get_instance_ids('transform-job', transform_job_name, timeout_in_sec)
 
-    def get_studio_space_app_instance_ids(self, domain_id, space_name, app_name, timeout_in_sec=0):
-        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio space {app_name}")
+    def get_studio_instance_ids(self, domain_id, user_profile_or_space_name, app_name, timeout_in_sec=0, not_earlier_than_timestamp: int = 0, is_user_profile=False):
+        self.logger.info(f"Querying SSM instance IDs for app '{app_name}' in SageMaker Studio {'kernel gateway' if is_user_profile else 'space'}: '{user_profile_or_space_name}'")
         if not domain_id:
-            arn_filter = f":app/.*/{space_name}/"
+            arn_filter = f":app/.*/{user_profile_or_space_name}/"
         else:
-            arn_filter = f":app/{domain_id}/{space_name}/"
-        return self.get_instance_ids('app', f"{app_name}", timeout_in_sec,
-                                     arn_filter_regex=arn_filter)
+            arn_filter = f":app/{domain_id}/{user_profile_or_space_name}/"
 
-    def get_studio_user_kgw_instance_ids(self, domain_id, user_profile_name, kgw_name, timeout_in_sec=0,
-                                         not_earlier_than_timestamp: int = 0):
-        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio kernel gateway: '{kgw_name}'")
-        if not domain_id:
-            arn_filter = f":app/.*/{user_profile_name}/"
-        else:
-            arn_filter = f":app/{domain_id}/{user_profile_name}/"
-        return self.get_instance_ids('app', f"{kgw_name}", timeout_in_sec,
+        return self.get_instance_ids('app', f"{app_name}", timeout_in_sec,
                                      arn_filter_regex=arn_filter,
                                      not_earlier_than_timestamp=not_earlier_than_timestamp)
 

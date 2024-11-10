@@ -656,7 +656,7 @@ class SSHIDEWrapper(SSHEnvironmentWrapper):
         return result
 
     def get_instance_ids(self, retry: int = None, timeout_in_sec: int = 900):
-        return self.ide.get_kernel_instance_ids(self.app_name, timeout_in_sec=timeout_in_sec,
+        return self.ide.get_instance_ids(self.app_name, timeout_in_sec=timeout_in_sec,
                                                 not_earlier_than_timestamp=self.not_earlier_than_timestamp)
 
     def get_cloudwatch_url(self):

@@ -15,14 +15,14 @@ from boto3 import Session
 
 
 class SageMakerSecureShellHelper:
-    resources = ["ide", "training", "processing", "transform", "inference", "notebook"]
+    resources = ["ide", "space-ide", "training", "processing", "transform", "inference", "notebook"]
 
     @staticmethod
     def fqdn_to_type(fqdn: str) -> str:
         if fqdn.endswith(".studio.sagemaker") or fqdn == "studio.sagemaker":
             return "ide"
         elif fqdn.endswith(".space.sagemaker") or fqdn == "space.sagemaker":
-            return "ide-space"
+            return "space-ide"
         elif fqdn.endswith(".notebook.sagemaker") or fqdn == "notebook.sagemaker":
             return "notebook"
         elif fqdn.endswith(".training.sagemaker") or fqdn == "training.sagemaker":
@@ -40,7 +40,7 @@ class SageMakerSecureShellHelper:
     def type_to_fqdn(cls, resource_type):
         if resource_type == "ide":
             return "studio.sagemaker"
-        elif resource_type == "ide-space":
+        elif resource_type == "space-ide":
             return "space.sagemaker"
         elif resource_type == "notebook":
             return "notebook.sagemaker"
@@ -72,7 +72,7 @@ class SageMakerSecureShellHelper:
             return ''
 
     @staticmethod
-    def fqdn_to_studio_user_name(fqdn: str) -> str:
+    def fqdn_to_studio_user_or_space_name(fqdn: str) -> str:
         if fqdn.count('.') == 4:
             return fqdn.split('.')[1]
         if fqdn.count('.') == 3:
@@ -80,31 +80,19 @@ class SageMakerSecureShellHelper:
         else:
             return ''
 
-    fqdn_to_studio_space_name = fqdn_to_studio_user_name
-
     @classmethod
     def _get_arguments(cls, fqdn, resource, command):
-        user_profile_name = ""
-        space_name = ""
-
-        if resource.startswith("ide"):
+        if resource.endswith("ide"):
             domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
-            if resource.endswith("space"):
-                space_name = SageMakerSecureShellHelper.fqdn_to_studio_space_name(fqdn)
-            else:
-                user_profile_name = SageMakerSecureShellHelper.fqdn_to_studio_user_name(fqdn)
-
-            arguments = ["bash", "sm-local-ssh-ide", "--domain-id", domain_id]
-
-            if domain_id and user_profile_name:
-                arguments.extend(["--user-profile-name", user_profile_name])
-            elif domain_id and space_name:
-                arguments.extend(["--space-name", space_name])
+            user_profile_or_space_name = SageMakerSecureShellHelper.fqdn_to_studio_user_or_space_name(fqdn)
+            arguments = ["bash", "sm-local-ssh-ide", "--domain-id", domain_id, "--user-profile-or-space-name", user_profile_or_space_name]
         else:
             arguments = ["bash", f"sm-local-ssh-{resource}"]
 
-        if resource.startswith("ide"):
+        if resource == "ide":
             arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "app"))
+        elif resource == "space-ide":
+            arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "space-app"))
         elif resource == "notebook":
             arguments.append(cls._sm_ssh_command_to_local_ssh_command(command, "notebook"))
         elif resource == "training":
@@ -153,8 +141,8 @@ class SageMakerSecureShellHelper:
                 # if-then-else branch for every resource type:
                 if resource.startswith("ide"):
                     domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
-                    user_profile_name = SageMakerSecureShellHelper.fqdn_to_studio_user_name(fqdn)
-                    interactive_sagemaker.print_studio_ide_apps_for_user_and_domain(domain_id, user_profile_name)
+                    user_profile_or_space_name = SageMakerSecureShellHelper.fqdn_to_studio_user_or_space_name(fqdn)
+                    interactive_sagemaker.print_studio_ide_apps_for_user_and_domain(domain_id, user_profile_or_space_name)
                 elif resource == "notebook":
                     interactive_sagemaker.print_notebook_instances()
                 elif resource == "training":

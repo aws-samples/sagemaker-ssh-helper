@@ -199,9 +199,10 @@ def test_can_filter_by_domain_and_user():
         },
     })
 
-    ids = manager.get_studio_user_kgw_instance_ids(
+    ids = manager.get_studio_instance_ids(
         "d-0123456789bc", "default-1111111111111",
-        "sagemaker-data-science-ml-m5-large-1234567890abcdef0"
+        "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+        is_user_profile=True
     )
     assert len(ids) == 1
     assert ids[0] == "mi-01234567890abcd08"
@@ -234,9 +235,10 @@ def test_can_filter_by_user_with_latest_domain():
         },
     })
 
-    ids = manager.get_studio_user_kgw_instance_ids(
+    ids = manager.get_studio_instance_ids(
         "", "default-1111111111111",
-        "sagemaker-data-science-ml-m5-large-1234567890abcdef0"
+        "sagemaker-data-science-ml-m5-large-1234567890abcdef0",
+        is_user_profile=True
     )
     assert len(ids) == 2
     assert ids[0] == "mi-01234567890abcd08"
@@ -327,7 +329,7 @@ def test_can_list_ssh_and_non_ssh_instances():
 
     interactive_sagemaker = InteractiveSageMaker(sagemaker, manager)
 
-    apps = interactive_sagemaker.list_studio_ide_apps_for_user_and_domain(
+    apps = interactive_sagemaker.list_studio_ide_apps_for_user_or_space_and_domain(
         "d-0123456789bc", "janedoe",
     )
     assert len(apps) == 4
@@ -336,12 +338,12 @@ def test_can_list_ssh_and_non_ssh_instances():
     assert apps[0].ssm_instance_id == "mi-01234567890abcd05"
     assert apps[0].ssh_owner == "AIDACKCEVSQ6C2EXAMPLE:janedoe@SSO"
 
-    apps = interactive_sagemaker.list_studio_ide_apps_for_user_and_domain(
+    apps = interactive_sagemaker.list_studio_ide_apps_for_user_or_space_and_domain(
         "d-0123456789bc", "terry",
     )
     assert len(apps) == 2
 
-    apps = interactive_sagemaker.list_studio_ide_apps_for_user(
+    apps = interactive_sagemaker.list_studio_ide_apps_for_user_or_space(
         "terry",
     )
     assert len(apps) == 4
