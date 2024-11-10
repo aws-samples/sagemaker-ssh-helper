@@ -101,7 +101,6 @@ import logging; logging.basicConfig(level=logging.INFO);
 SSHIDE("$DOMAIN_ID", user_or_space="$USER_PROFILE_OR_SPACE_NAME", is_user_profile=$IS_USER_PROFILE).print_instance_id("$SM_STUDIO_APP_NAME", timeout_in_sec=300)
 EOF
     )
-  echo "${INSTANCE_ID}"
 
   if [[ "$OPTIONS" == "--ssh-only" ]]; then
     echo "sm-local-ssh-ide: Connecting only SSH to local port 10022 (got the flag --ssh-only)"
