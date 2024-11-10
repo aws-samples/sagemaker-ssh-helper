@@ -39,7 +39,7 @@ class SageMakerStudioApp(SageMakerCoreApp):
         self.app_name = app_name
         self.user_profile_or_space_name = user_profile_or_space_name
         self.domain_id = domain_id
-        self.resource_type = "ide" if is_user_profile else "ide-space"
+        self.resource_type = "ide" if is_user_profile else "space-ide"
 
     def __str__(self) -> str:
         return "{0:<16} {1:<18} {2:<12} {5}.{4}.{3}.{6}".format(

@@ -250,10 +250,10 @@ class SSHIDE:
             self.logger.info(f"Remote apps metadata is at {self.get_user_or_space_metadata_url()}")
 
     def get_cloudwatch_url(self, app_name):
-        return self.ssh_log.get_ide_cloudwatch_url(self.domain_id, self.user_or_space, app_name)
+        return self.ssh_log.get_ide_cloudwatch_url(self.domain_id, self.user_or_space, app_name, self.is_user_profile)
 
     def get_user_or_space_metadata_url(self):
-        return self.ssh_log.get_ide_metadata_url(self.domain_id, self.user_or_space)
+        return self.ssh_log.get_ide_metadata_url(self.domain_id, self.user_or_space, self.is_user_profile)
 
     def create_and_attach_image(self, image_name, ecr_image_name,
                                 role_arn,

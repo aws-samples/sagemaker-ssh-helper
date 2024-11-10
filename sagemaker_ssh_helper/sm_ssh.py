@@ -143,10 +143,11 @@ class SageMakerSecureShellHelper:
         for resource in self.resources:
             if resource_type == resource or resource_type == "all":
                 # if-then-else branch for every resource type:
-                if resource.startswith("ide"):
+                if resource.endswith("ide"):
                     domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
                     user_profile_or_space_name = SageMakerSecureShellHelper.fqdn_to_studio_user_or_space_name(fqdn)
                     interactive_sagemaker.print_studio_ide_apps_for_user_and_domain(domain_id, user_profile_or_space_name)
+                    break
                 elif resource == "notebook":
                     interactive_sagemaker.print_notebook_instances()
                 elif resource == "training":

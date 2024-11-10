@@ -197,22 +197,26 @@ class SSHLog(SSMManagerBase):
                f"sagemaker/home?region={self.region_name}#" \
                f"/transform-jobs/{transform_job_name}"
 
-    def get_ide_cloudwatch_url(self, domain, user, app_name):
-        app_type = 'JupyterServer' if app_name == 'default' else 'KernelGateway'
-        if user:
+    def get_ide_cloudwatch_url(self, domain, user_or_space, app_name, is_user_profile=True):
+        if is_user_profile:
+            app_type = 'JupyterServer' if app_name == 'default' else 'KernelGateway'
+        else:
+            app_type = 'JupyterLab'
+        if user_or_space:
             return f"https://{self.aws_console.get_console_domain()}/" \
                    f"cloudwatch/home?region={self.region_name}#" \
                    f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
-                   f"$3FlogStreamNameFilter$3D{domain}$252F{user}$252F{app_type}$252F{app_name}"
+                   f"$3FlogStreamNameFilter$3D{domain}$252F{user_or_space}$252F{app_type}$252F{app_name}"
         return f"https://{self.aws_console.get_console_domain()}/" \
                f"cloudwatch/home?region={self.region_name}#" \
                f"logsV2:log-groups/log-group/$252Faws$252Fsagemaker$252Fstudio" \
                f"$3FlogStreamNameFilter$3D{app_type}$252F{app_name}"
 
-    def get_ide_metadata_url(self, domain, user):
+    def get_ide_metadata_url(self, domain, user_or_space, is_user_profile=True):
+        scope = 'user' if is_user_profile else 'space'
         return f"https://{self.aws_console.get_console_domain()}/" \
                f"sagemaker/home?region={self.region_name}#" \
-               f"/studio/{domain}/user/{user}"
+               f"/studio/{domain}/{scope}/{user_or_space}"
 
     def count_sns_notifications(self, topic_name: str, period: timedelta):
         cloudwatch_resource = boto3.resource('cloudwatch', region_name=self.region_name)
