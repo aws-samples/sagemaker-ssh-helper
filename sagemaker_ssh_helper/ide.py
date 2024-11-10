@@ -116,7 +116,8 @@ class SSHIDE:
             "AppName": app_name,
         }
 
-        describe_app_request_params.update({"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+        describe_app_request_params.update(
+            {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
 
         try:
             response = self.client.describe_app(**describe_app_request_params)
@@ -148,7 +149,8 @@ class SSHIDE:
                 "AppName": app_name,
             }
 
-            delete_app_request_params.update({"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+            delete_app_request_params.update(
+                {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
 
             _ = self.client.delete_app(**delete_app_request_params)
         except ClientError as e:
@@ -188,7 +190,8 @@ class SSHIDE:
             "ResourceSpec": resource_spec,
         }
 
-        create_app_request_params.update({"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+        create_app_request_params.update(
+            {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
 
         _ = self.client.create_app(**create_app_request_params)
         status = self.get_app_status(app_name)
@@ -235,11 +238,11 @@ class SSHIDE:
             result = SSMManager().get_studio_instance_ids("", self.user_or_space, app_name,
                                                           timeout_in_sec, not_earlier_than_timestamp, is_user_profile=self.is_user_profile)
         else:
-            self.logger.warning(f"Domain ID or {'user' if self.is_user_profile else 'space'} are not set. Will attempt to connect to the latest "
-                                f"active {app_name} in the region {self.current_region}")
+            self.logger.warning(
+                f"Domain ID or {'user' if self.is_user_profile else 'space'} are not set. Will attempt to connect to the latest "
+                f"active {app_name} in the region {self.current_region}")
             result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
         return result
-
 
     def log_urls(self, app_name):
         self.logger.info(f"Remote logs are at {self.get_cloudwatch_url(app_name)}")

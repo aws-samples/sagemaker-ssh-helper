@@ -82,9 +82,13 @@ class SageMakerSecureShellHelper:
 
     @classmethod
     def _get_arguments(cls, fqdn, resource, command):
+        domain_id = ""
+        user_profile_or_space_name = ""
+
         if resource.endswith("ide"):
             domain_id = SageMakerSecureShellHelper.fqdn_to_studio_domain_id(fqdn)
             user_profile_or_space_name = SageMakerSecureShellHelper.fqdn_to_studio_user_or_space_name(fqdn)
+        if domain_id and user_profile_or_space_name:
             arguments = ["bash", "sm-local-ssh-ide", "--domain-id", domain_id, "--user-profile-or-space-name", user_profile_or_space_name]
         else:
             arguments = ["bash", f"sm-local-ssh-{resource}"]

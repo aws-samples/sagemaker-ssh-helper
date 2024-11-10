@@ -31,7 +31,7 @@ class SageMakerCoreApp:
 
 
 class SageMakerStudioApp(SageMakerCoreApp):
-    def __init__(self, domain_id: str, app_name: str, app_type: str, app_status: IDEAppStatus, user_profile_or_space_name: str,
+    def __init__(self, domain_id: str, user_profile_or_space_name: str, app_name: str, app_type: str, app_status: IDEAppStatus,
                  is_user_profile: bool = True) -> None:
         super().__init__()
         self.app_status = app_status
@@ -163,12 +163,14 @@ class SageMaker:
                     space_name = app_dict['SpaceName']
                     logging.info("Found app %s of type %s for space %s" % (app_name, app_type, space_name))
                     app_status = SSHIDE(domain_id, space_name, self.region, is_user_profile=False).get_app_status(app_name, app_type)
-                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_or_space_name=space_name, is_user_profile=False))
+                    result.append(SageMakerStudioApp(domain_id, user_profile_or_space_name=space_name, app_name=app_dict['AppName'],
+                                                     app_type=app_dict['AppType'], app_status=app_status, is_user_profile=False))
                 elif app_type in ['JupyterServer', 'KernelGateway']:
                     user_profile_name = app_dict['UserProfileName']
                     logging.info("Found app %s of type %s for user %s" % (app_name, app_type, user_profile_name))
                     app_status = SSHIDE(domain_id, user_profile_name, self.region, is_user_profile=True).get_app_status(app_name, app_type)
-                    result.append(SageMakerStudioApp(domain_id, app_dict['AppName'], app_dict['AppType'], app_status, user_profile_or_space_name=user_profile_name, is_user_profile=True))
+                    result.append(SageMakerStudioApp(domain_id, user_profile_or_space_name=user_profile_name, app_name=app_dict['AppName'],
+                                                     app_type=app_dict['AppType'], app_status=app_status, is_user_profile=True))
                 else:
                     logging.info("Unsupported app type %s" % app_type)
                     pass  # We don't support other types like 'DetailedProfiler'

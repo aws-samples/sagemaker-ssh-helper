@@ -129,10 +129,6 @@ class SSMManager(SSMManagerBase):
         return self.get_instance_ids('app', f"{kgw_name}", timeout_in_sec,
                                      not_earlier_than_timestamp)
 
-    def get_studio_app_instance_ids(self, app_name, timeout_in_sec=0):
-        self.logger.info(f"Querying SSM instance IDs for SageMaker Studio space {app_name}")
-        return self.get_instance_ids('app', f"{app_name}", timeout_in_sec)
-
     def get_notebook_instance_ids(self, instance_name, timeout_in_sec=0):
         self.logger.info(f"Querying SSM instance IDs for SageMaker notebook instance {instance_name}")
         return self.get_instance_ids('notebook-instance', f"{instance_name}",

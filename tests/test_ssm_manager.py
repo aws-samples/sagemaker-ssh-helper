@@ -312,17 +312,17 @@ def test_can_list_ssh_and_non_ssh_instances():
 
     sagemaker = SageMaker('eu-west-1')
     sagemaker.list_ide_apps = Mock(return_value=[
-        SageMakerStudioApp("d-0123456789bc", "default", "JupyterServer", IDEAppStatus("InService"), "janedoe"),
-        SageMakerStudioApp("d-0123456789bc", "ssh-test-kgw", "KernelGateway", IDEAppStatus("InService"), "janedoe"),
-        SageMakerStudioApp("d-0123456789bc", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("InService"), "janedoe"),
-        SageMakerStudioApp("d-0123456789bc", "data-science-g4-no-ssh", "KernelGateway", IDEAppStatus("Offline"), "janedoe"),
-        SageMakerStudioApp("d-0123456789bc", "sagemaker-data-science-ml-m5-large-1234567890abcdef0", "KernelGateway",
-                           IDEAppStatus("Offline"), "terry"),
-        SageMakerStudioApp("d-0123456789bc", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("Offline"), "terry"),
+        SageMakerStudioApp("d-0123456789bc", "janedoe", "default", "JupyterServer", IDEAppStatus("InService")),
+        SageMakerStudioApp("d-0123456789bc", "janedoe", "ssh-test-kgw", "KernelGateway", IDEAppStatus("InService")),
+        SageMakerStudioApp("d-0123456789bc", "janedoe", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("InService")),
+        SageMakerStudioApp("d-0123456789bc", "janedoe", "data-science-g4-no-ssh", "KernelGateway", IDEAppStatus("Offline")),
+        SageMakerStudioApp("d-0123456789bc", "terry", "sagemaker-data-science-ml-m5-large-1234567890abcdef0", "KernelGateway",
+                           IDEAppStatus("Offline")),
+        SageMakerStudioApp("d-0123456789bc", "terry", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("Offline")),
 
-        SageMakerStudioApp("d-0123456789ab", "sagemaker-data-science-ml-m5-large-1234567890abcdef0", "KernelGateway",
-                           IDEAppStatus("Offline"), "terry"),
-        SageMakerStudioApp("d-0123456789ab", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("Offline"), "terry"),
+        SageMakerStudioApp("d-0123456789ab", "terry", "sagemaker-data-science-ml-m5-large-1234567890abcdef0", "KernelGateway",
+                           IDEAppStatus("Offline")),
+        SageMakerStudioApp("d-0123456789ab", "terry", "data-science-m5-no-ssh", "KernelGateway", IDEAppStatus("Offline")),
         # LocalApp("janedoe", "AIDACKCEVSQ6C2EXAMPLE:janedoe@SSO", "macOS 13.5.1"),
         # LocalApp("terry", "AIDACKCEVSQ6C2EXAMPLE:terry@SSO", "Windows 10 Pro"),
     ])
