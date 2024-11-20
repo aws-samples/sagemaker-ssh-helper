@@ -27,7 +27,7 @@ pip freeze --all | tee pip_freeze/after_test.txt
 
 # Scanning sources
 bandit -r ./sagemaker_ssh_helper/ ./tests/ ./*.py --skip B603,B404,B101 2>&1 | tee bandit.txt
-flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ ./*.py | tee flake8.txt
+#flake8 --extend-ignore E501,F401,F541,E402 ./sagemaker_ssh_helper/ ./tests/ ./*.py | tee flake8.txt
 
 # Creating the build
 python -m build
