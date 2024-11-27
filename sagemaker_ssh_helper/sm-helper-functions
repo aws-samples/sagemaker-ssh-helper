@@ -283,6 +283,7 @@ function _generate_key_and_print_instance_id() {
 import logging
 logging.basicConfig(level=logging.ERROR);
 logging.getLogger('sagemaker.config').setLevel(logging.WARNING)
+logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
 import sagemaker; from sagemaker_ssh_helper.wrapper import SSHEnvironmentWrapper;
 print(SSHEnvironmentWrapper.attach_to_resource("$SM_SSH_FQDN", "$DOMAIN_ID", "$USER_PROFILE_NAME").get_instance_id(timeout_in_sec=0));
 EOF
