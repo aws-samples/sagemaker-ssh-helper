@@ -10,6 +10,6 @@ Host *.*.sagemaker
   PasswordAuthentication no
   ConnectTimeout 90
   ServerAliveInterval 15
-  ServerAliveCountMax 4
+  ServerAliveCountMax 6
   ProxyCommand sm-ssh start-proxy %h
   User root

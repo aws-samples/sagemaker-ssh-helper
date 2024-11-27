@@ -169,7 +169,7 @@ proxy_command="aws ssm start-session\
 ssh -4 -o User=root -o IdentityFile="${SSH_KEY}" -o IdentitiesOnly=yes \
   -o ProxyCommand="$proxy_command" \
   -o ConnectTimeout=90 \
-  -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+  -o ServerAliveInterval=15 -o ServerAliveCountMax=6 \
   -o PasswordAuthentication=no \
   -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   $PORT_FWD_ARGS "$INSTANCE_ID"
