@@ -19,7 +19,7 @@
     "Action": [
         "sts:AssumeRole", "iam:GetRole", "iam:CreateRole", "iam:TagRole", "iam:DeleteRole",
         "iam:DeleteRolePolicy", "iam:DetachRolePolicy", "iam:AttachRolePolicy", "iam:PutRolePolicy",
-        "iam:GetRolePolicy"
+        "iam:GetRolePolicy", "iam:UpdateAssumeRolePolicy"
     ],
     "Resource": [
         "arn:aws:iam::*:role/cdk-hnb659fds-*-role-*-eu-west-*"
