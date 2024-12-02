@@ -30,18 +30,18 @@ def test_fqdn_to_name():
 def test_fqdn_to_studio_user_and_domain():
     sm_ssh = SageMakerSecureShellHelper()
     assert sm_ssh.fqdn_to_studio_domain_id("ssh-training-job.training.sagemaker") == ""
-    assert sm_ssh.fqdn_to_studio_user_name("ssh-training-job.training.sagemaker") == ""
+    assert sm_ssh.fqdn_to_studio_user_or_space_name("ssh-training-job.training.sagemaker") == ""
     assert sm_ssh.fqdn_to_studio_domain_id("ssh-test-ds2-cpu.studio.sagemaker") == ""
-    assert sm_ssh.fqdn_to_studio_user_name("ssh-test-ds2-cpu.studio.sagemaker") == ""
+    assert sm_ssh.fqdn_to_studio_user_or_space_name("ssh-test-ds2-cpu.studio.sagemaker") == ""
     assert sm_ssh.fqdn_to_studio_domain_id(
         "ssh-test-ds2-cpu.test-data-science.d-egm0dexample.studio.sagemaker"
     ) == "d-egm0dexample"
-    assert sm_ssh.fqdn_to_studio_user_name(
+    assert sm_ssh.fqdn_to_studio_user_or_space_name(
         "ssh-test-ds2-cpu.test-data-science.d-egm0dexample.studio.sagemaker"
     ) == "test-data-science"
     assert sm_ssh.fqdn_to_studio_domain_id(
         "test-data-science.d-egm0dexample.studio.sagemaker"
     ) == "d-egm0dexample"
-    assert sm_ssh.fqdn_to_studio_user_name(
+    assert sm_ssh.fqdn_to_studio_user_or_space_name(
         "test-data-science.d-egm0dexample.studio.sagemaker"
     ) == "test-data-science"

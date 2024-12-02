@@ -46,12 +46,13 @@ class Image:
 class SSHIDE:
     logger = logging.getLogger('sagemaker-ssh-helper:SSHIDE')
 
-    def __init__(self, domain_id: str, user: str, region_name: str = None):
-        self.user = user
+    def __init__(self, domain_id: str, user_or_space: str = None, region_name: str = None, is_user_profile: bool = True):
+        self.user_or_space = user_or_space
         self.domain_id = domain_id
         self.current_region = region_name or boto3.session.Session().region_name
         self.client = boto3.client('sagemaker', region_name=self.current_region)
         self.ssh_log = SSHLog(region_name=self.current_region)
+        self.is_user_profile = is_user_profile
 
     def create_ssh_kernel_app(self, app_name: str,
                               image_name_or_arn='sagemaker-datascience-38',
@@ -108,13 +109,18 @@ class SSHIDE:
         :return: None | 'InService' | 'Deleted' | 'Deleting' | 'Failed' | 'Pending'
         """
         response = None
+
+        describe_app_request_params = {
+            "DomainId": self.domain_id,
+            "AppType": app_type,
+            "AppName": app_name,
+        }
+
+        describe_app_request_params.update(
+            {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+
         try:
-            response = self.client.describe_app(
-                DomainId=self.domain_id,
-                AppType=app_type,
-                UserProfileName=self.user,
-                AppName=app_name,
-            )
+            response = self.client.describe_app(**describe_app_request_params)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code == 'ResourceNotFound':
@@ -137,12 +143,16 @@ class SSHIDE:
         self.logger.info(f"Deleting app {app_name}")
 
         try:
-            _ = self.client.delete_app(
-                DomainId=self.domain_id,
-                AppType=app_type,
-                UserProfileName=self.user,
-                AppName=app_name,
-            )
+            delete_app_request_params = {
+                "DomainId": self.domain_id,
+                "AppType": app_type,
+                "AppName": app_name,
+            }
+
+            delete_app_request_params.update(
+                {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+
+            _ = self.client.delete_app(**delete_app_request_params)
         except ClientError as e:
             # probably, already deleted
             code = e.response.get("Error", {}).get("Code")
@@ -173,13 +183,17 @@ class SSHIDE:
         if lifecycle_arn:
             resource_spec['LifecycleConfigArn'] = lifecycle_arn
 
-        _ = self.client.create_app(
-            DomainId=self.domain_id,
-            AppType=app_type,
-            AppName=app_name,
-            UserProfileName=self.user,
-            ResourceSpec=resource_spec,
-        )
+        create_app_request_params = {
+            "DomainId": self.domain_id,
+            "AppType": app_type,
+            "AppName": app_name,
+            "ResourceSpec": resource_spec,
+        }
+
+        create_app_request_params.update(
+            {"UserProfileName": self.user_or_space} if self.is_user_profile else {"SpaceName": self.user_or_space})
+
+        _ = self.client.create_app(**create_app_request_params)
         status = self.get_app_status(app_name)
         while status.is_pending():
             self.logger.info(f"Waiting for the InService status. Current status: {status}")
@@ -199,45 +213,47 @@ class SSHIDE:
         sagemaker_account_id = "470317259841"  # eu-west-1, TODO: check all images
         return f"arn:aws:sagemaker:{self.current_region}:{sagemaker_account_id}:image/{image_name}"
 
-    def print_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0):
-        print(self.get_kernel_instance_id(app_name, timeout_in_sec, index))
+    def print_instance_id(self, app_name, timeout_in_sec, index: int = 0):
+        print(self.get_instance_id(app_name, timeout_in_sec, index))
 
-    def get_kernel_instance_id(self, app_name, timeout_in_sec, index: int = 0,
-                               not_earlier_than_timestamp: int = 0):
-        ids = self.get_kernel_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
+    def get_instance_id(self, app_name, timeout_in_sec, index: int = 0,
+                        not_earlier_than_timestamp: int = 0):
+        ids = self.get_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
         if len(ids) == 0:
-            raise ValueError(f"No kernel instances found for app {app_name}")
+            raise ValueError(f"No instances found for app {app_name}")
         return ids[index]
 
-    def get_kernel_instance_ids(self, app_name: str, timeout_in_sec: int, not_earlier_than_timestamp: int = 0):
-        self.logger.info(f"Resolving IDE instance IDs for app '{app_name}' through SSM tags "
-                         f"in domain '{self.domain_id}' for user '{self.user}'")
+    def get_instance_ids(self, app_name: str, timeout_in_sec: int, not_earlier_than_timestamp: int = 0):
+        self.logger.info(f"Resolving IDE instance IDs for app '{app_name}' through SSM tags in domain '{self.domain_id}' "
+                         f"for {f'user' if self.is_user_profile else f'space'} '{self.user_or_space}'")
         self.log_urls(app_name)
-        if self.domain_id and self.user:
-            result = SSMManager().get_studio_user_kgw_instance_ids(self.domain_id, self.user, app_name,
-                                                                   timeout_in_sec, not_earlier_than_timestamp)
-        elif self.user:
+
+        if self.domain_id and self.user_or_space:
+            result = SSMManager().get_studio_instance_ids(self.domain_id, self.user_or_space, app_name,
+                                                          timeout_in_sec, not_earlier_than_timestamp, is_user_profile=self.is_user_profile)
+        elif self.user_or_space:
             self.logger.warning(f"Domain ID is not set. Will attempt to connect to the latest "
-                                f"active kernel gateway with the name {app_name} in the region {self.current_region} "
-                                f"for user profile {self.user}")
-            result = SSMManager().get_studio_user_kgw_instance_ids("", self.user, app_name,
-                                                                   timeout_in_sec, not_earlier_than_timestamp)
+                                f"active {app_name} in the region {self.current_region} "
+                                f"for {'user' if self.is_user_profile else 'space'} {self.user_or_space}")
+            result = SSMManager().get_studio_instance_ids("", self.user_or_space, app_name,
+                                                          timeout_in_sec, not_earlier_than_timestamp, is_user_profile=self.is_user_profile)
         else:
-            self.logger.warning(f"Domain ID or user profile name are not set. Will attempt to connect to the latest "
-                                f"active kernel gateway with the name {app_name} in the region {self.current_region}")
+            self.logger.warning(
+                f"Domain ID or {'user' if self.is_user_profile else 'space'} are not set. Will attempt to connect to the latest "
+                f"active {app_name} in the region {self.current_region}")
             result = SSMManager().get_studio_kgw_instance_ids(app_name, timeout_in_sec, not_earlier_than_timestamp)
         return result
 
     def log_urls(self, app_name):
         self.logger.info(f"Remote logs are at {self.get_cloudwatch_url(app_name)}")
-        if self.domain_id and self.user:
-            self.logger.info(f"Remote apps metadata is at {self.get_user_metadata_url()}")
+        if self.domain_id:
+            self.logger.info(f"Remote apps metadata is at {self.get_user_or_space_metadata_url()}")
 
     def get_cloudwatch_url(self, app_name):
-        return self.ssh_log.get_ide_cloudwatch_url(self.domain_id, self.user, app_name)
+        return self.ssh_log.get_ide_cloudwatch_url(self.domain_id, self.user_or_space, app_name, self.is_user_profile)
 
-    def get_user_metadata_url(self):
-        return self.ssh_log.get_ide_metadata_url(self.domain_id, self.user)
+    def get_user_or_space_metadata_url(self):
+        return self.ssh_log.get_ide_metadata_url(self.domain_id, self.user_or_space, self.is_user_profile)
 
     def create_and_attach_image(self, image_name, ecr_image_name,
                                 role_arn,
