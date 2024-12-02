@@ -72,7 +72,7 @@ fi
 
 if [[ "$COMMAND" == "proxy-host" ]]; then
   SM_SSH_HOST_NAME="$2"
-  SM_RESOURCE_TYPE="studio"
+  SM_RESOURCE_TYPE="space"
 
   _check_ssh_proxy_host_name "$SM_SSH_HOST_NAME" "$SM_RESOURCE_TYPE"
   _export_ssh_key_env_var "$SM_SSH_HOST_NAME"
