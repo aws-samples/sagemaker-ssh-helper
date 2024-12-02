@@ -183,7 +183,7 @@ class SSHEnvironmentWrapper(ABC):
     @classmethod
     def attach_to_resource(cls, fqdn: str,
                            domain_id: str = '',
-                           user_profile_name: str = '',
+                           user_profile_or_space_name: str = '',
                            sagemaker_session: Session = None):
         resource_type = SageMakerSecureShellHelper.fqdn_to_type(fqdn)
         resource_name = SageMakerSecureShellHelper.fqdn_to_name(fqdn)
@@ -195,8 +195,8 @@ class SSHEnvironmentWrapper(ABC):
             return SSHProcessorWrapper.attach(resource_name, sagemaker_session)
         elif resource_type == 'transform':
             return SSHTransformerWrapper.attach(resource_name, sagemaker_session)
-        elif resource_type == 'ide':
-            return SSHIDEWrapper.attach(domain_id, user_profile_name, resource_name, sagemaker_session)
+        elif resource_type.endswith('ide'):
+            return SSHIDEWrapper.attach(domain_id, user_profile_or_space_name, resource_name, sagemaker_session)
         elif resource_type == 'notebook':
             return SSHNotebookInstanceWrapper.attach(resource_name, sagemaker_session)
         else:
@@ -643,12 +643,12 @@ class SSHIDEWrapper(SSHEnvironmentWrapper):
         self.not_earlier_than_timestamp = 0
 
     @classmethod
-    def attach(cls, domain_id, user_profile_name, app_name, sagemaker_session: Session = None,
+    def attach(cls, domain_id, user_profile_or_space_name, app_name, sagemaker_session: Session = None,
                not_earlier_than_timestamp: int = 0) -> SSHIDEWrapper:
         sagemaker_session = sagemaker_session or sagemaker.Session()
         result = SSHIDEWrapper(
             '',
-            SSHIDE(domain_id, user_profile_name, sagemaker_session.boto_region_name),
+            SSHIDE(domain_id, user_profile_or_space_name, sagemaker_session.boto_region_name),
             connection_wait_time_seconds=0
         )
         result.app_name = app_name
