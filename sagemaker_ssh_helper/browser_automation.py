@@ -48,7 +48,7 @@ class SageMakerStudioAutomation:
         studio_pre_signed_url_response = self.sagemaker_client.create_presigned_domain_url(
             DomainId=self.ide.domain_id,
             UserProfileName=self.ide.user,
-            LandingUri='app:JupyterServer:/'
+            LandingUri='app:JupyterLab:/'
         )
         studio_pre_signed_url = studio_pre_signed_url_response['AuthorizedUrl']
 

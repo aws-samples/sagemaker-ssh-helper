@@ -90,7 +90,6 @@ Install the latest stable version of library from the [PyPI repository](https://
 ```shell
 pip install sagemaker-ssh-helper
 ```
-
 **Caution:** It's always recommended to install the library into a Python venv, not into the system env. If you want to use later the SSH plugins of your IDE that will use the system env and system Python, you should add the venv into the system PATH, as described in the section [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter).
 
 If you're working on Windows, see [FAQ](FAQ.md#is-windows-supported).
@@ -552,12 +551,21 @@ sm-ssh connect ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker -
 Alternatively, instead of using `sm-ssh connect` command, you can use the native `ssh` command, but it will require you to update your [ssh config](https://linux.die.net/man/5/ssh_config), typically `~/.ssh/config`, with `sm-ssh start-proxy` command as follows:
 
 ```bash
+Host *.studio.sagemaker
+  IdentityFile ~/.ssh/%h
+  PasswordAuthentication no
+  ConnectTimeout 120
+  ServerAliveInterval 15
+  ServerAliveCountMax 8
+  ProxyCommand sm-ssh start-proxy %h
+  User sagemaker-user
+
 Host *.*.sagemaker
   IdentityFile ~/.ssh/%h
   PasswordAuthentication no
-  ConnectTimeout 90
+  ConnectTimeout 120
   ServerAliveInterval 15
-  ServerAliveCountMax 6
+  ServerAliveCountMax 8
   ProxyCommand sm-ssh start-proxy %h
   User root
 ```
@@ -615,7 +623,8 @@ ssh sh-training-manual-2023-10-02-14-38-56-744.training.sagemaker
 
 A. Follow the [instructions in the PyCharm docs](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter), to configure the remote interpreter in PyCharm.
 
-In the field for host name, put the same value as for `fqdn` in the [`sm-ssh` command](#sm-ssh), e.g., `ssh-training-manual-2023-10-02-14-38-56-744.training.sagemaker`, and use `root` as the username.
+In the field for host name, put the same value as for `fqdn` in the [`sm-ssh` command](#sm-ssh), e.g., `ssh-training-manual-2023-10-02-14-38-56-744.training.sagemaker`, and use `root` as the username. 
+For SageMaker Studio you might want to use `sagemaker-user` instead of `root`.
 
 ![](images/pycharm_training.png)
 
@@ -625,16 +634,16 @@ If PyCharm asks for the SSH key, point to the `~/.ssh/<fqdn>` private key file t
 
 *Note:* If PyCharm says connection refused, it can be due to timeout. Check that you can connect to this host from your system terminal with `ssh` and `sm-ssh` and try configuring the remote interpreter again.
 
-*Tip:* When you configure Python interpreter in PyCharm, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/root/project_name` instead of default `/tmp/pycharm_project_123`. This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir. 
-
-*Tip:* Also instead of creating a new venv, point the Python interpreter to the existing location. 
+*Tip:* Instead of creating a new venv, point the Python interpreter to the existing location. 
 You can find this location by running a cell with `import sys; sys.executable` command in a SageMaker Studio notebook. You will get something like `/opt/conda/bin/python`.
 
 *Tip:* Now you also can [upload and download files from remote](https://www.jetbrains.com/help/pycharm/uploading-and-downloading-files.html) and [synchronize files with remote](https://www.jetbrains.com/help/pycharm/comparing-deployed-files-and-folders-with-their-local-versions.html).
 
 B. Follow the [instructions for VSCode](https://code.visualstudio.com/docs/remote/ssh), to configure local Visual Studio Code app
 
-Put the `root@fqdn` as the hostname to connect to, e.g., `root@ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker` .
+Put the `root@fqdn` as the hostname to connect to, e.g., `root@ssh-training-example-2023-07-25-03-18-04-490.training.sagemaker` . 
+For SageMaker Studio you might want to use `sagemaker-user` instead of `root`, 
+e.g. `sagemaker-user@default.ivankh.d-vdnygexample.studio.sagemaker`.
 
 ![](images/vscode_training.png)
 
@@ -787,14 +796,20 @@ You might want to change the `LOCAL_USER_ID` variable upon the first run, to pre
 2. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio
 
 Use `app_name.app_space_name.domain_id.studio.sagemaker` or `app_name.studio.sagemaker` as the `fqdn` to connect.
+Use `sagemaker-user` as user. 
+See more details on how to configure the interpreter for the IDE in the [Remote code execution](#remote-interpreter) section, 
+step "3. Configure the remote interpreter in your IDE".
 
 To see available apps to connect to, you may run the `list` command:
 
 ```
 sm-ssh list studio.sagemaker
 ```
+*Tip:* When you configure Python interpreter in PyCharm with SageMaker Studio, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/home/sagemaker-user/user-default-efs/project_name` instead of default `/tmp/pycharm_project_123`. 
+This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir.
 
 *Note:* If you're using Windows, see [the FAQ](FAQ.md#is-windows-supported).
+
 
 3. Using the remote Jupyter Notebook
 

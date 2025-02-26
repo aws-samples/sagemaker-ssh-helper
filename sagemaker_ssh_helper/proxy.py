@@ -106,11 +106,11 @@ class SSMProxy(ABC):
 
     def run_command_with_output(self, command):
         self.logger.info(f"Running command and capturing output: '{command}'")
-        self._wait_for_tcp_port(timeout=90)
+        self._wait_for_tcp_port(timeout=120)
 
         try:
             # Pre-fetching the key to avoid the 'Warning: Permanently added ... to the list of known hosts' in output
-            retval = os.system(f"ssh-keyscan -4 -H -p {self.ssh_listen_port} localhost >>~/.ssh/known_hosts")  # nosec start_process_with_a_shell
+            retval = os.system(f"ssh-keyscan -4 -H -T 120 -p {self.ssh_listen_port} localhost >>~/.ssh/known_hosts")  # nosec start_process_with_a_shell
             if retval != 0:
                 self.logger.error(f"Failed to fetch host key. Return value is not zero: {retval}.")
                 # No exception here, need to try the command anyway
@@ -122,7 +122,8 @@ class SSMProxy(ABC):
                 f"ssh -4 root@localhost -p {self.ssh_listen_port}"
                 " -i ~/.ssh/sagemaker-ssh-gw"
                 " -o PasswordAuthentication=no"
-                " -o ConnectTimeout=10"
+                " -o ConnectTimeout=120"
+                " -o ServerAliveInterval=15 -o ServerAliveCountMax=8"
                 f" {command}"
                 .split(' '),
                 stderr=subprocess.STDOUT,

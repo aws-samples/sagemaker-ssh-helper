@@ -159,21 +159,19 @@ class SageMaker:
                 domain_id = app_dict["DomainId"]
                 app_name = app_dict['AppName']
                 app_type = app_dict['AppType']
-                if 'SpaceName' in app_dict:
-                    logging.info("Don't support spaces: skipping app %s of type %s" % (app_name, app_type))
+
+                if not 'SpaceName' in app_dict and not app_type in ['JupyterLab']:
+                    logging.info("Studio Classic is not supported anymore: skipping app %s of type %s" % (app_name, app_type))
                     pass
-                elif app_type in ['JupyterServer', 'KernelGateway']:
-                    user_profile_name = app_dict['UserProfileName']
-                    logging.info("Found app %s of type %s for user %s" % (app_name, app_type, user_profile_name))
-                    app_status = SSHIDE(domain_id, user_profile_name, self.region).get_app_status(app_name, app_type)
+                else:
+                    app_space_name = app_dict['SpaceName']
+                    logging.info("Found app %s of type %s for app space %s" % (app_name, app_type, app_space_name))
+                    app_status = SSHIDE(domain_id, app_space_name, self.region).get_app_status(app_name, app_type)
                     result.append(SageMakerStudioApp(
-                        domain_id, user_profile_name,
+                        domain_id, app_space_name,
                         app_dict['AppName'], app_dict['AppType'],
                         app_status
                     ))
-                else:
-                    logging.info("Unsupported app type %s" % app_type)
-                    pass  # We don't support other types like 'DetailedProfiler'
         return result
 
     def list_endpoints(self) -> List[SageMakerEndpoint]:

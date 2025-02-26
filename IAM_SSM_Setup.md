@@ -12,7 +12,7 @@ SageMaker SSH Helper relies on the AWS Systems Manager service to create SSH tun
 
 ### Automated setup with CDK and Cloud9
 
-a. From AWS Console, pop up [CloudShell](https://aws.amazon.com/cloudshell/) environment (use the button located at the bottom left corner of the browser window). Alternatively, you can the commands run in your local terminal. In this case, make sure you've installed Node.js and CDK and fulfilled [all other CDK prerequisites](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_prerequisites). In both cases you need to have an admin role.
+a. From AWS Console, pop up [CloudShell](https://aws.amazon.com/cloudshell/) environment. Alternatively, you can the commands run in your local terminal. In this case, make sure you've installed Node.js and CDK and fulfilled [all other CDK prerequisites](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_prerequisites). In both cases you need to have an admin role.
 
 b. Define your SageMaker role, local user role, AWS account ID and AWS Region as variables by executing the following commands in the terminal line by line:
 

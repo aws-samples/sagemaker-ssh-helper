@@ -25,3 +25,5 @@ __pycache__
 /tests/.sm-ssh-owner
 /tests/.pymon
 /.pymon
+/workspace.xml
+/shelf/Changes/shelved.patch

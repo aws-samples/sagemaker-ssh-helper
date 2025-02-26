@@ -18,24 +18,36 @@ LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
 
 set -e
 
+# If not root, execute as root via sudo
+if [ "$EUID" -ne 0 ]; then
+  SUDO="sudo"
+  $SUDO true
+  echo 'kernel-lc-config.sh: INFO - Executing as root via sudo'
+  exec $SUDO -E HOME=/root "$0" "$@"
+  exit 0
+fi
+
+PYTHON_BIN=$(which python3 || which python)
+
 if [ -f /opt/sagemaker-ssh-helper/.ssh-ide-configured ]; then
     echo 'kernel-lc-config.sh: INFO - SageMaker SSH Helper is already installed, remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to reinstall'
 else
-  pip3 uninstall -y -q awscli
-  pip3 install -q sagemaker-ssh-helper
+  $PYTHON_BIN -m pip uninstall -y -q awscli
+  $PYTHON_BIN -m pip install -q sagemaker-ssh-helper
 
   # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from the main branch
-  #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git ./sagemaker-ssh-helper/ || echo 'Already cloned'
-  #cd ./sagemaker-ssh-helper/ && git pull --no-rebase && git clean -f && pip install . && cd ..
+  #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git /tmp/sagemaker-ssh-helper/ || echo 'Already cloned'
+  #cd /tmp/sagemaker-ssh-helper/ && git pull --no-rebase && git clean -f && $PYTHON_BIN -m pip install . && cd -
 fi
 
-sm-ssh-ide get-metadata
-
-which python3
-
 # We assume that the kernels are is installed into the sys prefix, e.g. with ipykernel install --sys-prefix command
-SYSTEM_PYTHON_PREFIX=$(python3 -c "from __future__ import print_function;import sys; print(sys.prefix)")
+SYSTEM_PYTHON_PREFIX=$($PYTHON_BIN -c "from __future__ import print_function;import sys; print(sys.prefix)")
 export JUPYTER_PATH="$SYSTEM_PYTHON_PREFIX/share/jupyter/"
+
+export PATH="$PATH:$SYSTEM_PYTHON_PREFIX/bin"
+
+sm-ssh-ide get-metadata
+sm-ssh-ide env-diagnostics
 
 # If already configured in the container, it will not take any effect:
 sm-ssh-ide configure
