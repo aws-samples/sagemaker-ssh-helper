@@ -36,7 +36,7 @@ if [[ "$1" == "configure" ]]; then
       exit 0
   fi
 
-  chmod 1777 /tmp
+  chmod 1777 /tmp 2>/dev/null || echo "Cannot fix permissions of /tmp. Probably, already fixed and all is OK"
   mkdir -p ~/.ssh
   [ -d /usr/share/man/man1 ] || mkdir /usr/share/man/man1
 

@@ -90,6 +90,7 @@ Install the latest stable version of library from the [PyPI repository](https://
 ```shell
 pip install sagemaker-ssh-helper
 ```
+
 **Caution:** It's always recommended to install the library into a Python venv, not into the system env. If you want to use later the SSH plugins of your IDE that will use the system env and system Python, you should add the venv into the system PATH, as described in the section [Remote code execution with PyCharm / VSCode over SSH](#remote-interpreter).
 
 If you're working on Windows, see [FAQ](FAQ.md#is-windows-supported).
@@ -583,6 +584,7 @@ Follow the steps in the next section for the IDE configuration, to prepare the `
 1. On the local machine, make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). To do so, perform the automated installation with the [sm-local-configure](sagemaker_ssh_helper/sm-local-configure) script:
 
 ```shell
+# pip install sagemaker-ssh-helper
 sm-local-configure
 ```
 
@@ -752,12 +754,12 @@ If everything is set up correctly, PyCharm will stop at your breakpoint, highlig
 
 ## <a name="studio"></a>Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode
 
-[![Download Demo (.mov)](https://user-images.githubusercontent.com/87804596/205895890-e5e87f8b-1ca6-4ce6-bac1-5cb6e6f61dde.png)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
-[Download Demo (.mov)](https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-4988/SSH_Helper-Remote-IDE.mov)
-
-> **Note**: This demo is recorded with a previous version of SSH Helper and may be not up-to-date with the recent features. Check the documentation for the most up-to-date steps.
+![SSH_Helper-Remote-IDE.png](https://user-images.githubusercontent.com/87804596/205895890-e5e87f8b-1ca6-4ce6-bac1-5cb6e6f61dde.png)
 
 For your local IDE integration with SageMaker Studio, follow the same steps as for configuring the IDE for [Remote code execution](#remote-interpreter), but instead of submitting the training / processing / inference code to SageMaker with Python SDK, execute the Jupyter notebook, as described in the next steps.
+
+> **Important:** Make sure you read the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
+
 
 1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
 
@@ -766,7 +768,11 @@ Note that the `main` branch of this repo can contain changes that are not compat
 To be completely sure that you're using the version of the notebook that corresponds to the installed library, take a copy of the notebook from your filesystem after you install SSH Helper package, e.g.:
 
 ```bash
-cp /opt/conda/sm_ssh/SageMaker_SSH_IDE.ipynb /root/
+pip install sagemaker-ssh-helper
+SM_SSH_PREFIX=`python -c 'import sys; print(sys.prefix);'`
+echo $SM_SSH_PREFIX
+# check the output, e.g. /opt/conda
+cp $SM_SSH_PREFIX/sm_ssh/SageMaker_SSH_IDE.ipynb ~/user-default-efs/
 ```
 
 You can also check the version with `pip freeze | grep sagemaker-ssh-helper` and take the notebook from [the corresponding release tag](https://github.com/aws-samples/sagemaker-ssh-helper/tags).
@@ -780,7 +786,7 @@ You might want to change the `LOCAL_USER_ID` variable upon the first run, to pre
 
 2. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio
 
-Use `app_name.user_profile_name.domain_id.studio.sagemaker` or `app_name.studio.sagemaker` as the `fqdn` to connect.
+Use `app_name.app_space_name.domain_id.studio.sagemaker` or `app_name.studio.sagemaker` as the `fqdn` to connect.
 
 To see available apps to connect to, you may run the `list` command:
 
@@ -870,7 +876,7 @@ Instead of your local user ID put the SageMaker Studio user ID (you can get it b
 3. On the System (!) terminal (not image terminal), run:
 
 ```shell
-sm-ssh connect app_name.user_profile_name.domain_id.studio.sagemaker
+sm-ssh connect app_name.app_space_name.domain_id.studio.sagemaker
 ```
 
 Alternatively, use SSH command to forward the VNC port and add more ports to the command, e.g., `-L localhost:8787:localhost:8787` to forward the Dask dashboard that is running inside the kernel gateway:
@@ -878,7 +884,7 @@ Alternatively, use SSH command to forward the VNC port and add more ports to the
 ```shell
 ssh -L localhost:5901:localhost:5901 \
   -L localhost:8787:localhost:8787 \
-  app_name.user_profile_name.domain_id.studio.sagemaker
+  app_name.app_space_name.domain_id.studio.sagemaker
 ```
 
 4. Navigate to `https://d-egm0dexample.studio.eu-west-1.sagemaker.aws/jupyter/default/proxy/6080/vnc.html?host=d-egm0dexample.studio.eu-west-1.sagemaker.aws&port=443&path=jupyter/default/proxy/6080/websockify`

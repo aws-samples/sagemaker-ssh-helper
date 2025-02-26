@@ -16,6 +16,7 @@ function _silent_install() {
   install_path="/usr/local/bin"
 
   dir=$(dirname "$0")
+  dir=$(cd "$dir" && pwd)
   script=$1
   mod=$2
 
@@ -27,6 +28,7 @@ function _silent_install() {
 
 function _install_helper_scripts() {
   dir=$(dirname "$0")
+  dir=$(cd "$dir" && pwd)
 
   # Scripts may not be available in PATH during bootstrap, so we manually copy scripts into /usr/local/bin/.
   _silent_install sm-helper-functions
@@ -187,16 +189,21 @@ function _print_sm_app_name() {
 }
 
 # shellcheck disable=SC2001
+function _print_sm_execution_role() {
+  sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
+  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"ExecutionRoleArn":\"\([^"]*\)\".*$/\1/'
+}
+
+# shellcheck disable=SC2001
 function _print_sm_domain_id() {
   sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
   echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"DomainId":\"\([^"]*\)\".*$/\1/'
 }
 
 # shellcheck disable=SC2001
-function _print_sm_user_profile_name() {
-  # FIXME: Check for "SpaceName" - spaces are not supported yet
+function _print_sm_app_space_name() {
   sm_resource_metadata_json=$(tr -d "\n" < /opt/ml/metadata/resource-metadata.json)
-  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"UserProfileName":\"\([^"]*\)\".*$/\1/'
+  echo -n "$sm_resource_metadata_json" | sed -e 's/^.*"SpaceName":\"\([^"]*\)\".*$/\1/'
 }
 
 function _print_sm_studio_python() {

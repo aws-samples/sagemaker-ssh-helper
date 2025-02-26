@@ -59,4 +59,9 @@ response=$(aws ssm create-activation \
 acode=$(echo $response | jq --raw-output '.ActivationCode')
 aid=$(echo $response | jq --raw-output '.ActivationId')
 
-echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+if [[ "$1" == "--sudo" ]]; then
+    echo Yes | sudo amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+else
+    # Should be already root
+    echo Yes | amazon-ssm-agent -register -id "$aid" -code "$acode" -region "$CURRENT_REGION"
+fi

@@ -14,10 +14,27 @@ set -e
 set -o pipefail
 
 dir=$(dirname "$0")
+dir=$(cd "$dir" && pwd)
 source "$dir"/sm-helper-functions
 
-if [[ "$1" == "configure" ]]; then
-    # Everything that requires root and Internet goes to 'configure'
+if [[ "$1" == "install-helper-scripts" ]]; then
+    echo "sm-ssh-ide: Installing helper scripts to /usr/local/bin/"
+    _install_helper_scripts
+elif [[ "$1" == "configure" ]]; then
+    # Everything that requires Internet goes to 'configure'
+
+    sudo tee /etc/profile.d/sm-ssh-ide.sh >/dev/null <<EOF
+echo "Configuring SageMaker SSH Helper from /etc/profile.d/sm-ssh-ide.sh" >/dev/null
+export XAUTHORITY="/tmp/.Xauthority-\$USER"
+export ICEAUTHORITY="/tmp/.ICEauthority-\$USER"
+touch "/tmp/.Xauthority-\$USER"
+touch "/tmp/.ICEauthority-\$USER"
+chmod 600 "/tmp/.Xauthority-\$USER"
+chmod 600 "/tmp/.ICEauthority-\$USER"
+EOF
+
+    source /etc/profile.d/sm-ssh-ide.sh
+
     if [[ -f /opt/sagemaker-ssh-helper/.ssh-ide-configured ]]; then
         echo "sm-ssh-ide: Already configured. Remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to force reconfiguration."
         exit 0
@@ -26,22 +43,12 @@ if [[ "$1" == "configure" ]]; then
     echo "sm-ssh-ide: Configuring services..."
 
     OPTIONS=$2
-    mkdir -p /opt/sagemaker-ssh-helper/
-    echo "$OPTIONS" > /opt/sagemaker-ssh-helper/.sm-ssh-ide-options
+    sudo mkdir -p /opt/sagemaker-ssh-helper/
+    echo "$OPTIONS" | sudo tee /opt/sagemaker-ssh-helper/.sm-ssh-ide-options >/dev/null
 
-    _install_helper_scripts
+    sudo "$dir"/sm-ssh-ide install-helper-scripts
 
-    cat >/etc/profile.d/sm-ssh-ide.sh <<EOF
-export XAUTHORITY="/tmp/.Xauthority-\$USER"
-export ICEAUTHORITY="/tmp/.ICEauthority-\$USER"
-touch "/tmp/.Xauthority-\$USER"
-touch "/tmp/.ICEauthority-\$USER"
-chmod 600 "/tmp/.Xauthority-\$USER"
-chmod 600 "/tmp/.ICEauthority-\$USER"
-EOF
-    source /etc/profile.d/sm-ssh-ide.sh
-
-    sm-setup-ssh configure
+    sudo sm-setup-ssh configure
 
     if [[ "$OPTIONS" != "--ssh-only" ]]; then
 
@@ -75,13 +82,13 @@ EOF
       echo "sm-ssh-ide: Skipping VNC and GUI apps install"
     fi
 
-    touch /opt/sagemaker-ssh-helper/.ssh-ide-configured
+    sudo touch /opt/sagemaker-ssh-helper/.ssh-ide-configured
 
     echo "sm-ssh-ide: Finished configuration. Done"
 
-elif [[ "$1" == "get-user-profile-name" ]]; then
+elif [[ "$1" == "get-app-space-name" ]]; then
   _assert_is_ssh_ide_inside_studio
-  USER_PROFILE=$(_print_sm_user_profile_name)
+  USER_PROFILE=$(_print_sm_app_space_name)
   echo "$USER_PROFILE"
 
 elif [[ "$1" == "get-domain-id" ]]; then
@@ -93,14 +100,14 @@ elif [[ "$1" == "get-metadata" ]]; then
   _assert_is_ssh_ide_inside_studio
 
   echo "App name: $(_print_sm_app_name)"
-  echo "User profile name: $(_print_sm_user_profile_name)"
+  echo "App space name: $(_print_sm_app_space_name)"
   echo "Domain: $(_print_sm_domain_id)"
   echo ""
   echo "Connect from local machine: "
   echo "sm-ssh connect $(_print_sm_app_name).studio.sagemaker"
-  echo "sm-ssh connect $(_print_sm_app_name).$(_print_sm_user_profile_name).$(_print_sm_domain_id).studio.sagemaker"
+  echo "sm-ssh connect $(_print_sm_app_name).$(_print_sm_app_space_name).$(_print_sm_domain_id).studio.sagemaker"
   echo "ssh -A $(_print_sm_app_name).studio.sagemaker"
-  echo "ssh -A $(_print_sm_app_name).$(_print_sm_user_profile_name).$(_print_sm_domain_id).studio.sagemaker"
+  echo "ssh -A $(_print_sm_app_name).$(_print_sm_app_space_name).$(_print_sm_domain_id).studio.sagemaker"
 
 elif [[ "$1" == "set-jb-license-server" ]]; then
 
@@ -119,7 +126,7 @@ elif [[ "$1" == "set-jb-license-server" ]]; then
         echo "sm-ssh-ide: Skipping the update of /etc/hosts with PyCharm license server (already there)"
     else
         echo "sm-ssh-ide: Updating /etc/hosts with PyCharm license server from ~/.sm-jb-license-server"
-        echo "127.0.0.1  $JB_LICENSE_SERVER_HOST" >> /etc/hosts
+        echo "127.0.0.1  $JB_LICENSE_SERVER_HOST" | sudo tee -a /etc/hosts
     fi
 
 elif [[ "$1" == "set-vnc-password" ]]; then
@@ -159,13 +166,8 @@ elif [[ "$1" == "init-ssm" ]]; then
     LOCAL_USER_ID="$(cat ~/.sm-ssh-owner)"
     echo "sm-ssh-ide: Will use local user ID: $LOCAL_USER_ID"
 
-    user_profile_json=$(aws sagemaker describe-user-profile \
-      --domain-id "$(_print_sm_domain_id)" \
-      --user-profile-name "$(_print_sm_user_profile_name)" \
-      --output json \
-      | tr -d "\n")
-    execution_role=$(echo "$user_profile_json" |  { grep "ExecutionRole" || true; } \
-      | sed -e 's/^.*"ExecutionRole": \"\([^"]*\)\".*$/\1/')
+    execution_role=$(_print_sm_execution_role)
+    echo "sm-ssh-ide: Detected SageMaker execution role ARN: $execution_role"
 
     SSH_SSM_ROLE=$(echo "$execution_role" | sed -e 's/^.*:role\/\(.*\)/\1/')
 
@@ -188,7 +190,7 @@ elif [[ "$1" == "init-ssm" ]]; then
     export SSH_SSM_ROLE
     export SSH_OWNER_TAG=$LOCAL_USER_ID
 
-    sm-init-ssm
+    sm-init-ssm --sudo
 
     echo "sm-ssh-ide: SSM initialized. Done"
 

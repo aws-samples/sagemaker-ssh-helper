@@ -12,15 +12,15 @@ SageMaker SSH Helper relies on the AWS Systems Manager service to create SSH tun
 
 ### Automated setup with CDK and Cloud9
 
-a. From AWS Console, pop up [CloudShell](https://aws.amazon.com/cloudshell/) environment. Alternatively, you can the commands run in your local terminal. In this case, make sure you've installed Node.js and CDK and fulfilled [all other CDK prerequisites](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_prerequisites). In both cases you need to have an admin role.
+a. From AWS Console, pop up [CloudShell](https://aws.amazon.com/cloudshell/) environment (use the button located at the bottom left corner of the browser window). Alternatively, you can the commands run in your local terminal. In this case, make sure you've installed Node.js and CDK and fulfilled [all other CDK prerequisites](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_prerequisites). In both cases you need to have an admin role.
 
 b. Define your SageMaker role, local user role, AWS account ID and AWS Region as variables by executing the following commands in the terminal line by line:
 
 ```shell
 SAGEMAKER_ROLE_ARN=...
 USER_ROLE_ARN=...
-ACCOUNT_ID=
-REGION=
+ACCOUNT_ID=...
+REGION=...
 ```
 
 Note that if you connect to AWS from your local CLI as an IAM user, you will need to assume a `USER_ROLE_ARN` when connecting to SageMaker. 
@@ -31,18 +31,19 @@ b. Execute the following commands (you can copy-paste them as a whole script):
 
 ```shell
 pip install 'sagemaker-ssh-helper[cdk]'
+npm install -g aws-cdk
 
 cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION"
 
-APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
+IAM_APP="python -m sagemaker_ssh_helper.cdk.iam_ssm_app"
 
-AWS_REGION="$REGION" cdk -a "$APP" deploy SSH-IAM-SSM-Stack \
+AWS_REGION="$REGION" cdk -a "$IAM_APP" deploy SSH-IAM-SSM-Stack \
   -c sagemaker_role="$SAGEMAKER_ROLE_ARN" \
   -c user_role="$USER_ROLE_ARN"
 
-APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
+SSM_APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
 
-AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack
+AWS_REGION="$REGION" cdk -a "$SSM_APP" deploy SSM-Advanced-Tier-Stack
 ```
 
 In the above code we define local variable `APP` to execute CDK apps, and export `AWS_REGION` environment variable upon execution that is set to `REGION` local variable defined earlier.
@@ -52,16 +53,13 @@ Local variables `SAGEMAKER_ROLE_ARN` and `USER_ROLE_ARN` are passed as parameter
 c. To enable SageMaker SSH Helper in additional AWS Regions, run these commands per region (adjust `REGION` variable each time):
 
 ```shell
-ACCOUNT_ID=
-REGION=
+REGION=...
 ```
 
 ```shell
 cdk bootstrap aws://"$ACCOUNT_ID"/"$REGION"
 
-APP="python -m sagemaker_ssh_helper.cdk.advanced_tier_app"
-
-AWS_REGION="$REGION" cdk -a "$APP" deploy SSM-Advanced-Tier-Stack
+AWS_REGION="$REGION" cdk -a "$SSM_APP" deploy SSM-Advanced-Tier-Stack
 ```
 
 *Note:* If you will run the jobs from SageMaker Studio instead of your local machine, specify `USER_ROLE_ARN` the same as `SAGEMAKER_ROLE_ARN`.
