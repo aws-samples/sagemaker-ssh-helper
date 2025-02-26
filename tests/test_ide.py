@@ -86,9 +86,13 @@ SSH_TEST_IMAGES = [
     ('test-tensorflow', 'ssh-test-tf212-gpu',
      'tensorflow-2.12.0-gpu-py310-cu118-ubuntu20.04-sagemaker-v1.0', 'ml.g4dn.xlarge', 'Python 3.10.10'),
 
-    # 18 - SageMaker Distribution v0 CPU - TODO
+    # 18 - SageMaker Distribution v0 CPU
+    ('test-sagemaker-distribution', 'ssh-test-smdist-cpu',
+     'sagemaker-distribution-cpu-v0', 'ml.m5.large', 'Python 3.8.18'),
 
-    # 19 - SageMaker Distribution v0 GPU - TODO
+    # 19 - SageMaker Distribution v0 GPU
+    ('test-sagemaker-distribution', 'ssh-test-smdist-gpu',
+     'sagemaker-distribution-gpu-v0', 'ml.m5.large', 'Python 3.8.18'),
 ]
 
 

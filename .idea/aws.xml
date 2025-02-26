@@ -12,11 +12,9 @@
     <option name="recentlyUsedRegions">
       <list>
         <option value="eu-west-1" />
+        <option value="eu-west-2" />
       </list>
     </option>
-  </component>
-  <component name="connectionManager">
-    <option name="activeConnectionId" value="sso;us-east-1;https://view.awsapps.com/start" />
   </component>
   <component name="connectionPinningManager">
     <option name="pinnedConnections">
