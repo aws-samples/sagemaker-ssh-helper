@@ -16,7 +16,7 @@
       <excludeFolder url="file://$MODULE_DIR$/src_diff" />
       <excludeFolder url="file://$MODULE_DIR$/.pytest_cache/v" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.8.18 (sftp://root@sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036.default-20240514t204234.d-j53oaxv4za10.studio.sagemaker:22/opt/conda/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (sagemaker-ssh-helper-dev-venv)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

@@ -90,9 +90,6 @@ elif [[ "$COMMAND" == "connect-app" ]]; then
   INSTANCE_ID=$($(_python) <<EOF
 import sagemaker; from sagemaker_ssh_helper.ide import SSHIDE;
 import logging; logging.basicConfig(level=logging.INFO);
-logging.getLogger('sagemaker-ssh-helper:SSMManagerBase').setLevel(logging.WARNING)
-logging.getLogger('sagemaker-ssh-helper:SSMManager').setLevel(logging.WARNING)
-logging.getLogger('sagemaker-ssh-helper:SSHLog').setLevel(logging.WARNING)
 SSHIDE("$DOMAIN_ID", "$USER_PROFILE_NAME").print_kernel_instance_id("$SM_STUDIO_KGW_NAME", timeout_in_sec=300)
 EOF
   )

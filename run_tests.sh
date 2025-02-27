@@ -3,9 +3,9 @@
 set -e
 set -o pipefail
 
-echo "Keywords expression for pytest (PYTEST_KEYWORDS): -k '$PYTEST_KEYWORDS'"
-echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
-cat /etc/hosts
+echo "Keywords expression for pytest (-k PYTEST_KEYWORDS): ['$PYTEST_KEYWORDS']"
+echo "Extra args for pytest (PYTEST_EXTRA_ARGS): [$PYTEST_EXTRA_ARGS]"
+echo "Comparing code base with GitHub repo..."
 bash ./compare_release_src.sh
 
 # Creating venv

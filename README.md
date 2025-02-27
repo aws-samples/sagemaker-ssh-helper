@@ -867,6 +867,8 @@ If you're using lifecycle configuration script, just start another image termina
 
 ## <a name="web-vnc"></a>Web VNC
 
+> **Note**: The Web VNC section is created for the earlier version of SSH Helper and was not tested with the recent features of SageMaker Studio released in late 2024 and in 2025.
+
 At times, you cannot install all the software on your local machine, also because this is the software processes data, and you cannot copy massive amount of the data to your local machine. 
 
 You might have thought about [AWS Jupyter Proxy](https://github.com/aws/aws-jupyter-proxy), but some web apps like Dask may not fully work through the proxy, so VNC is the recommended alternative.

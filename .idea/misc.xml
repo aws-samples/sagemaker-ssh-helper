@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.9 (sagemaker-ssh-helper-dev)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.8.18 (sftp://root@sagemaker-data-science-ml-m5-large-6590da95dc67eec021b14bedc036.default-20240514t204234.d-j53oaxv4za10.studio.sagemaker:22/opt/conda/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (sagemaker-ssh-helper-dev-venv)" project-jdk-type="Python SDK" />
   <component name="PythonCompatibilityInspectionAdvertiser">
     <option name="version" value="3" />
   </component>

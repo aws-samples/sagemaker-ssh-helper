@@ -160,7 +160,7 @@ class SageMaker:
                 app_name = app_dict['AppName']
                 app_type = app_dict['AppType']
 
-                if not 'SpaceName' in app_dict and not app_type in ['JupyterLab']:
+                if 'SpaceName' not in app_dict and app_type not in ['JupyterLab']:
                     logging.info("Studio Classic is not supported anymore: skipping app %s of type %s" % (app_name, app_type))
                     pass
                 else:

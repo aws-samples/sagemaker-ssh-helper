@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# A lifecycle configuration script for SageMaker Studio kernel gateway.
+# A lifecycle configuration script for SageMaker Studio JupyterLab apps.
 # See SageMaker_SSH_IDE.ipynb for manual configuration and for explanation of commands.
-# See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc.html .
+# See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lifecycle-configurations.html .
 
 # Replace with your JetBrains License Server host name
 # OR keep it as is and put the value into ~/.sm-jb-license-server inside SageMaker Studio to override
@@ -17,12 +17,13 @@ VNC_PASSWORD="123456"
 LOCAL_USER_ID="AIDACKCEVSQ6C2EXAMPLE:terry@SSO"
 
 set -e
+set -o pipefail
 
 # If not root, execute as root via sudo
 if [ "$EUID" -ne 0 ]; then
   SUDO="sudo"
   $SUDO true
-  echo 'kernel-lc-config.sh: INFO - Executing as root via sudo'
+  echo 'jupyterlab-lc-config.sh: INFO - Executing as root via sudo'
   exec $SUDO -E HOME=/root "$0" "$@"
   exit 0
 fi
@@ -30,14 +31,16 @@ fi
 PYTHON_BIN=$(which python3 || which python)
 
 if [ -f /opt/sagemaker-ssh-helper/.ssh-ide-configured ]; then
-    echo 'kernel-lc-config.sh: INFO - SageMaker SSH Helper is already installed, remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to reinstall'
+    echo 'jupyterlab-lc-config.sh: INFO - SageMaker SSH Helper is already installed, remove /opt/sagemaker-ssh-helper/.ssh-ide-configured to reinstall'
 else
   $PYTHON_BIN -m pip uninstall -y -q awscli
   $PYTHON_BIN -m pip install -q sagemaker-ssh-helper
 
-  # Uncomment two lines below to update SageMaker SSH Helper to the latest dev version from the main branch
-  #git clone https://github.com/aws-samples/sagemaker-ssh-helper.git /tmp/sagemaker-ssh-helper/ || echo 'Already cloned'
-  #cd /tmp/sagemaker-ssh-helper/ && git pull --no-rebase && git clean -f && $PYTHON_BIN -m pip install . && cd -
+  # Uncomment lines below to update SageMaker SSH Helper to the latest dev version from the main branch
+  # dir="$(pwd)"
+  # git clone https://github.com/aws-samples/sagemaker-ssh-helper.git /tmp/sm-ssh-src/ || echo 'Already cloned'
+  # cd /tmp/sm-ssh-src/ && git pull --no-rebase && git clean -f && $PYTHON_BIN -m pip install .
+  # cd "$dir"
 fi
 
 # We assume that the kernels are is installed into the sys prefix, e.g. with ipykernel install --sys-prefix command

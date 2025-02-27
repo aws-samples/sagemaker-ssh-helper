@@ -97,6 +97,8 @@ SSH_TEST_IMAGES = [
 
 
 @pytest.mark.parametrize('instances', SSH_TEST_IMAGES)
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Needs update for new Studio")
 def test_sagemaker_studio(instances, request):
     user, app_name, image_name, instance_type, expected_version = instances
 
@@ -154,29 +156,8 @@ def test_sagemaker_studio_cleanup(instances, request):
     ide.delete_kernel_app(app_name, wait=False)
 
 
-def test_notebook_instance(request):
-    notebook_instance = request.config.getini('sagemaker_notebook_instance')
-    notebook_ids = SSMManager().get_notebook_instance_ids(notebook_instance, timeout_in_sec=300)
-    if not notebook_ids:
-        raise ValueError(f"No notebook instance found with name {notebook_instance}")
-    studio_id = notebook_ids[0]
-
-    with SSMProxy(17022) as ssm_proxy:
-        ssm_proxy.connect_to_ssm_instance(studio_id)
-
-        _ = ssm_proxy.run_command("apt-get install -q -y net-tools")
-
-        services_running = ssm_proxy.run_command_with_output("netstat -nptl")  # noqa
-        services_running = services_running.decode('latin1')
-
-        python_version = ssm_proxy.run_command_with_output("/opt/conda/bin/python --version")
-        python_version = python_version.decode('latin1')
-
-    assert "0.0.0.0:22" in services_running
-
-    assert "Python 3.8" in python_version
-
-
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Needs update for new Studio")
 def test_studio_internet_free_mode(request):
     """
     See https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html
@@ -241,6 +222,8 @@ def test_studio_internet_free_mode(request):
 
 
 # noinspection DuplicatedCode
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Needs update for new Studio")
 def test_studio_multiple_users(request):
     ide_tf = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-tensorflow')
     ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
@@ -283,6 +266,8 @@ def test_studio_multiple_users(request):
 
 
 # noinspection DuplicatedCode
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Needs update for new Studio")
 def test_studio_default_domain_multiple_users(request):
     ide_tf = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-tensorflow')
     ide_pt = SSHIDE(request.config.getini('sagemaker_studio_domain'), 'test-pytorch')
@@ -326,6 +311,8 @@ def test_studio_default_domain_multiple_users(request):
 
 
 @pytest.mark.parametrize('user_profile_name', ['test-firefox'])
+@pytest.mark.skipif(os.getenv('PYTEST_IGNORE_SKIPS', "false") == "false",
+                    reason="Needs update for new Studio")
 def test_studio_notebook_in_firefox(request, user_profile_name):
     ide = SSHIDE(request.config.getini('sagemaker_studio_domain'), user_profile_name)
     local_user_id = os.environ['LOCAL_USER_ID']

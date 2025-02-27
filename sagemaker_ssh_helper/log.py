@@ -198,7 +198,7 @@ class SSHLog(SSMManagerBase):
                f"/transform-jobs/{transform_job_name}"
 
     def get_ide_cloudwatch_url(self, domain, user, app_name):
-        app_type = 'JupyterServer' if app_name == 'default' else 'KernelGateway'
+        app_type = 'JupyterLab'  # TODO: Code Editor support?
         if user:
             return f"https://{self.aws_console.get_console_domain()}/" \
                    f"cloudwatch/home?region={self.region_name}#" \
@@ -210,9 +210,8 @@ class SSHLog(SSMManagerBase):
                f"$3FlogStreamNameFilter$3D{app_type}$252F{app_name}"
 
     def get_ide_metadata_url(self, domain, user):
-        return f"https://{self.aws_console.get_console_domain()}/" \
-               f"sagemaker/home?region={self.region_name}#" \
-               f"/studio/{domain}/user/{user}"
+        # TODO: URL for China region
+        return f"https://studio-{domain}.studio.{self.region_name}.sagemaker.aws/jupyterlab/{user}"
 
     def count_sns_notifications(self, topic_name: str, period: timedelta):
         cloudwatch_resource = boto3.resource('cloudwatch', region_name=self.region_name)
