@@ -8,7 +8,7 @@ import sagemaker_ssh_helper.env
 sagemaker_ssh_helper.last_session_time = datetime.now()
 
 
-def setup_and_start_ssh():
+def setup_and_start_ssh():  # pragma: no cover
     if "START_SSH" not in os.environ:
         print("[sagemaker-ssh-helper] WARNING: SageMaker SSH Helper is not correctly initialized. "
               "Did you forget to call wrapper.create() _before_ fit() / run() / transform() / deploy()?")
@@ -40,7 +40,7 @@ def setup_and_start_ssh():
         print(f"[sagemaker-ssh-helper] Skipping SageMaker SSH Helper setup from {script} due to startup params")
 
 
-def is_last_session_timeout(time_delta: timedelta):
+def is_last_session_timeout(time_delta: timedelta):  # pragma: no cover
     args = ["pgrep", "-f", "ssm-session-worker"]
     try:
         out = subprocess.check_output(args)
@@ -63,7 +63,7 @@ def is_last_session_timeout(time_delta: timedelta):
     return timeout
 
 
-def is_profiler_issues_found():
+def is_profiler_issues_found():  # pragma: no cover
     from sagemaker_ssh_helper.wrapper import SSHEstimatorWrapper
     training_job_arn = os.environ.get("TRAINING_JOB_ARN")
     if not training_job_arn:

@@ -37,11 +37,11 @@ else
   $PYTHON_BIN -m pip install -q sagemaker-ssh-helper
 
   # Uncomment lines below to update SageMaker SSH Helper to the latest dev version from the main branch
-  # dir="$(pwd)"
   # git clone https://github.com/aws-samples/sagemaker-ssh-helper.git /tmp/sm-ssh-src/ || echo 'Already cloned'
   # cd /tmp/sm-ssh-src/ && git pull --no-rebase && git clean -f && $PYTHON_BIN -m pip install .
-  # cd "$dir"
 fi
+
+cd /root
 
 # We assume that the kernels are is installed into the sys prefix, e.g. with ipykernel install --sys-prefix command
 SYSTEM_PYTHON_PREFIX=$($PYTHON_BIN -c "from __future__ import print_function;import sys; print(sys.prefix)")

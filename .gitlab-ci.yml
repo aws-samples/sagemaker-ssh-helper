@@ -9,6 +9,7 @@ run_tests:
   stage: test
   resource_group: ssh-helper-tests
   script:
+    # Run tests
     - bash run_tests.sh
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:

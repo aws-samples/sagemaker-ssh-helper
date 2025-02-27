@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/aws-samples/sagemaker-ssh-helper.svg)](https://github.com/aws-samples/sagemaker-ssh-helper/blob/main/LICENSE)
 
 SageMaker SSH Helper is the "army-knife" library that helps you to securely connect to Amazon SageMaker training jobs, processing jobs, batch inference jobs
-and realtime inference endpoints as well as SageMaker Studio Notebooks and SageMaker Notebook Instances for fast interactive experimentation, 
+and realtime inference endpoints as well as SageMaker Studio set of IDEs and SageMaker Notebook Instances for fast interactive experimentation, 
 remote debugging, and advanced troubleshooting.
 
 Three most common tasks that motivated to create the library, sometimes referred as "SSH into SageMaker", are:
