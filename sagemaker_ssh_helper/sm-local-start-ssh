@@ -43,7 +43,7 @@ fi
 INSTANCE_ID=$1
 shift
 
-INSTANCE_ID=$(echo "$INSTANCE_ID" | tr '\n' ' ' | grep -o 'mi-.*$' | tr -d ' ')
+INSTANCE_ID=$(echo "$INSTANCE_ID" | tr '\n' ' '  | tr -d ' ' | grep -oe 'mi-[0-9a-f]*$')
 
 if [ -z "${INSTANCE_ID}" ]; then
   echo "INSTANCE_ID is not provided or incorrect (should be in the form mi-1234567890abcdef0)"
