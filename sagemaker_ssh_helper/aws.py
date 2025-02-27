@@ -15,6 +15,11 @@ class AWS:
             return f"{self.region}.console.amazonaws-us-gov.com"
         return f"{self.region}.console.aws.amazon.com"
 
+    def get_sts_endpoint(self):
+        if self.region.startswith("cn-"):
+            return "https://sts.{}.amazonaws.com.cn".format(self.region)
+        return "https://sts.{}.amazonaws.com".format(self.region)
+
     @staticmethod
     def is_arn(arn: str):
         """
