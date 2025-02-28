@@ -46,6 +46,6 @@ def test_local_training():
 
 @mock.patch.dict(os.environ, {"SM_MODEL_DIR": os.path.join(os.path.dirname(__file__), "opt_ml/model")})
 def test_local_training_with_coverage():
-    # import will start training
+    # import will start training without subprocess, so we have code coverage
     from source_dir.training_clean import train_clean
     assert train_clean

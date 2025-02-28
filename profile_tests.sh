@@ -3,8 +3,8 @@
 set -e
 set -o pipefail
 
-echo "Keywords expression for pytest (PYTEST_KEYWORDS): -k '$PYTEST_KEYWORDS'"
-echo "Extra args for pytest (PYTEST_EXTRA_ARGS): $PYTEST_EXTRA_ARGS"
+echo "Keywords expression for pytest (-k PYTEST_KEYWORDS): ['$PYTEST_KEYWORDS']"
+echo "Extra args for pytest (PYTEST_EXTRA_ARGS): [$PYTEST_EXTRA_ARGS]"
 python -m venv ./venv
 source ./venv/bin/activate
 pip install '.[test]'

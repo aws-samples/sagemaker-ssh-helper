@@ -5,6 +5,10 @@
 # *.transform.sagemaker
 # *.processing.sagemaker
 # *.notebook.sagemaker
+
+Host *.studio.sagemaker
+  User sagemaker-user
+
 Host *.*.sagemaker
   IdentityFile ~/.ssh/%h
   PasswordAuthentication no

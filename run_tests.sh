@@ -119,6 +119,7 @@ AWS_DEFAULT_REGION=eu-west-1 sm-ssh list
 AWS_DEFAULT_REGION=eu-west-2 sm-ssh list
 mkdir -p /root/.ssh
 cat ssh_config_template.txt >>/root/.ssh/config
+echo "Hello from the notebook:"
 ssh -o StrictHostKeyChecking=no ssh-helper-notebook.notebook.sagemaker \
   python --version || echo "ERROR: cannot connect to notebook"
 

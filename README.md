@@ -552,12 +552,6 @@ Alternatively, instead of using `sm-ssh connect` command, you can use the native
 
 ```bash
 Host *.studio.sagemaker
-  IdentityFile ~/.ssh/%h
-  PasswordAuthentication no
-  ConnectTimeout 120
-  ServerAliveInterval 15
-  ServerAliveCountMax 8
-  ProxyCommand sm-ssh start-proxy %h
   User sagemaker-user
 
 Host *.*.sagemaker
