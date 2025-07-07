@@ -795,14 +795,16 @@ You might want to change the `LOCAL_USER_ID` variable upon the first run, to pre
 
 Use `app_name.app_space_name.domain_id.studio.sagemaker` or `app_name.studio.sagemaker` as the `fqdn` to connect.
 Use `sagemaker-user` as user. 
-See more details on how to configure the interpreter for the IDE in the [Remote code execution](#remote-interpreter) section, 
-step "3. Configure the remote interpreter in your IDE".
 
-To see available apps to connect to, you may run the `list` command:
+To see available apps and host fqdns to connect to, run the `list` command:
 
 ```
 sm-ssh list studio.sagemaker
 ```
+
+**See more details on how to configure the interpreter for the IDE in the [Remote code execution](#remote-interpreter) section, 
+step "3. Configure the remote interpreter in your IDE".**
+
 *Tip:* When you configure Python interpreter in PyCharm with SageMaker Studio, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/home/sagemaker-user/user-default-efs/project_name` instead of default `/tmp/pycharm_project_123`. 
 This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir.
 
