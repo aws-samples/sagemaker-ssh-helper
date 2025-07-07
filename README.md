@@ -605,7 +605,7 @@ Make sure you allow enough time for manually setting up the connection (do not s
 
 Instead of using SSM to connect to the container from command line, proceed to the next step for configuring the IDE.
 
-3. Configure the remote interpreter in your IDE
+**3. Configure the remote interpreter in your IDE**
 
 Make sure you've configured your ssh config as mentioned in the [~/.ssh/config](#sshconfig) section and your IDE can access and execute `sm-ssh` command from the system env and IDE terminal.
 
