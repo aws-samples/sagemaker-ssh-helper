@@ -592,7 +592,7 @@ sm-local-configure
 
 **Caution**: You will use SSH plugins from the IDE running inside your system env with system Python, therefore you should add SSH Helper into your system PATH, e.g., on macOS:
 ```bash
-sudo bash -c "echo '/Users/janedoe/PycharmProjects/sagemaker-ssh-helper-dev-venv/bin' > /etc/paths.d/42-sm-ssh"
+sudo bash -c "echo '/Users/janedoe/PythonProjects/sagemaker-ssh-helper-dev-venv/bin' > /etc/paths.d/42-sm-ssh"
 ```
 
 You might need restart the Terminal and the IDE for changes to take an effect.
