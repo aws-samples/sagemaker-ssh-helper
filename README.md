@@ -592,7 +592,7 @@ On the local machine, make sure that you installed the latest [AWS CLI v2](https
 sm-local-configure
 ```
 
-**Caution**: You will use SSH plugins from the IDE running inside your system env with system Python, therefore you should add SSH Helper into your system PATH, e.g., on macOS:
+**Caution**: You will use SSH plugins from the IDE running inside your system env with system Python, therefore you should add SSH Helper into your system PATH. Check the path with `which sm-ssh` command, e.g., on macOS it can be `/opt/homebrew/bin/` or the venv:
 ```bash
 sudo bash -c "echo '/Users/janedoe/PythonProjects/sagemaker-ssh-helper-dev-venv/bin' > /etc/paths.d/42-sm-ssh"
 ```
@@ -771,8 +771,9 @@ For your local IDE integration with SageMaker Studio, follow the same steps as f
 
 > **Important:** Make sure you read the "Getting started" section and didn't skip the steps from [Setting up your AWS account with IAM and SSM configuration](IAM_SSM_Setup.md).
 
+1. Execute the step "1. Configure local machine" in the [Remote code execution](#remote-interpreter) section.
 
-1. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
+2. Copy [SageMaker_SSH_IDE.ipynb](SageMaker_SSH_IDE.ipynb) into SageMaker Studio and run it. 
 
 Note that the `main` branch of this repo can contain changes that are not compatible with the version of `sagemaker-ssh-helper` that you installed from pip.
 
@@ -795,7 +796,7 @@ Once configured, from the Launcher choose the environment, pick up the lifecycle
 
 You might want to change the `LOCAL_USER_ID` variable upon the first run, to prevent users from impersonating each other. For more details see the FAQ on [How SageMaker SSH Helper protects users from impersonating each other?](FAQ.md#how-sagemaker-ssh-helper-protects-users-from-impersonating-each-other).
 
-2. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio
+3. Configure remote interpreter in PyCharm / VS Code to connect to SageMaker Studio
 
 Use `app_name.app_space_name.domain_id.studio.sagemaker` or `app_name.studio.sagemaker` as the `fqdn` to connect.
 Use `sagemaker-user` as user. 
@@ -808,7 +809,7 @@ sm-ssh list studio.sagemaker
 
 The configuration is finished now.
 
-**Now go to the [Remote code execution](#remote-interpreter) section, step "3. Configure the remote interpreter in your IDE"** 
+**Go through the step "3. Configure the remote interpreter in your IDE" in the [Remote code execution](#remote-interpreter) section.**
 
 *Tip:* When you configure Python interpreter in PyCharm with SageMaker Studio, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/home/sagemaker-user/user-default-efs/project_name` instead of default `/tmp/pycharm_project_123`. 
 This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir.
@@ -816,7 +817,7 @@ This is how you will be able to see your project in SageMaker Studio and PyCharm
 *Note:* If you're using Windows, see [the FAQ](FAQ.md#is-windows-supported).
 
 
-3. Using the remote Jupyter Notebook
+4. Using the remote Jupyter Notebook
 
 In recent versions of PyCharm, Jupyter Notebook is tunnelled automatically through remote interpreter connection. You might need to add `--allow-root` argument to the command line, when your remote interpreter runs under root:
 
@@ -839,7 +840,7 @@ You will find the full URL with remote token in the [SageMaker_SSH_IDE.ipynb](Sa
  * [Instructions for remote Jupyter notebooks in PyCharm](https://www.jetbrains.com/help/pycharm/configuring-jupyter-notebook.html#configure-server)
  * [Instructions for remote Jupyter notebooks in VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_connect-to-a-remote-jupyter-server) (don't forget to switch kernel to remote after configuring the remote server).
 
-4. Connecting to VNC
+5. Connecting to VNC
 
 To make the remote VNC port `5901` forwarded to the local machine, use SSH:
 
