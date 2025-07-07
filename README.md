@@ -597,7 +597,7 @@ sm-local-configure
 sudo bash -c "echo '/Users/janedoe/PythonProjects/sagemaker-ssh-helper-dev-venv/bin' > /etc/paths.d/42-sm-ssh"
 ```
 
-You might need restart the Terminal and the IDE for changes to take an effect.
+**You might need restart the Terminal and the IDE for changes to take an effect. After restart, check that the path has been added to the PATH with `echo $PATH`.**
 
 Alternatively, use the trick with port forwarding - start the `sm-ssh` or `ssh` with `-L` option inside venv, and then use `localhost` as the host to connect to from IDE. This trick is used to make SSH Helper work on Windows, and it's described in [FAQ - Is Windows Supported?](FAQ.md#is-windows-supported).
 
