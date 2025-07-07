@@ -583,7 +583,9 @@ Follow the steps in the next section for the IDE configuration, to prepare the `
 
 ## <a name="remote-interpreter"></a>Remote code execution with PyCharm / VSCode over SSH
 
-1. On the local machine, make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). To do so, perform the automated installation with the [sm-local-configure](sagemaker_ssh_helper/sm-local-configure) script:
+**1. Configure local machine**
+
+On the local machine, make sure that you installed the latest [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and the [AWS Session Manager CLI plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). To do so, perform the automated installation with the [sm-local-configure](sagemaker_ssh_helper/sm-local-configure) script:
 
 ```shell
 # pip install sagemaker-ssh-helper
@@ -599,7 +601,9 @@ You might need restart the Terminal and the IDE for changes to take an effect.
 
 Alternatively, use the trick with port forwarding - start the `sm-ssh` or `ssh` with `-L` option inside venv, and then use `localhost` as the host to connect to from IDE. This trick is used to make SSH Helper work on Windows, and it's described in [FAQ - Is Windows Supported?](FAQ.md#is-windows-supported).
 
-2. Submit your code to SageMaker with SSH Helper as described in previous sections, e.g. as a [training job](#step-1-install-the-library).
+**2. Start the remote resource**
+
+Submit your code to SageMaker with SSH Helper as described in previous sections, e.g. as a [training job](#step-1-install-the-library). For SageMaker Studio, see the section [Local IDE integration with SageMaker Studio over SSH for PyCharm / VSCode](#studio)
 
 Make sure you allow enough time for manually setting up the connection (do not set `connection_wait_time_seconds` to `0`, recommended minimum value is `600`, i.e. 10 minutes).  Don't worry to set it to higher values, e.g. to 30 min, because you will be able to terminate the waiting loop once you connected.
 
@@ -655,7 +659,7 @@ There are few extension options that you might want to change for VS Code to wor
 
 * You might also need to set "Remote.SSH: Use Local Server" to `false` and "Remote.SSH: Lockfiles In Tmp" to `true`, if you still have connection problems.
 
-4. Connect to the instance and stop the waiting loop
+**4. Connect to the instance and stop the waiting loop**
 
 When you set `connection_wait_time_seconds` to non-zero value, SSH Helper will run a waiting loop inside your training script, until waiting time is passed, or you manually terminate the loop.
 
@@ -700,7 +704,7 @@ feature, which is also helpful in the scenario when you need to rerun your code 
 
 *Pro Tip:* You can debug your code line by line in this scenario. See [the tutorial in PyCharm documentation](https://www.jetbrains.com/help/pycharm/debugging-your-first-python-application.html#debug).
 
-5. Run and debug your code
+**5. Run and debug your code**
 
 Now when you have your training script or a placeholder script running, you can run additional code on the remote host, debug it line by line and set breakpoints.
 
@@ -802,8 +806,9 @@ To see available apps and host fqdns to connect to, run the `list` command:
 sm-ssh list studio.sagemaker
 ```
 
-**See more details on how to configure the interpreter for the IDE in the [Remote code execution](#remote-interpreter) section, 
-step "3. Configure the remote interpreter in your IDE".**
+The configuration is finished now.
+
+**Now go to the [Remote code execution](#remote-interpreter) section, step "3. Configure the remote interpreter in your IDE"** 
 
 *Tip:* When you configure Python interpreter in PyCharm with SageMaker Studio, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/home/sagemaker-user/user-default-efs/project_name` instead of default `/tmp/pycharm_project_123`. 
 This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir.
