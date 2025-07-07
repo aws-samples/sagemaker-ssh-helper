@@ -607,13 +607,15 @@ Instead of using SSM to connect to the container from command line, proceed to t
 
 3. Configure the remote interpreter in your IDE
 
-Make sure you've configured your ssh config as mentioned in the [~/.ssh/config](#sshconfig) section and your IDE can access and execute `sm-ssh` command from the system env and IDE terminal, e.g. by running `sm-ssh list`.
+Make sure you've configured your ssh config as mentioned in the [~/.ssh/config](#sshconfig) section and your IDE can access and execute `sm-ssh` command from the system env and IDE terminal.
 
-If you connect to your host for the first time, check that `ssh` command is working from CLI:
+If you connect to your host for the first time, check that `ssh` command is working from CLI (you get the fqdn host name from the output of `sm-ssh list` command):
 
 ```bash
 ssh sh-training-manual-2023-10-02-14-38-56-744.training.sagemaker
 ```
+
+#### PyCharm (option A)
 
 A. Follow the [instructions in the PyCharm docs](https://www.jetbrains.com/help/pycharm/remote-debugging-with-product.html#remote-interpreter), to configure the remote interpreter in PyCharm.
 
@@ -632,6 +634,8 @@ If PyCharm asks for the SSH key, point to the `~/.ssh/<fqdn>` private key file t
 You can find this location by running a cell with `import sys; sys.executable` command in a SageMaker Studio notebook. You will get something like `/opt/conda/bin/python`.
 
 *Tip:* Now you also can [upload and download files from remote](https://www.jetbrains.com/help/pycharm/uploading-and-downloading-files.html) and [synchronize files with remote](https://www.jetbrains.com/help/pycharm/comparing-deployed-files-and-folders-with-their-local-versions.html).
+
+#### VSCode (option B)
 
 B. Follow the [instructions for VSCode](https://code.visualstudio.com/docs/remote/ssh), to configure local Visual Studio Code app
 
