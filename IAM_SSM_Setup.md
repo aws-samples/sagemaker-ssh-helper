@@ -25,6 +25,9 @@ REGION=...
 
 Note that if you connect to AWS from your local CLI as an IAM user, you will need to assume a `USER_ROLE_ARN` when connecting to SageMaker. 
 
+> **NOTE:** Using environment variables to set up access keys and assume roles on the local machine is not recommeneded
+> unless you know what you are doing. **Consider [configuring AWS CLI through AWS config file](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html#cli-role-overview)**.
+
 Roughly speaking, the SageMaker role is the role assumed by a cloud compute resource and the user role is the role assumed by you on your local laptop.
 
 b. Execute the following commands (you can copy-paste them as a whole script):
