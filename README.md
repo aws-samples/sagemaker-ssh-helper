@@ -807,9 +807,7 @@ To see available apps and host fqdns to connect to, run the `list` command:
 sm-ssh list studio.sagemaker
 ```
 
-The configuration is finished now.
-
-**Go through the step "3. Configure the remote interpreter in your IDE" in the [Remote code execution](#remote-interpreter) section.**
+The configuration is finished now. **Go to the step "3. Configure the remote interpreter in your IDE" in the [Remote code execution](#remote-interpreter) section.**
 
 *Tip:* When you configure Python interpreter in PyCharm with SageMaker Studio, it's recommended to configure [the deployment path mapping](https://www.jetbrains.com/help/pycharm/creating-local-server-configuration.html#mapping) for you project to point into `/home/sagemaker-user/user-default-efs/project_name` instead of default `/tmp/pycharm_project_123`. 
 This is how you will be able to see your project in SageMaker Studio and PyCharm will automatically sync your local dir to the remote dir.
