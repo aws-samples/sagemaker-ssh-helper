@@ -651,7 +651,7 @@ e.g. `sagemaker-user@default.ivankh.d-vdnygexample.studio.sagemaker`.
 
 > **NOTE:**  The **Remote SSH** extension described in the above instructions is only for the [Visual Studio Code native app](https://code.visualstudio.com/). Code Editor in SageMaker Studio and other web apps based on [Code - OSS](https://github.com/microsoft/vscode#visual-studio-code---open-source-code---oss) such as [Code Server](https://github.com/coder/code-server) that use extensions from [Open VSX Registry](https://open-vsx.org/) might look and work differently from the native app that has Microsoft-specific customizations. SageMaker SSH Helper **DOES NOT** support browser-based implementations of VS Code and haven't been tested with any of Open VSX extensions. If you prefer to use the browser for development, take a look at the [Web VNC](#web-vnc) option. 
 
-There are few extension options that you might want to change for VS Code to work properly with SageMaker containers:
+There are few extension options that you might want to change for VS Code to work properly with SageMaker containers (Ctrl-Shift-P or Cmd-Shift-P to open command palette and search for "Remote-SSH: Settings"):
 
 * You might need to increase "Remote.SSH: Connect Timeout" option to `120` in VS Code. See [the StackOverflow post](https://stackoverflow.com/questions/59978826/why-ssh-connection-timed-out-in-vscode) for details. 
 
